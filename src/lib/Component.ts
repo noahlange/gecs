@@ -1,3 +1,4 @@
+import { id } from '../utils';
 import type { Entity } from './Entity';
 
 export interface ComponentType<T> {
@@ -7,6 +8,7 @@ export interface ComponentType<T> {
 
 export class Component {
   public static readonly type: string;
+  public readonly id: string = id();
   public entity: Entity;
 
   public constructor(entity: Entity) {

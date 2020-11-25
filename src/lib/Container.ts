@@ -1,27 +1,32 @@
-import type { ContainedType, ContainerType, KeyedByType } from '../types';
+import type { ContainedType, KeyedByType } from '../types';
+import { id } from '../utils';
 
 type ContainedItems = ContainedType[] & { id: string };
 
-export class Container<T> {
-  public static _contained: ContainedItems;
+export interface ContainerType<T> {
+  new (): Container<T>;
+}
 
+export class Container<T> {
+  protected static $: ContainedItems;
   protected static _with<A extends ContainedType[], T = {}>(
     ...items: A
   ): ContainerType<T & KeyedByType<A>> {
-    this._contained =
+    this.$ =
       // each class type needs its own instance of the `_contained` array,
       // otherwise they'll all share Container's `_contained`.
-      !this._contained || this.name !== this._contained.id
+      !this.$ || this.name !== this.$.id
         ? Object.assign(items, { id: this.name })
-        : (this._contained.concat(items) as ContainedItems);
+        : (this.$.concat(items) as ContainedItems);
 
     return (this as any) as ContainerType<T & KeyedByType<A>>;
   }
 
-  protected _items!: T;
+  public readonly id = id();
+  public readonly $: T;
 
   public constructor() {
-    this._items = (this.constructor as typeof Container)._contained.reduce(
+    this.$ = (this.constructor as typeof Container).$.reduce(
       (carry, C) => ({ ...carry, [C.type]: new C(this) }),
       {} as T
     );

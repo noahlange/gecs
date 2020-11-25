@@ -1,5 +1,5 @@
 {
-  "name": "ecsty",
+  "name": "tecs",
   "description": "Experimental TypeScript ECS framework (ab)using generics.",
   "author": {
     "name": "Noah Lange",
@@ -7,7 +7,6 @@
     "url": "https://noahlange.com"
   },
   "version": "0.0.0",
-  "dependencies": {},
   "types": "types/index.d.ts",
   "module": "src/index.ts",
   "devDependencies": {

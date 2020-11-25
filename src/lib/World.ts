@@ -22,17 +22,20 @@ export class World<T extends WorldSystems = {}> extends Container<T> {
     return super._with(...items) as WorldType<T & KeyedByType<A>>;
   }
 
-  public get systems(): T {
-    return this._items;
-  }
-
   public query(): QueryBuilder {
     return new QueryBuilder<{}>(this);
   }
 
+  // would be nice to be able to pass this directly as a function.
+  public tick = (delta: number, time?: number): void => {
+    for (const system in this.$) {
+      this.$[system].execute(delta, time);
+    }
+  };
+
   public init(): void {
-    for (const system in this._items) {
-      this._items[system].init();
+    for (const system in this.$) {
+      this.$[system].init();
     }
   }
 

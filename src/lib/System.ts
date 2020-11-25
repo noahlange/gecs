@@ -1,3 +1,4 @@
+import { id } from '../utils';
 import type { World } from './World';
 
 export interface SystemType {
@@ -7,7 +8,7 @@ export interface SystemType {
 
 export abstract class System {
   public static readonly type: string;
-
+  public readonly id = id();
   public world: World;
 
   public abstract execute(delta: number, time?: number): void;

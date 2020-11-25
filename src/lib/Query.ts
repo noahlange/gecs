@@ -4,33 +4,31 @@ import type { Entity, EntityComponents } from './Entity';
 import type { World } from './World';
 
 export class QueryBuilder<T extends EntityComponents = {}> {
-  protected _world: World<any>;
-  protected _components: string[] = [];
+  protected world: World<any>;
+  protected $: string[] = [];
 
-  public has<A extends ComponentType<any>[]>(
+  public has<A extends ComponentType<unknown>[]>(
     ...components: A
   ): QueryBuilder<T & KeyedByType<A>> {
     for (const C of components) {
-      this._components.push(C.type);
+      this.$.push(C.type);
     }
     return (this as unknown) as QueryBuilder<T & KeyedByType<A>>;
   }
 
-  public all(): Entity<T>[] {
-    return this._world.entities.filter(entity =>
-      this._components.every(name => name in entity.components)
-    ) as Entity<T>[];
-  }
-
   public *[Symbol.iterator](): Iterator<Entity<T>> {
-    for (const entity of this._world.entities) {
-      if (this._components.every(name => name in entity.components)) {
+    for (const entity of this.world.entities) {
+      if (this.$.every(name => name in entity.$)) {
         yield entity as Entity<T>;
       }
     }
   }
 
+  public all(): Entity<T>[] {
+    return Array.from(this);
+  }
+
   public constructor(world: World<any>) {
-    this._world = world;
+    this.world = world;
   }
 }

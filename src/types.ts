@@ -2,8 +2,9 @@ import type { U } from 'ts-toolbelt';
 
 export interface Container<T> {}
 
-export interface ContainerType<T> {
-  new (): Container<T>;
+export interface ConstructorType<C> {
+  readonly type: string;
+  new (...args: unknown[]): C;
 }
 
 export interface ContainedType {
@@ -18,8 +19,3 @@ export type KeyedByType<A extends ContainedType[]> = U.Merge<
       : never
     : never
 >;
-
-export interface ConstructorType<C> {
-  readonly type: string;
-  new (...args: unknown[]): C;
-}
