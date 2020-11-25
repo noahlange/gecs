@@ -1,9 +1,4 @@
-import type {
-  ContainedType,
-  ContainerType,
-  KeyedByType,
-  ManagerType
-} from '../types';
+import type { ContainedType, ContainerType, KeyedByType } from '../types';
 
 type ContainedItems = ContainedType[] & { id: string };
 
@@ -24,7 +19,6 @@ export class Container<T> {
   }
 
   protected _items!: T;
-  public manager!: ManagerType<T>;
 
   public constructor() {
     this._items = (this.constructor as typeof Container)._contained.reduce(

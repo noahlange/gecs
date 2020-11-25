@@ -1,10 +1,6 @@
 import type { U } from 'ts-toolbelt';
 
-export interface ManagerType<T> {}
-
-export interface Container<T> {
-  manager: ManagerType<T>;
-}
+export interface Container<T> {}
 
 export interface ContainerType<T> {
   new (): Container<T>;
