@@ -9,7 +9,7 @@ export interface ContainerClass<T extends BaseType> {
   with<A extends ContainedClass[]>(
     ...items: A
   ): ContainerClass<T & KeyedByType<A>>;
-  new (manager: Manager<T>): Container<T>;
+  new (manager: Manager): Container<T>;
 }
 
 export class Container<T extends BaseType = BaseType> {
@@ -19,8 +19,10 @@ export class Container<T extends BaseType = BaseType> {
   >(...items: A): ContainerClass<T> {
     return class extends Container<T> {
       public items = items;
-      public constructor(manager: Manager<T>) {
-        super(manager);
+      public constructor(manager: Manager) {
+        super();
+        this.manager = manager;
+        this.manager.add(this);
       }
     };
   }
@@ -31,9 +33,5 @@ export class Container<T extends BaseType = BaseType> {
 
   public id: string = nanoid();
   public items: ContainedClass[] = [];
-  protected manager!: Manager<T>;
-
-  public constructor(manager: Manager<T>) {
-    this.manager = manager;
-  }
+  protected manager!: Manager;
 }

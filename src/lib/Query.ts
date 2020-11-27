@@ -5,7 +5,7 @@ import type { Manager } from './Manager';
 
 export class Query<T extends BaseType = BaseType> {
   protected $: string[] = [];
-  protected manager: Manager<T>;
+  protected manager: Manager;
 
   public has<A extends ContainedClass[]>(
     ...components: A
@@ -23,7 +23,7 @@ export class Query<T extends BaseType = BaseType> {
           continue items;
         }
       }
-      yield item;
+      yield item as Container<T>;
     }
   }
 
@@ -31,7 +31,7 @@ export class Query<T extends BaseType = BaseType> {
     return Array.from(this);
   }
 
-  public constructor(manager: Manager<T>) {
+  public constructor(manager: Manager) {
     this.manager = manager;
   }
 }
