@@ -1,34 +1,39 @@
-import type { ContainedType, KeyedByType } from '../types';
-import { id } from '../utils';
+/* eslint-disable max-classes-per-file */
+import type { BaseType, KeyedByType } from '../types';
+import type { ContainedClass } from './Contained';
+import type { Manager } from './Manager';
 
-type ContainedItems = ContainedType[] & { id: string };
+import { nanoid } from 'nanoid';
 
-export interface ContainerType<T> {
-  new (): Container<T>;
+export interface ContainerClass<T extends BaseType> {
+  with<A extends ContainedClass[]>(
+    ...items: A
+  ): ContainerClass<T & KeyedByType<A>>;
+  new (manager: Manager<T>): Container<T>;
 }
 
-export class Container<T> {
-  protected static $: ContainedItems;
-  protected static _with<A extends ContainedType[], T = {}>(
-    ...items: A
-  ): ContainerType<T & KeyedByType<A>> {
-    this.$ =
-      // each class type needs its own instance of the `_contained` array,
-      // otherwise they'll all share Container's `_contained`.
-      !this.$ || this.name !== this.$.id
-        ? Object.assign(items, { id: this.name })
-        : (this.$.concat(items) as ContainedItems);
-
-    return (this as any) as ContainerType<T & KeyedByType<A>>;
+export class Container<T extends BaseType = BaseType> {
+  public static with<
+    A extends ContainedClass[],
+    T extends BaseType = KeyedByType<A>
+  >(...items: A): ContainerClass<T> {
+    return class extends Container<T> {
+      public items = items;
+      public constructor(manager: Manager<T>) {
+        super(manager);
+      }
+    };
   }
 
-  public readonly id = id();
-  public readonly $: T;
+  public get $(): T {
+    return this.manager.bindContainer(this);
+  }
 
-  public constructor() {
-    this.$ = (this.constructor as typeof Container).$.reduce(
-      (carry, C) => ({ ...carry, [C.type]: new C(this) }),
-      {} as T
-    );
+  public id: string = nanoid();
+  public items: ContainedClass[] = [];
+  protected manager!: Manager<T>;
+
+  public constructor(manager: Manager<T>) {
+    this.manager = manager;
   }
 }

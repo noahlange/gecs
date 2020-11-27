@@ -1,34 +1,37 @@
-import type { KeyedByType } from '../types';
-import type { ComponentType } from './Component';
-import type { Entity, EntityComponents } from './Entity';
-import type { World } from './World';
+import type { Container } from './Container';
+import type { ContainedClass } from './Contained';
+import type { BaseType, KeyedByType } from '../types';
+import type { Manager } from './Manager';
 
-export class QueryBuilder<T extends EntityComponents = {}> {
-  protected world: World<any>;
+export class Query<T extends BaseType = BaseType> {
   protected $: string[] = [];
+  protected manager: Manager<T>;
 
-  public has<A extends ComponentType<unknown>[]>(
+  public has<A extends ContainedClass[]>(
     ...components: A
-  ): QueryBuilder<T & KeyedByType<A>> {
+  ): Query<T & KeyedByType<A>> {
     for (const C of components) {
       this.$.push(C.type);
     }
-    return (this as unknown) as QueryBuilder<T & KeyedByType<A>>;
+    return (this as unknown) as Query<T & KeyedByType<A>>;
   }
 
-  public *[Symbol.iterator](): Iterator<Entity<T>> {
-    for (const entity of this.world.entities) {
-      if (this.$.every(name => name in entity.$)) {
-        yield entity as Entity<T>;
+  public *[Symbol.iterator](): Iterator<Container<T>> {
+    items: for (const item of this.manager.items) {
+      for (const key of this.$) {
+        if (!this.manager.has(item.id, key)) {
+          continue items;
+        }
       }
+      yield item;
     }
   }
 
-  public all(): Entity<T>[] {
+  public all(): Container<T>[] {
     return Array.from(this);
   }
 
-  public constructor(world: World<any>) {
-    this.world = world;
+  public constructor(manager: Manager<T>) {
+    this.manager = manager;
   }
 }

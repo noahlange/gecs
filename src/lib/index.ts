@@ -1,5 +1,6 @@
-export { Component } from './Component';
+export { Contained } from './Contained';
 export { Container } from './Container';
-export { Entity } from './Entity';
-export { System } from './System';
-export { World } from './World';
+export { Manager } from './Manager';
+
+export type { ContainedClass } from './Contained';
+export type { ContainerClass } from './Container';

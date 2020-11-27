@@ -1,1 +1,1 @@
-export { World, Component, Entity, System } from './lib';
+export { Contained, Container, Manager } from './lib';
