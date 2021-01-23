@@ -1,30 +1,29 @@
 /* eslint-disable max-classes-per-file */
 import { test, describe, expect } from '@jest/globals';
-import { Contained, Manager } from '../lib';
+import { World, Entity, Component } from '../ecs';
 
-import { Container } from '../lib/Container';
-import { Query } from '../lib/Query';
-
-class A extends Contained {
+class A extends Component {
   public static readonly type = 'a';
 }
 
-class B extends Contained {
+class B extends Component {
   public static readonly type = 'b';
 }
 
+const MyWorld = World.with();
+const WithA = Entity.with(A);
+const WithAB = Entity.with(A, B);
+
 describe('container queries', () => {
-  const em = new Manager();
-  const ItemA = Container.with(A);
-  const ItemAB = Container.with(A, B);
-  const query = new Query(em);
+  const myWorld = new MyWorld();
 
   test('return all containers with matching contained items', () => {
     const count = 5;
     for (let i = 0; i < count; i++) {
-      new ItemA(em), new ItemAB(em);
+      myWorld.entities.create(WithA);
+      myWorld.entities.create(WithAB);
     }
-    expect(query.has(A).all().length).toEqual(count * 2);
-    expect(query.has(B).all().length).toEqual(count);
+    expect(myWorld.query(A).all().length).toEqual(count * 2);
+    expect(myWorld.query(B).all().length).toEqual(count);
   });
 });

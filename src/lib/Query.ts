@@ -1,37 +1,30 @@
+import type { Manager } from '.';
+import type { BaseType } from '../types';
+import type { ComponentClass } from '../ecs';
 import type { Container } from './Container';
-import type { ContainedClass } from './Contained';
-import type { BaseType, KeyedByType } from '../types';
-import type { Manager } from './Manager';
 
-export class Query<T extends BaseType = BaseType> {
-  protected $: string[] = [];
-  protected manager: Manager;
+export class Query<
+  T extends BaseType = {},
+  C extends Container<T> = Container<T>
+> {
+  public manager: Manager;
+  public items: ComponentClass[];
 
-  public has<A extends ContainedClass[]>(
-    ...components: A
-  ): Query<T & KeyedByType<A>> {
-    for (const C of components) {
-      this.$.push(C.type);
-    }
-    return (this as unknown) as Query<T & KeyedByType<A>>;
-  }
-
-  public *[Symbol.iterator](): Iterator<Container<T>> {
-    items: for (const item of this.manager.items) {
-      for (const key of this.$) {
-        if (!this.manager.has(item.id, key)) {
-          continue items;
-        }
+  public *[Symbol.iterator](): Iterator<C> {
+    for (const entity of this.manager.query(...this.items)) {
+      if (this.items.every(item => item.type in entity.$)) {
+        // type system abuse
+        yield entity as C;
       }
-      yield item as Container<T>;
     }
   }
 
-  public all(): Container<T>[] {
+  public all(): C[] {
     return Array.from(this);
   }
 
-  public constructor(manager: Manager) {
+  public constructor(manager: Manager, ...items: ComponentClass[]) {
     this.manager = manager;
+    this.items = items;
   }
 }

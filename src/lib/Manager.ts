@@ -1,12 +1,13 @@
 import type { BaseType } from '../types';
-import type { Contained } from './Contained';
-import type { Container } from './Container';
+import type { Contained, ContainedClass } from './Contained';
+import type { Container, ContainerClass } from './Container';
 
 export class Manager {
-  protected containeds: Record<string, Record<string, Contained>> = {};
-  protected containers: Record<string, Container> = {};
+  public containers: Record<string, Container> = {};
+  public containeds: Record<string, Record<string, Contained>> = {};
 
-  public bindContainer<T extends BaseType>(container: Container<T>): T {
+  public bind<T extends BaseType<Contained>>(container: Container): T {
+    // type system abuse
     return container.items.reduce((a, b) => {
       return { ...a, [b.type]: this.containeds[b.type][container.id] };
     }, {} as T);
@@ -20,9 +21,25 @@ export class Manager {
     return !!this.containeds[key]?.[id];
   }
 
+  public create<T extends BaseType, C extends ContainerClass<T>>(
+    Constructor: C
+  ): Container<T> {
+    const instance = new Constructor(this);
+    this.add(instance);
+    return instance;
+  }
+
+  public *query(...containeds: ContainedClass[]): Generator<Container> {
+    for (const item of this.items) {
+      if (containeds.every(c => c.type in item.$)) {
+        yield item;
+      }
+    }
+  }
+
   public add(container: Container): this {
     this.containers[container.id] = container;
-    for (const Contained of container.items) {
+    for (const Contained of container.items ?? []) {
       const type = Contained.type;
       this.containeds[type] = {
         ...(this.containeds[type] ?? {}),
@@ -30,5 +47,11 @@ export class Manager {
       };
     }
     return this;
+  }
+
+  public init(): void {
+    for (const item of this.items) {
+      item.init?.();
+    }
   }
 }

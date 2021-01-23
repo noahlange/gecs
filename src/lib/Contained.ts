@@ -1,10 +1,17 @@
-import { nanoid } from 'nanoid';
+import type { Container } from './Container';
 
-export interface ContainedClass {
+import { nanoid } from 'nanoid/non-secure';
+
+export interface ContainedClass<T extends Container = Container> {
   readonly type: string;
-  new (...args: unknown[]): Contained;
+  new (container: T): Contained;
 }
 
-export class Contained {
+export class Contained<T extends Container = Container> {
+  public static readonly type: string;
   public readonly id: string = nanoid();
+  public container: T;
+  public constructor(container: T) {
+    this.container = container;
+  }
 }

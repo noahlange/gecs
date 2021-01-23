@@ -1,7 +1,6 @@
 /* eslint-disable max-classes-per-file */
 import { test, describe, expect } from '@jest/globals';
 import { Contained, Manager } from '../lib';
-
 import { Container } from '../lib/Container';
 
 class A extends Contained {
@@ -17,16 +16,16 @@ class C extends Contained {
 }
 
 describe('creating containers', () => {
-  const em = new Manager();
   const Item = Container.with(A, B, C);
+  const em = new Manager();
   const item = new Item(em);
+  const keys = Object.keys(item.$);
 
   test('`Container.with()` adds additional items to the list of those attached to a newly-constructed container', () => {
     expect(item.items.length).toBe(3);
   });
 
   test('`$` returns all components', () => {
-    const keys = Object.keys(item.$);
     expect(keys).toContain(A.type);
     expect(keys).toContain(B.type);
     expect(keys).toContain(C.type);

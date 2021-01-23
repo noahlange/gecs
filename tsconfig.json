@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "incremental": true,
     "target": "ES2020",
     "module": "commonjs",
     "moduleResolution": "node",
@@ -15,7 +14,5 @@
     "declaration": true,
     "declarationDir": "./types"
   },
-  "include": [
-    "src/**/*.ts"
-  ]
+  "include": ["src/**/*.ts"]
 }
