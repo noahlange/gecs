@@ -8,11 +8,11 @@ export interface SystemClass extends ContainedClass {
   new (world: World): System;
 }
 
-export abstract class System extends Contained<World> {
+export abstract class System extends Contained {
   public abstract tick(delta: number, time?: number): void;
   public init?(): void;
 
   public get world(): World {
-    return this.container;
+    return this.container as World;
   }
 }
