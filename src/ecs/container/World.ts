@@ -1,6 +1,5 @@
 import type { BaseType, KeyedByType } from '../../types';
 import type { System, SystemClass } from '../contained/System';
-import type { ComponentClass } from '../contained/Component';
 
 import { useWith } from '../../utils';
 import { Container } from '../../lib/Container';
@@ -24,14 +23,8 @@ export class World<T extends BaseType<System> = {}> extends Container<T> {
     >;
   }
 
-  /**
-   * Return an iterable of entities with all matching components.
-   * @param components - required components
-   */
-  public query<A extends ComponentClass[]>(
-    ...components: A
-  ): Query<KeyedByType<A>> {
-    return new Query<KeyedByType<A>>(this.entities, ...components);
+  public get query(): Query<{}> {
+    return new Query<{}>(this.entities);
   }
 
   // would be nice to be able to pass this directly as a function.

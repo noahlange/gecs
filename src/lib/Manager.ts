@@ -1,6 +1,6 @@
 import { Entity } from '../ecs';
 import type { BaseType } from '../types';
-import type { Contained, ContainedClass } from './Contained';
+import type { Contained } from './Contained';
 import type { Container, ContainerClass } from './Container';
 
 export class Manager {
@@ -30,6 +30,7 @@ export class Manager {
   }
 
   public destroy(id: string): void {
+    this.ids.splice(this.ids.indexOf(id), 1);
     const queries = Object.keys(this.containeds[id]);
     delete this.containers[id];
     delete this.containeds[id];
@@ -38,16 +39,11 @@ export class Manager {
     }
   }
 
-  public has(id: string, key: string): boolean {
-    return !!this.containeds[key]?.[id];
-  }
-
   public create<T extends BaseType, C extends ContainerClass<T>>(
     Constructor: C
   ): Container<T> {
     const instance = new Constructor(this);
     if (instance instanceof Entity) {
-      this.add(instance);
       return instance;
     } else {
       throw new Error(
@@ -56,14 +52,19 @@ export class Manager {
     }
   }
 
-  public *query(...containeds: ContainedClass[]): Generator<Container> {
-    const key = containeds.map(c => c.type).join(':');
-    const ids = (this.queries[key] ??= this.items
-      .filter(item => containeds.every(c => item.items.includes(c)))
-      .map(item => item.id));
-    for (const id of ids) {
-      yield this.containers[id];
-    }
+  public query(
+    contains: string[] = [],
+    notContains: string[] = []
+  ): Container[] {
+    const has = contains.sort((a, b) => a.localeCompare(b));
+    const hasnt = notContains.sort((a, b) => a.localeCompare(b));
+    const qid = [has.join('+'), hasnt.join('-')].join(':');
+    return (this.queries[qid] ??= this.ids.filter(id => {
+      return (
+        notContains.every(type => !(id in this.containeds[type])) &&
+        contains.every(type => id in this.containeds[type])
+      );
+    })).map(id => this.containers[id]);
   }
 
   public add(container: Container): this {
