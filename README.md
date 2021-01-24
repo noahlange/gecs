@@ -1,6 +1,25 @@
 # tecs
 
-**tecs** (_tecks_) is an experimental entity-component-system framework thing written in [TypeScript](https://www.typescriptlang.org). There are a lot of these written for various JS runtimes (particular shout-out goes to [ecsy](https://ecsy.io/), from which this takes quite a bit of inspiration), but the ones I read felt kinda clunky. Lots of tedious method chaining, &c.
+**tecs** (_tecks_) is an experimental entity-component-system framework thing written in [TypeScript](https://www.typescriptlang.org).
+
+## Installation
+
+There isn't an NPM package because it's _way_ too soon for that. If you want to play around, clone the repo and install/build/link like so:
+
+```
+git clone https://github.com/noahlange/tecs.git && cd tecs
+npm install && npm run build && npm link
+```
+
+Then start a new TS project, `npm link tecs` and start fiddling.
+
+```ts
+import { Entity, Component, System } from 'tecs';
+```
+
+## Inspiration
+
+There are a lot of ECS frameworks written for various JS runtimes (particular shout-out goes to [ecsy](https://ecsy.io/), from which this takes quite a bit of inspiration), but the ones I read felt kinda clunky. Lots of tedious method chaining, &c.
 
 What about something a little terser, and with TypeScript integration?
 
@@ -94,7 +113,6 @@ In either case, the components in `$` aren't attached to the component itself: i
 
 A `World` contains any number of `Systems` (and an Entity manager). The world serves as the point of connection between systems and entities.
 
-
 ```typescript
 import { World, Entities } from 'tecs';
 
@@ -104,7 +122,6 @@ import { Renderer } from './systems';
 const MyObject = Entities.with(Position, Sprite);
 
 export class MyWorld extends World.with(Renderer) {
-
   public init(): void {
     // create a mole-shaped, positionable object
     this.entities.create(MyObject);
@@ -181,11 +198,11 @@ class Renderer extends System {
 
 ## Questions/Statements & Answers
 
-**Q/S**: "Every implementation here appears to be as naïve as humanly possible and performance is probably god-awful."  
+**Q/S**: Every implementation here appears to be as naïve as humanly possible and performance is probably god-awful.  
 **A**: Yes, but I probably have plans to fix it.
 
-**Q/S**: "Why are components class instances instead of POJOs? Isn't that kinda expensive/wasteful?"  
-**A**: Yes, but it makes me feel happier.
+**Q/S**: Why are components class instances instead of POJOs? Isn't that kinda expensive/wasteful?  
+**A**: Yeah, probably, but it makes me feel happier.
 
-**Q/S**: "After reading the code, I realize this manages to be even less type-safe than I would have thought possible."  
+**Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
 **A**: Also yes. But again, this is all about my feelings.
