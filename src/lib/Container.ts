@@ -8,7 +8,6 @@ export interface ContainerClass<T extends BaseType = {}> {
   with<A extends WithStaticType[], T extends BaseType = {}>(
     ...items: A
   ): ContainerClass<T & KeyedByType<A>>;
-
   new (manager: Manager): Container<T>;
 }
 
@@ -39,6 +38,10 @@ export class Container<T extends BaseType = {}> {
   protected _manager?: Manager;
 
   public init?(): void;
+
+  public destroy(): void {
+    this.manager.destroy(this.id);
+  }
 
   public get $(): T {
     return this.manager.bind(this);

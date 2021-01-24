@@ -3,7 +3,8 @@ import type { System, SystemClass } from '../contained/System';
 import type { ComponentClass } from '../contained/Component';
 
 import { useWith } from '../../utils';
-import { Container, Manager } from '../../lib';
+import { Container } from '../../lib/Container';
+import { Manager } from '../../lib/Manager';
 import { Query } from '../../lib/Query';
 
 export interface WorldClass<T extends BaseType<System>> {

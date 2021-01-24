@@ -1,10 +1,22 @@
+import { Entity } from '../ecs';
 import type { BaseType } from '../types';
 import type { Contained, ContainedClass } from './Contained';
 import type { Container, ContainerClass } from './Container';
 
 export class Manager {
+  protected _isInit: boolean = false;
   public containers: Record<string, Container> = {};
   public containeds: Record<string, Record<string, Contained>> = {};
+  public queries: Record<string, string[] | null> = {};
+  public ids: string[] = [];
+
+  protected invalidateQueries(type: string): void {
+    for (const key of Object.keys(this.queries)) {
+      if (key.split(':').includes(type)) {
+        delete this.queries[key];
+      }
+    }
+  }
 
   public bind<T extends BaseType<Contained>>(container: Container): T {
     // type system abuse
@@ -14,7 +26,16 @@ export class Manager {
   }
 
   public get items(): Container[] {
-    return Object.values(this.containers);
+    return this.ids.map(id => this.containers[id]);
+  }
+
+  public destroy(id: string): void {
+    const queries = Object.keys(this.containeds[id]);
+    delete this.containers[id];
+    delete this.containeds[id];
+    for (const q of queries) {
+      this.queries[q] = null;
+    }
   }
 
   public has(id: string, key: string): boolean {
@@ -25,19 +46,28 @@ export class Manager {
     Constructor: C
   ): Container<T> {
     const instance = new Constructor(this);
-    this.add(instance);
-    return instance;
+    if (instance instanceof Entity) {
+      this.add(instance);
+      return instance;
+    } else {
+      throw new Error(
+        'Attempted to create an entity without extending the Entity class.'
+      );
+    }
   }
 
   public *query(...containeds: ContainedClass[]): Generator<Container> {
-    for (const item of this.items) {
-      if (containeds.every(c => c.type in item.$)) {
-        yield item;
-      }
+    const key = containeds.map(c => c.type).join(':');
+    const ids = (this.queries[key] ??= this.items
+      .filter(item => containeds.every(c => item.items.includes(c)))
+      .map(item => item.id));
+    for (const id of ids) {
+      yield this.containers[id];
     }
   }
 
   public add(container: Container): this {
+    this.ids.push(container.id);
     this.containers[container.id] = container;
     for (const Contained of container.items ?? []) {
       const type = Contained.type;
@@ -45,7 +75,10 @@ export class Manager {
         ...(this.containeds[type] ?? {}),
         [container.id]: new Contained(container)
       };
+      // invalidate cached queries
+      this.invalidateQueries(type);
     }
+    container.init?.();
     return this;
   }
 
@@ -53,5 +86,6 @@ export class Manager {
     for (const item of this.items) {
       item.init?.();
     }
+    this._isInit = true;
   }
 }

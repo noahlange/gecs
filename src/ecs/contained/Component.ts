@@ -1,7 +1,7 @@
 import type { Entity } from '../container/Entity';
 import type { ContainedClass } from '../../lib';
 
-import { Contained } from '../../lib';
+import { Contained } from '../../lib/Contained';
 
 export interface ComponentClass extends ContainedClass {
   readonly type: string;

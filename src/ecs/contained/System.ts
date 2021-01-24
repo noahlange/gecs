@@ -1,7 +1,7 @@
 import type { World } from '../container/World';
 import type { ContainedClass } from '../../lib';
 
-import { Contained } from '../../lib';
+import { Contained } from '../../lib/Contained';
 
 export interface SystemClass extends ContainedClass {
   readonly type: string;
