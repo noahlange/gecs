@@ -4,14 +4,16 @@
 
 ## Installation
 
-There isn't an NPM package because it's _way_ too soon for that. If you want to play around, clone the repo and install/build/link like so:
+There isn't an NPM package because it's _way_ too soon for that. If you want to mess around with a small demo, there's an [example repository](https://github.com/noahlange/tecs-example).
+
+If you'd like to fiddle with the library itself:
 
 ```
 git clone https://github.com/noahlange/tecs.git && cd tecs
 npm install && npm run build && npm link
 ```
 
-Then start a new TS project, `npm link tecs` and start fiddling.
+Then you can `npm link` to it from the example project and import.
 
 ```ts
 import { Entity, Component, System } from 'tecs';
