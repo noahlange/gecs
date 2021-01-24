@@ -39,7 +39,7 @@ _"Wow, writing a different type signature for every theoretical combination of c
 I would agree. But with a bit of trickery and flagrant abuse of type assertions, we can skirt around this obstacle and come up with something that is clean, terse and nicely type-hinted.
 
 ```typescript
-const FooBar = Container.from(FooThing, BarThing);
+const FooBar = Container.with(FooThing, BarThing);
 // inferred as Container<{ foo: FooThing; bar: BarThing }>
 
 const fooBar = new FooBar();
@@ -48,7 +48,7 @@ fooBar.$.foo instanceof FooThing; // true
 fooBar.$.bar instanceof BarThing; // true
 ```
 
-So, now with the basic interface established, we'll shift gears over to the framework side of things. There are two "levels" of this container-containee relationship: World/Systems and Entity/Components.
+So, now with the basic interface established, we'll shift gears over to the framework side of things. Within **tecs**, there are are two "levels" of this container-containee relationship: World/Systems and Entity/Components.
 
 ## Entities & Components
 
@@ -75,9 +75,13 @@ There are two ways to create Entity classes: `extend`ing the result of the `with
 import { Entity } from 'tecs';
 import { Position, Sprite } from './components';
 
+// "MyEntity1" is a class constructor
 const MyEntity1 = Entity.with(Position, Sprite);
+
+// "MyEntity2" is, more obviously, a class constructor
 class MyEntity2 extends Entity.with(Position, Sprite) {}
 
+// components in place
 for (const entity of [new MyEntity1(), new MyEntity2()]) {
   myEntity.$.position instanceof Position; // true
   myEntity.$.sprite instanceof Sprite; // true
@@ -88,7 +92,8 @@ In either case, the components in `$` aren't attached to the component itself: i
 
 ## Worlds & Systems
 
-A `World` contains any number of `Systems` alongside an Entity manager. Assuming we have a `Renderer` system that does all the display-related stuff, we could do something like this to rotate our sprite.
+A `World` contains any number of `Systems` (and an Entity manager). The world serves as the point of connection between systems and entities.
+
 
 ```typescript
 import { World, Entities } from 'tecs';
@@ -99,21 +104,21 @@ import { Renderer } from './systems';
 const MyObject = Entities.with(Position, Sprite);
 
 export class MyWorld extends World.with(Renderer) {
-  // we'd ordinarily put this in its own system
-  public tick(delta: number, time?: number): void {
-    // find all entities with a Position component
-    for (const { $ } of this.query(Position)) {
-      $.position.r = ($.position.r + 0.1) % 360;
-    }
-    // ...and tick
-    super.tick(delta, time);
-  }
 
   public init(): void {
     // create a mole-shaped, positionable object
     this.entities.create(MyObject);
-    // invoke the world's "tick" method and execute systems
-    this.$.renderer.app.ticker.add(this.tick.bind(this));
+  }
+
+  // for demo purposes; we'd ordinarily put this logic in its own system
+  public tick(delta: number, time?: number): void {
+    // find all entities with a Position component
+    for (const { $ } of this.query.with(Position)) {
+      // rotate
+      $.position.r = ($.position.r + 0.1) % 360;
+    }
+    // ...and tick
+    super.tick(delta, time);
   }
 }
 
@@ -121,14 +126,14 @@ const world = new MyWorld();
 world.start();
 ```
 
-Each tick, the world invokes the `tick()` method of each of its systems.
-Systems operate on Entities via their Components—usually by querying the world for all entities with a particular component.
+Each time `tick()` is called, the world invokes the `tick()` method of each of its systems.
+Systems operate on Entities via their Components—usually by querying the world for all entities with/without particular combinations of components
 
 ```typescript
 import * as PIXI from 'pixi.js';
 
 import { System } from 'tecs';
-import { Sprite, Position } from './components';
+import { Sprite, Position, Player } from './components';
 
 class Renderer extends System {
   public static readonly type = 'renderer';
@@ -136,28 +141,36 @@ class Renderer extends System {
 
   // run on tick
   public tick(delta: number, time?: number): void {
-    // find all entities that have Sprite and Position components
-    for (const { $ } of this.world.query().has(Position, Sprite)) {
-      // update position and rotation
+    // find all entities that have Sprite and Position components, but not a Player
+    const query = this.world.query.with(Position, Sprite).without(Player);
+    for (const { $ } of query) {
       const child = this.sprites[$.sprite.id];
-      child.position = new PIXI.Point($.position.x, position.y);
-      child.r = $.position.r;
+      if (child) {
+        // update position and rotation
+        child.position = new PIXI.Point($.position.x, position.y);
+        child.r = $.position.r;
+      }
     }
   }
 
   // invoked on `world.init()`
   public init(): void {
     this.app = new PIXI.Application();
+    // bind the "tick" method to PIXI's ticker
+    this.app.ticker.add(this.world.tick.bind(this.world));
+
     // create all sprites
-    for (const { $ } of this.world.query().has(Sprite)) {
+    for (const { $ } of this.world.query.with(Sprite)) {
       const child = PIXI.Sprite.from($.sprite.path);
       child.anchor = $.sprite.anchor;
       this.sprites[$.sprite.id] = child;
     }
+
     // add sprites to stage
     for (const child of Object.values(this.sprites)) {
       this.app.stage.addChild(child);
     }
+
     // mount stage to DOM
     document.body.appendChild(this.app.view);
   }
@@ -168,11 +181,11 @@ class Renderer extends System {
 
 ## Questions/Statements & Answers
 
-**Q/S**: Every implementation here appears to be as naïve as humanly possible and performance is probably god-awful.  
+**Q/S**: "Every implementation here appears to be as naïve as humanly possible and performance is probably god-awful."  
 **A**: Yes, but I probably have plans to fix it.
 
-**Q/S**: Why are components class instances instead of object hashes? Isn't that kinda expensive/wasteful?  
-**A**: Yes, but the ergonomics make me _feel_ happier.
+**Q/S**: "Why are components class instances instead of POJOs? Isn't that kinda expensive/wasteful?"  
+**A**: Yes, but it makes me feel happier.
 
-**Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
-**A**: Yes. But again, this is all about my feelings.
+**Q/S**: "After reading the code, I realize this manages to be even less type-safe than I would have thought possible."  
+**A**: Also yes. But again, this is all about my feelings.
