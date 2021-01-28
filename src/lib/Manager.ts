@@ -22,16 +22,16 @@ export class Manager {
   // ContainerID => ContainedType => Contained
   protected bindings: Record<string, Record<string, string>> = {};
   // QueryID => ContainerID
-  protected cached: Record<string, string[] | null> = {};
+  protected cache: Record<string, string[] | null> = {};
   protected ids: string[] = [];
 
   /**
    * Naïve cache-busting implementation.
    */
   protected invalidateQueries(type: string): void {
-    for (const q in this.cached) {
+    for (const q in this.cache) {
       if (q.includes(type)) {
-        delete this.cached[q];
+        delete this.cache[q];
       }
     }
   }
@@ -114,7 +114,7 @@ export class Manager {
   public *query(options: ContainerQueryOptions): IterableIterator<Container> {
     const cacheKey = JSON.stringify([options.includes, options.excludes]);
     const hasMutations = !!(options.changed || options.unchanged);
-    const cacheHit = this.cached[cacheKey];
+    const cacheHit = this.cache[cacheKey];
 
     if (cacheHit && !hasMutations) {
       for (const id of cacheHit) {
@@ -123,41 +123,34 @@ export class Manager {
       return;
     }
 
-    const resultIDs: string[] = [];
+    const ids = cacheHit ?? options.ids ?? this.ids;
+    const results: string[] = [];
 
-    for (const id of options.ids ?? this.ids) {
+    for (const id of ids) {
       const bindings = this.bindings[id];
-      // regenerate the entire query
+
       if (!cacheHit) {
+        // check the includes/excludes
         if (
-          // every "include" is mandatory
           options.includes?.some(t => !(t in bindings)) ||
-          // every "exclude" is mandatory
           options.excludes?.some(t => t in bindings)
         ) {
           continue;
-        } else {
-          // otherwise it can be added to the query cached.
-          resultIDs.push(id);
         }
-      } else {
-        // We still need to check for mutations, though.
-        resultIDs.push(id);
       }
+
+      results.push(id);
 
       if (hasMutations) {
         const hasMutated = (t: string): boolean =>
           this.mutations.has(bindings[t]);
 
         if (options.unchanged?.some(hasMutated)) {
-          // the component has changed
           continue;
         }
 
         if (options.changed?.some(hasMutated)) {
-          // the component has changed
-          for (const t of options.changed) {
-            // mark as clean
+          for (const t of options.changed ?? []) {
             this.mutations.delete(bindings[t]);
           }
         } else {
@@ -165,11 +158,10 @@ export class Manager {
         }
       }
 
-      // yield the corresponding entity
       yield this.containers[id];
     }
-
-    this.cached[cacheKey] = resultIDs;
+    this.cache[cacheKey] = results;
+    return;
   }
 
   public add<T extends BaseType>(

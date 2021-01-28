@@ -11,13 +11,17 @@ import type { U } from 'ts-toolbelt';
 import type { ContainedClass } from './Contained';
 import type { ContainerQueryOptions } from './Manager';
 
-import { dedupe } from '../utils';
-
 type QueryType<T, A extends WithStaticType[]> = Query<
   U.Merge<T & PartialByType<A>>
 >;
 
-const pass = <T>(a: T[]): T[] | null => (a.length ? dedupe(a) : null);
+type QueryCondition = 'includes' | 'excludes' | 'changed' | 'unchanged';
+
+function sort(set: Set<string>): string[] | null {
+  return set.size
+    ? Array.from(set.values()).sort((a, b) => a.localeCompare(b))
+    : null;
+}
 
 export class Query<
   T extends BaseType = {},
@@ -25,20 +29,37 @@ export class Query<
 > {
   protected manager!: Manager;
 
-  protected _includes: string[] = [];
-  protected _excludes: string[] = [];
-  protected _changed: string[] = [];
-  protected _unchanged: string[] = [];
-  protected _ids: string[] = [];
+  protected ids: Set<string> = new Set();
+  protected q: Record<QueryCondition, Set<string>> = {
+    includes: new Set(),
+    excludes: new Set(),
+    changed: new Set(),
+    unchanged: new Set()
+  };
 
   protected get query(): ContainerQueryOptions {
     return {
-      ids: pass(this._ids),
-      includes: pass(this._includes),
-      excludes: pass(this._excludes),
-      changed: pass(this._changed),
-      unchanged: pass(this._unchanged)
+      ids: sort(this.ids),
+      includes: sort(this.q.includes),
+      excludes: sort(this.q.excludes),
+      changed: sort(this.q.changed),
+      unchanged: sort(this.q.unchanged)
     };
+  }
+
+  protected add(
+    Constructors: ContainedClass[],
+    conditions: QueryCondition[]
+  ): void {
+    for (const { type, name } of Constructors) {
+      if (!type) {
+        console.warn(`Attempted to query unnamed contained type "${name}."`);
+      } else {
+        for (const condition of conditions) {
+          this.q[condition] = this.q[condition].add(type);
+        }
+      }
+    }
   }
 
   /**
@@ -48,10 +69,17 @@ export class Query<
   public with<A extends ContainedClass[]>(
     ...items: A
   ): Query<U.Merge<T & KeyedByType<A>>> {
-    for (const { type } of items) {
-      this._includes.push(type);
-    }
+    this.add(items, ['includes']);
     return (this as unknown) as QueryType<T, A>;
+  }
+
+  /**
+   * List excluded component types.
+   * @param items
+   */
+  public without(...items: ComponentClass[]): this {
+    this.add(items, ['excludes']);
+    return this;
   }
 
   /**
@@ -64,18 +92,8 @@ export class Query<
   public some<A extends ContainedClass[]>(
     ...items: A
   ): Query<U.Merge<T & PartialByType<A>>> {
+    // no-op
     return (this as unknown) as QueryType<T, A>;
-  }
-
-  /**
-   * List excluded component types.
-   * @param items
-   */
-  public without(...items: ComponentClass[]): this {
-    for (const { type } of items) {
-      this._excludes.push(type);
-    }
-    return this;
   }
 
   /**
@@ -85,10 +103,7 @@ export class Query<
   public changed<A extends ContainedClass[]>(
     ...items: A
   ): Query<U.Merge<T & KeyedByType<A>>> {
-    for (const { type } of items) {
-      this._includes.push(type);
-      this._changed.push(type);
-    }
+    this.add(items, ['includes', 'changed']);
     return (this as unknown) as QueryType<T, A>;
   }
 
@@ -99,10 +114,7 @@ export class Query<
   public unchanged<A extends ContainedClass[]>(
     ...items: A
   ): Query<U.Merge<T & PartialByType<A>>> {
-    for (const { type } of items) {
-      this._includes.push(type);
-      this._unchanged.push(type);
-    }
+    this.add(items, ['includes', 'unchanged']);
     return (this as unknown) as QueryType<T, A>;
   }
 
@@ -118,7 +130,7 @@ export class Query<
   }
 
   public find(id: string): C | null {
-    this._ids.push(id);
+    this.ids.add(id);
     for (const item of this.manager.query(this.query)) {
       return item as C;
     }
@@ -126,7 +138,9 @@ export class Query<
   }
 
   public findIn(ids: string[]): C[] {
-    this._ids.push(...ids);
+    for (const id of ids) {
+      this.ids.add(id);
+    }
     return this.all();
   }
 
