@@ -1,22 +1,11 @@
 /* eslint-disable max-classes-per-file */
 import { test, describe, expect } from '@jest/globals';
-import { Contained, Manager } from '../lib';
-import { Container } from '../lib/Container';
+import { Manager } from '../lib';
 
-class A extends Contained {
-  public static readonly type = 'a';
-}
-
-class B extends Contained {
-  public static readonly type = 'b';
-}
-
-class C extends Contained {
-  public static readonly type = 'c';
-}
+import { Item } from './helpers/containers';
+import { A, B, C } from './helpers/containeds';
 
 describe('creating containers', () => {
-  const Item = Container.with(A, B, C);
   const em = new Manager();
   const item = new Item(em);
   const keys = Object.keys(item.$);

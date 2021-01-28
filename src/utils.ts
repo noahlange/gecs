@@ -17,3 +17,7 @@ export function useWith<T extends BaseType, A extends ContainedClass[] = []>(
     }
   } as unknown) as ContainerClass<T & KeyedByType<A>>;
 }
+
+export function dedupe<T>(arr: T[]): T[] {
+  return Array.from(new Set(arr));
+}

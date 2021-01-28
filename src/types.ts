@@ -4,16 +4,36 @@ import type { Contained } from './lib';
 export type KeyedByType<A extends WithStaticType[]> = U.Merge<
   A extends (infer R)[]
     ? R extends WithStaticType
-      ? Record<R['type'], InstanceType<R>>
+      ? { [key in R['type']]: InstanceType<R> }
       : never
     : never
 >;
 
-export interface WithStaticType {
+export type PartialByType<A extends WithStaticType[]> = U.Merge<
+  A extends (infer R)[]
+    ? R extends WithStaticType
+      ? { [key in R['type']]?: InstanceType<R> }
+      : never
+    : never
+>;
+
+export interface WithStaticType<T = any> {
   readonly type: string;
-  new (...args: any[]): any;
+  new (...args: any[]): T;
 }
 
 export interface BaseType<T = Contained> {
   [key: string]: T;
 }
+
+export type PartialContained<T> = {
+  [K in Exclude<keyof T, 'container'>]?: T[K];
+};
+
+export type PartialBaseType<T extends BaseType> = {
+  [K in keyof T]?: PartialContained<T[K]>;
+};
+
+export type Frozen<T extends BaseType> = {
+  readonly [K in keyof T]: Readonly<T[K]>;
+};

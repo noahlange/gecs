@@ -1,5 +1,7 @@
-import type { BaseType, KeyedByType } from '../../types';
+import type { BaseType, KeyedByType, PartialBaseType } from '../../types';
 import type { System, SystemClass } from '../contained/System';
+import type { Component } from '../contained/Component';
+import type { EntityClass } from './Entity';
 
 import { useWith } from '../../utils';
 import { Container } from '../../lib/Container';
@@ -24,13 +26,28 @@ export class World<T extends BaseType<System> = {}> extends Container<T> {
   }
 
   public get query(): Query<{}> {
-    return new Query<{}>(this.entities);
+    return new Query<{}>().attach(this.entities);
   }
 
-  // would be nice to be able to pass this directly as a function.
+  public search<T extends BaseType, C extends Container<T>>(
+    query: Query<T, C>
+  ): Query<T, C> {
+    return query.attach(this.entities);
+  }
+
+  /**
+   * Given a construtor and (optionally) data, instantiate a new Entity.
+   */
+  public create<T extends BaseType<Component>>(
+    Constructor: EntityClass<T>,
+    data?: PartialBaseType<T>
+  ): Container<T> {
+    return this.entities.create(Constructor, data);
+  }
+
   public tick(delta: number, time?: number): void {
-    for (const system in this.$) {
-      this.$[system].tick.call(this.$[system], delta, time);
+    for (const key in this.$$) {
+      this.$$[key].tick?.(delta, time);
     }
   }
 
@@ -43,11 +60,13 @@ export class World<T extends BaseType<System> = {}> extends Container<T> {
    * Kickstart the world and its systems.
    */
   public start(): void {
-    this.manager.init();
-    for (const system in this.$) {
-      this.$[system].init?.();
+    for (const system in this.$$) {
+      const s = this.$$[system];
+      const systems = Array.isArray(s) ? s : [s];
+      for (const system of systems) {
+        system.init?.();
+      }
     }
-    this.entities.init();
   }
 
   public entities = new Manager();
