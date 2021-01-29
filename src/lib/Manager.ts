@@ -105,8 +105,11 @@ export class Manager {
     if (instance instanceof Container) {
       return instance;
     } else {
+      const message = Constructor.name
+        ? 'an unnamed container instance'
+        : `a container instance of '${Constructor.name}'`;
       throw new Error(
-        'Attempted to create a container instance without extending the Container class.'
+        `Attempted to create ${message} without extending the Container class.`
       );
     }
   }
@@ -114,7 +117,7 @@ export class Manager {
   public *query(options: ContainerQueryOptions): IterableIterator<Container> {
     const cacheKey = JSON.stringify([options.includes, options.excludes]);
     const hasMutations = !!(options.changed || options.unchanged);
-    const cacheHit = this.cache[cacheKey];
+    const cacheHit = options.ids ? null : this.cache[cacheKey];
 
     if (cacheHit && !hasMutations) {
       for (const id of cacheHit) {
@@ -123,11 +126,14 @@ export class Manager {
       return;
     }
 
-    const ids = cacheHit ?? options.ids ?? this.ids;
+    const ids = options.ids ?? cacheHit ?? this.ids;
     const results: string[] = [];
 
     for (const id of ids) {
       const bindings = this.bindings[id];
+      if (!bindings) {
+        continue;
+      }
 
       if (!cacheHit) {
         // check the includes/excludes
@@ -160,7 +166,10 @@ export class Manager {
 
       yield this.containers[id];
     }
-    this.cache[cacheKey] = results;
+
+    if (!options.ids) {
+      this.cache[cacheKey] = results;
+    }
     return;
   }
 
