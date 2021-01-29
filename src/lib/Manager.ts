@@ -36,6 +36,17 @@ export class Manager {
     }
   }
 
+  /**
+   * Given a container, return the corresponding structure for the contained bindings.
+   * @param container
+   * @param mutable - whether or not the returned bindings should be mutable
+   *
+   *
+   * @privateRemarks
+   * The current implementation involves the use of a Proxy to track changes to
+   * mutable components and prevent modification of immutable components.
+   * There's about a 10% performance hit vs. returning the raw value.
+   */
   public getBindings<T extends BaseType<Contained>>(
     container: Container,
     mutable: false
@@ -44,11 +55,6 @@ export class Manager {
     container: Container,
     mutable: true
   ): T;
-  /**
-   * Given a container, return the corresponding structure for the contained bindings.
-   * @param container
-   * @param mutable - whether or not the returned bindings should be mutable (default: false)
-   */
   public getBindings<T extends BaseType<Contained>>(
     container: Container,
     mutable: boolean = false
@@ -58,25 +64,21 @@ export class Manager {
     const res = {};
     for (const type in bindings) {
       const value = this.containeds[bindings[type]];
-      Object.defineProperty(
-        res,
-        type,
-        mutable
-          ? {
-              get: () => {
-                /**
-                 * @todo - marking it dirty on get() will create false positives
-                 * for mutated component queries; I don't know the value of a
-                 * more accurate report vs. runtime slowdown.
-                 */
-                this.mutations.add(value.id);
-                return value;
-              },
-              enumerable: true
-            }
-          : /** @todo - determine the fastest way to get a shallow frozen copy */
-            { get: () => value, enumerable: true }
-      );
+      Object.defineProperty(res, type, {
+        enumerable: true,
+        get: () =>
+          new Proxy(value, {
+            set: mutable
+              ? // if it's mutable, mark it as changed...
+                <C extends Contained>(target: C, k: keyof C, v: C[keyof C]) => {
+                  target[k] = v;
+                  this.mutations.add(value.id);
+                  return true;
+                }
+              : // ...otherwise ignore
+                () => false
+          })
+      });
     }
     return res as T;
   }
