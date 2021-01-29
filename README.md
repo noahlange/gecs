@@ -100,12 +100,12 @@ import { Position, Sprite } from './components';
 const MyEntity1 = Entity.with(Position, Sprite);
 
 // ooh, arrays of components!
-class MyEntity2 extends Entity.with(Position, [Sprite, Sprite]) {}
+class MyEntity2 extends Entity.with(Position, Sprite) {}
 
 const [entity1, entity2] = [new MyEntity1(), new MyEntity2()];
 // components in place
 entity1.$.position instanceof Position; // true
-entity2.$.sprite.map(item => item instanceof Sprite); // [true, true]
+entity2.$.sprite instanceof Sprite; // true
 ```
 
 In either case, the components in `$` aren't attached to the component itself: instead, they're accessed via an entity manager, which stores the components, the entities and the relationships between them.
@@ -126,31 +126,26 @@ const MyObject = Entities.with(Position, Sprite, [Stat, Stat]);
 
 export class MyWorld extends World.with(Renderer) {
   public init(): void {
-    // create a visible, positionable object with an array of stats: "gumption" and "chutzpah"
+    // create a visible, positionable object with a single stat: "gumption"
     // pass component data as a second param, patterning after `$`
     this.create(MyObject, {
       sprite: { anchor: 1 },
-      stats: [
-        { name: 'gumption', value: 1 },
-        { name: 'chutzpah', value: 2 }
-      ]
+      stat: { name: 'gumption', value: 1 }
     });
   }
 
   // for demo purposes; we'd ordinarily put this logic in its own system
   public tick(delta: number, time?: number): void {
     // query for specific numbers and configurations of components
-    for (const { $ } of this.query.with([Stat, Stat])) {
+    for (const { $ } of this.query.with(Stat)) {
       // $: read-only component
-      for (const stat of $.stats) {
-        stat.value = 100;
-      }
+      console.log($.stat);
     }
 
     // find all entities with a Position component
     for (const { $$ } of this.query.with(Position)) {
-      // $$: mutated component
-      $$.position.r = ($.position.r + 0.1) % 360;
+      // $$: read/write component
+      $$.position.r = ($$.position.r + 0.1) % 360;
     }
 
     // ...make sure to invoke super.tick() if you're going to override it
