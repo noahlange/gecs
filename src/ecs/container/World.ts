@@ -54,17 +54,18 @@ export class World<T extends BaseType<System> = {}> extends Container<T> {
   /**
    * Custom setup logic to be implemented as deemed necessary.
    */
-  public init?(): void;
+  public init?(): Promise<void> | void;
 
   /**
    * Kickstart the world and its systems.
    */
-  public start(): void {
+  public async start(): Promise<void> {
+    await this.init?.();
     for (const system in this.$$) {
       const s = this.$$[system];
       const systems = Array.isArray(s) ? s : [s];
       for (const system of systems) {
-        system.init?.();
+        await system.init?.();
       }
     }
   }

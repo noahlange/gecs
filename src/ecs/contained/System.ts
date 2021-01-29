@@ -13,7 +13,7 @@ export abstract class System extends Contained {
   /** @virtual */
   public tick?(delta: number, time?: number): void;
   /** @virtual */
-  public init?(): void;
+  public init?(): Promise<void> | void;
 
   /**
    * Public accessor for protected container property.
