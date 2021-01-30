@@ -1,25 +1,7 @@
-/* eslint-disable max-classes-per-file */
-
 const bench = require('nanobench');
-const { Component, Entity, World } = require('../lib');
+const { Entity, World } = require('../lib');
 
-class Test extends Component {
-  static type = 'test1';
-  a = 1;
-  b = 2;
-}
-
-class Test2 extends Component {
-  static type = 'test2';
-  c = 3;
-  d = 4;
-}
-
-class Test3 extends Component {
-  static type = 'test3';
-  c = 5;
-  d = 6;
-}
+const { Test1, Test2, Test3 } = require('./helpers');
 
 function setup(create, E) {
   const world = new World();
@@ -48,7 +30,7 @@ function setupChanged(create, E) {
 }
 
 for (const count of [1, 10, 50, 100]) {
-  const e = Entity.with(Test, Test2, Test3);
+  const e = Entity.with(Test1, Test2, Test3);
 
   bench(`query ${count}k entities (1 component)`, b => {
     const world = setup(count, e);
@@ -60,20 +42,20 @@ for (const count of [1, 10, 50, 100]) {
   bench(`query ${count}k entities (2 components)`, b => {
     const world = setup(count, e);
     b.start();
-    world.query.with(Test, Test2).all();
+    world.query.with(Test1, Test2).all();
     b.end();
   });
 
   bench(`query ${count}k entities (3 components)`, b => {
     const world = setup(count, e);
     b.start();
-    world.query.with(Test, Test2, Test3).all();
+    world.query.with(Test1, Test2, Test3).all();
     b.end();
   });
 }
 
 for (const count of [1, 10, 50, 100]) {
-  const e = Entity.with(Test, Test2, Test3);
+  const e = Entity.with(Test1, Test2, Test3);
   bench(`query changes in ${count}k entities (1 component)`, b => {
     const world = setupChanged(count, e);
     b.start();
@@ -84,14 +66,14 @@ for (const count of [1, 10, 50, 100]) {
   bench(`query changes in ${count}k entities (2 component)`, b => {
     const world = setupChanged(count, e);
     b.start();
-    world.query.changed(Test, Test2).all();
+    world.query.changed(Test1, Test2).all();
     b.end();
   });
 
   bench(`query changes in ${count}k entities (3 component)`, b => {
     const world = setupChanged(count, e);
     b.start();
-    world.query.changed(Test, Test2, Test3).all();
+    world.query.changed(Test1, Test2, Test3).all();
     b.end();
   });
 }

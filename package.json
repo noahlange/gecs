@@ -35,6 +35,7 @@
     "build": "tsc --project tsconfig.prod.json",
     "lint": "eslint 'src/**/*.{js,ts,jsx,tsx}' --fix ",
     "pretty": "prettier 'src/**/*.{js,ts,jsx,tsx}' --write",
-    "precommit": "npm-run-all build test lint pretty"
+    "precommit": "npm-run-all build test lint pretty",
+    "benchmark": "node bench"
   }
 }

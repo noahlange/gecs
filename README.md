@@ -227,13 +227,15 @@ They're pretty minimal and naïve, otherwise. Access the world's `.query` getter
 
 ---
 
-## Questions/Statements & Answers
+## Questions/Statements & Answers/Responses
 
-**Q/S**: Every implementation here appears to be as naïve as humanly possible and performance is probably god-awful.  
-**A**: Yes, but I _probably_ have plans to fix it.
+**Q/S**: How's the performance?  
+**A/R**: Honestly, pretty bad. It's a work in progress.
 
-**Q/S**: Why are components class instances instead of POJOs? Isn't that kinda expensive/wasteful?  
-**A**: Yeah, probably, but it makes me feel happier.
+| 50K entities w/ 2 components | ecsy | ape-ecs | tecs  |
+| :--------------------------- | :--: | :-----: | :---: |
+| Create                       | 80ms |  300ms  | 500ms |
+| Modify                       | 6ms  |   7ms   | 280ms |
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
-**A**: Also yes. But again, this is all about my feelings.
+**A**: Also yes. But again, this is all about ergonomics and my feelings.

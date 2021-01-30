@@ -1,0 +1,2 @@
+require('./entities');
+require('./queries');
