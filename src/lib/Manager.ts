@@ -13,8 +13,8 @@ export interface ContainerQueryOptions {
 }
 
 export class Manager {
-  // IDs of recently-modified Containeds
-  protected mutations: Set<string> = new Set();
+  // ContainerID => ContainedType => ContainedID
+  protected mutations: Record<string, string[]> = {};
   // ContainerID => Container
   protected containers: Record<string, Container> = {};
   // ContainedID => Contained
@@ -72,7 +72,7 @@ export class Manager {
               ? // if it's mutable, mark it as changed...
                 <C extends Contained>(target: C, k: keyof C, v: C[keyof C]) => {
                   target[k] = v;
-                  this.mutations.add(value.id);
+                  this.mutations[container.id].push(type);
                   return true;
                 }
               : // ...otherwise ignore
@@ -118,10 +118,10 @@ export class Manager {
 
   public *query(options: ContainerQueryOptions): IterableIterator<Container> {
     const cacheKey = JSON.stringify([options.includes, options.excludes]);
-    const hasMutations = !!(options.changed || options.unchanged);
+    const queryMutations = !!(options.changed || options.unchanged);
     const cacheHit = options.ids ? null : this.cache[cacheKey];
 
-    if (cacheHit && !hasMutations) {
+    if (cacheHit && !queryMutations) {
       for (const id of cacheHit) {
         yield this.containers[id];
       }
@@ -131,46 +131,61 @@ export class Manager {
     const ids = options.ids ?? cacheHit ?? this.ids;
     const results: string[] = [];
 
-    for (const id of ids) {
+    entities: for (const id of ids) {
       const bindings = this.bindings[id];
       if (!bindings) {
-        continue;
+        continue entities;
       }
 
       if (!cacheHit) {
-        // check the includes/excludes
-        if (
-          options.includes?.some(t => !(t in bindings)) ||
-          options.excludes?.some(t => t in bindings)
-        ) {
-          continue;
+        for (const e of options.excludes ?? []) {
+          if (e in bindings) {
+            continue entities;
+          }
+        }
+        for (const i of options.includes ?? []) {
+          if (!(i in bindings)) {
+            continue entities;
+          }
         }
       }
 
       results.push(id);
 
-      if (hasMutations) {
-        const hasMutated = (t: string): boolean =>
-          this.mutations.has(bindings[t]);
-
-        const unchangedMut = options.unchanged?.filter(hasMutated) ?? [];
-        if (unchangedMut.length) {
-          for (const type of unchangedMut) {
-            this.mutations.delete(bindings[type]);
-          }
-          continue;
+      if (queryMutations) {
+        const mutations = this.mutations[id];
+        if (mutations.length === 0) {
+          continue entities;
         }
 
-        const changedMut = options.changed?.filter(hasMutated) ?? [];
-        // no changes were requested or some changes were made
-        if (changedMut.length || !options.changed?.length) {
-          // only touch queried components
-          for (const type of options.changed ?? []) {
-            this.mutations.delete(bindings[type]);
+        let uPass = true;
+        const unchanged = options.unchanged ?? [];
+        for (let u = 0; u < unchanged.length; u++) {
+          if (mutations.includes(unchanged[u])) {
+            uPass = false;
+            mutations.splice(u, 1);
           }
-        } else {
-          continue;
         }
+
+        if (!uPass) {
+          continue entities;
+        }
+
+        let cPass = true;
+        const changed = options.changed ?? [];
+        for (let c = 0; c < changed.length; c++) {
+          if (!mutations.includes(changed[c])) {
+            cPass = false;
+          } else {
+            mutations.splice(c, 1);
+          }
+        }
+
+        if (!cPass) {
+          continue entities;
+        }
+
+        this.mutations[id] = mutations;
       }
 
       yield this.containers[id];
@@ -188,6 +203,7 @@ export class Manager {
     data: PartialBaseType<T> = {}
   ): this {
     const bindings: Record<string, string> = {};
+    this.mutations[container.id] = [];
 
     for (const Ctor of container.items ?? []) {
       const type = Ctor.type;
@@ -210,7 +226,7 @@ export class Manager {
         });
 
         //declare the component mutated for queries
-        this.mutations.add(contained.id);
+        this.mutations[container.id].push(type);
         // if we've cached a query with this component, it'll need to be nuked.
         this.invalidateQueries(type);
       } else {
