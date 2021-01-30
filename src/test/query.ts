@@ -1,27 +1,15 @@
 /* eslint-disable max-classes-per-file */
 
-import { test, describe, expect } from '@jest/globals';
-import { World, Entity, Component } from '../ecs';
+import { test, describe, expect, jest } from '@jest/globals';
+import { Contained } from '../lib';
 
-class A extends Component {
-  public static readonly type = 'a';
-  public text: string = '';
-}
-
-class B extends Component {
-  public static readonly type = 'b';
-  public text: string = '';
-}
-
-const MyWorld = World.with();
-const WithA = Entity.with(A);
-const WithB = Entity.with(B);
-const WithAB = Entity.with(A, B);
+import { A, B } from './helpers/containeds';
+import { MyWorld, WithA, WithB, WithAB } from './helpers/containers';
 
 describe('container queries', () => {
   const myWorld = new MyWorld();
-
   const count = 5;
+
   for (let i = 0; i < count; i++) {
     myWorld.entities.create(WithA);
     myWorld.entities.create(WithB);
@@ -45,29 +33,89 @@ describe('container queries', () => {
   });
 });
 
-describe('cached queries', () => {
-  test('queries should be purged after a component type modification', () => {
-    const world = new MyWorld();
-    expect(world.query.with(A, B).all()).toHaveLength(0);
-    world.create(WithAB, {});
-    expect(world.query.with(A, B).all()).toHaveLength(1);
+describe('first()', () => {
+  const myWorld = new MyWorld();
+  const a = myWorld.entities.create(WithA);
+
+  myWorld.entities.create(WithB);
+  myWorld.entities.create(WithAB);
+
+  test('first() should return a single entity', () => {
+    expect(myWorld.query.with(A).first()).toBe(a);
   });
 });
 
-describe('changed()', () => {
-  test('changed() should only return modified/added components', () => {
+describe('find()/findIn()', () => {
+  const myWorld = new MyWorld();
+  const a = myWorld.entities.create(WithA);
+  const b = myWorld.entities.create(WithB);
+  const ab = myWorld.entities.create(WithAB);
+
+  test('find() should return a single entity by id', () => {
+    expect(myWorld.query.with(A).find(a.id)).toBe(a);
+  });
+
+  test('find() should return null if no match is found', () => {
+    expect(myWorld.query.with(A).find(b.id)).toBeNull();
+  });
+
+  test('findIn() should return an array of entries', () => {
+    const res = myWorld.query.with(B).findIn([a.id, ab.id]);
+    expect(res).toHaveLength(1);
+    expect(res.includes(ab)).toBeTruthy();
+  });
+});
+
+describe('warnings', () => {
+  const myWorld = new MyWorld();
+
+  test('should warn about unnamed components', () => {
+    const spy = jest
+      .spyOn(globalThis.console, 'warn')
+      .mockImplementation(() => {});
+
+    myWorld.query.with(Contained);
+    expect(console.warn).toHaveBeenCalled();
+
+    spy.mockRestore();
+  });
+});
+
+describe('changed()/unchanged()', () => {
+  test('changed() should return newly-created entities', () => {
     const world = new MyWorld();
     const entity1 = world.create(WithAB);
+    const res = world.query.changed(A, B).first();
+    expect(res).toEqual(entity1);
+  });
 
-    world.create(WithAB);
+  test('changed() should return modified entities', () => {
+    const world = new MyWorld();
+    const entity1 = world.create(WithAB);
+    const entity2 = world.create(WithAB);
 
-    expect(world.query.changed(A, B).all()).toHaveLength(2);
-    expect(world.query.changed(A, B).all()).toHaveLength(0);
+    world.query.changed(A, B).all(); // 2
+    world.query.changed(A, B).all(); // 0
 
-    entity1.$$.a.text = 'changed';
-    expect(world.query.changed(A, B).all()).toHaveLength(1);
-
-    entity1.$$.a.text = '123';
+    entity1.$$.a.value = '123';
     expect(world.query.changed(A, B).first()).toBe(entity1);
+  });
+
+  test('a changed() component is marked unchanged after being queried and returned', () => {
+    const world = new MyWorld();
+    world.create(WithAB);
+    world.query.changed(A, B).all(); // 1
+    expect(world.query.changed(A, B).all()).toHaveLength(0);
+  });
+
+  test('unchanged() should return unmodified entries', () => {
+    const world = new MyWorld();
+    const entity1 = world.create(WithAB);
+    const entity2 = world.create(WithAB);
+
+    world.query.changed(A, B).all(); // 2
+    entity1.$$.b.value = 2;
+
+    expect(world.query.unchanged(A, B).first()).toEqual(entity2);
   });
 });

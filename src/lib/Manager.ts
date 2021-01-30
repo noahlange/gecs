@@ -153,13 +153,20 @@ export class Manager {
         const hasMutated = (t: string): boolean =>
           this.mutations.has(bindings[t]);
 
-        if (options.unchanged?.some(hasMutated)) {
+        const unchangedMut = options.unchanged?.filter(hasMutated) ?? [];
+        if (unchangedMut.length) {
+          for (const type of unchangedMut) {
+            this.mutations.delete(bindings[type]);
+          }
           continue;
         }
 
-        if (options.changed?.some(hasMutated)) {
-          for (const t of options.changed ?? []) {
-            this.mutations.delete(bindings[t]);
+        const changedMut = options.changed?.filter(hasMutated) ?? [];
+        // no changes were requested or some changes were made
+        if (changedMut.length || !options.changed?.length) {
+          // only touch queried components
+          for (const type of options.changed ?? []) {
+            this.mutations.delete(bindings[type]);
           }
         } else {
           continue;
@@ -172,6 +179,7 @@ export class Manager {
     if (!options.ids) {
       this.cache[cacheKey] = results;
     }
+
     return;
   }
 

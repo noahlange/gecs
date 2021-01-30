@@ -30,7 +30,7 @@
     "ts-jest": "^26.4.4"
   },
   "scripts": {
-    "test": "jest",
+    "test": "jest --coverage",
     "build": "tsc --project tsconfig.prod.json",
     "lint": "eslint 'src/**/*.{js,ts,jsx,tsx}' --fix ",
     "pretty": "prettier 'src/**/*.{js,ts,jsx,tsx}' --write",
