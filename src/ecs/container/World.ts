@@ -6,7 +6,7 @@ import type { EntityClass } from './Entity';
 import { useWith } from '../../utils';
 import { Container } from '../../lib/Container';
 import { Manager } from '../../lib/Manager';
-import { Query } from '../../lib/Query';
+import type { Query } from '../../lib/Query';
 
 export interface WorldClass<T extends BaseType<System>> {
   with<A extends SystemClass[], T = {}>(
@@ -26,13 +26,7 @@ export class World<T extends BaseType<System> = {}> extends Container<T> {
   }
 
   public get query(): Query<{}> {
-    return new Query<{}>().attach(this.entities);
-  }
-
-  public search<T extends BaseType, C extends Container<T>>(
-    query: Query<T, C>
-  ): Query<T, C> {
-    return query.attach(this.entities);
+    return this.entities.query;
   }
 
   /**
@@ -49,6 +43,8 @@ export class World<T extends BaseType<System> = {}> extends Container<T> {
     for (const key in this.$$) {
       this.$$[key].tick?.(delta, time);
     }
+    this.manager.cleanup();
+    this.entities.cleanup();
   }
 
   /**

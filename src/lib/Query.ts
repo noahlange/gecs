@@ -1,4 +1,3 @@
-import type { Manager } from '.';
 import type {
   BaseType,
   KeyedByType,
@@ -9,13 +8,11 @@ import type { ComponentClass } from '../ecs';
 import type { Container } from './Container';
 import type { U } from 'ts-toolbelt';
 import type { ContainedClass } from './Contained';
-import type { ContainerQueryOptions } from './Manager';
+import type { QueryManager, QueryOptions } from './QueryManager';
 
 type QueryType<T, A extends WithStaticType[]> = Query<
   U.Merge<T & PartialByType<A>>
 >;
-
-type QueryCondition = 'includes' | 'excludes' | 'changed' | 'unchanged';
 
 function sort(set: Set<string>): string[] | null {
   return set.size
@@ -23,27 +20,36 @@ function sort(set: Set<string>): string[] | null {
     : null;
 }
 
+type QueryCondition =
+  | 'includes'
+  | 'excludes'
+  | 'changed'
+  | 'created'
+  | 'removed';
+
 export class Query<
   T extends BaseType = {},
   C extends Container<T> = Container<T>
 > {
-  protected manager!: Manager;
+  protected manager!: QueryManager;
 
   protected ids: Set<string> = new Set();
   protected q: Record<QueryCondition, Set<string>> = {
     includes: new Set(),
     excludes: new Set(),
     changed: new Set(),
-    unchanged: new Set()
+    created: new Set(),
+    removed: new Set()
   };
 
-  protected get query(): ContainerQueryOptions {
+  protected get query(): QueryOptions {
     return {
       ids: sort(this.ids),
       includes: sort(this.q.includes),
       excludes: sort(this.q.excludes),
       changed: sort(this.q.changed),
-      unchanged: sort(this.q.unchanged)
+      created: sort(this.q.created),
+      removed: sort(this.q.removed)
     };
   }
 
@@ -108,13 +114,13 @@ export class Query<
   }
 
   /**
-   * List components that must _not have changed.
+   * List components that have been recently created.
    * @alpha
    */
-  public unchanged<A extends ContainedClass[]>(
+  public created<A extends ContainedClass[]>(
     ...items: A
   ): Query<U.Merge<T & PartialByType<A>>> {
-    this.add(items, ['includes', 'unchanged']);
+    this.add(items, ['includes', 'created']);
     return (this as unknown) as QueryType<T, A>;
   }
 
@@ -151,8 +157,7 @@ export class Query<
     return null;
   }
 
-  public attach(manager: Manager): this {
+  public constructor(manager: QueryManager) {
     this.manager = manager;
-    return this;
   }
 }
