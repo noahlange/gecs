@@ -59,18 +59,14 @@ export class Manager {
       const value = this.containeds[bindings[type]];
       Object.defineProperty(res, type, {
         enumerable: true,
-        get: () =>
-          new Proxy(value, {
-            set: mutable
-              ? // if it's mutable, mark it as changed...
-                <C extends Contained>(target: C, k: keyof C, v: C[keyof C]) => {
-                  target[k] = v;
-                  this.containerMutations.changed.add(value.id);
-                  return true;
-                }
-              : // ...otherwise ignore
-                () => false
-          })
+        get: () => {
+          if (mutable) {
+            this.containerMutations.changed.add(value.id);
+            return value;
+          } else {
+            return new Proxy(value, { set: () => false });
+          }
+        }
       });
     }
     return res as T;

@@ -20,11 +20,9 @@ function setupChanged(create, E) {
   const entities = world.query.all();
   for (let i = 0; i < entities.length; i++) {
     const entity = entities[i];
-    if (i % 2) {
-      entity.$$.test1.a = i;
-      entity.$$.test2.c = i;
-      entity.$$.test3.e = i;
-    }
+    entity.$$.test1.a = i;
+    entity.$$.test2.c = i;
+    entity.$$.test3.e = i;
   }
   return world;
 }
@@ -63,14 +61,14 @@ for (const count of [1, 10, 50, 100]) {
     b.end();
   });
 
-  bench(`query changes in ${count}k entities (2 component)`, b => {
+  bench(`query changes in ${count}k entities (2 components)`, b => {
     const world = setupChanged(count, e);
     b.start();
     world.query.changed(Test1, Test2).all();
     b.end();
   });
 
-  bench(`query changes in ${count}k entities (3 component)`, b => {
+  bench(`query changes in ${count}k entities (3 components)`, b => {
     const world = setupChanged(count, e);
     b.start();
     world.query.changed(Test1, Test2, Test3).all();

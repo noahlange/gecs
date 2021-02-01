@@ -235,7 +235,7 @@ They're pretty minimal and naïve, otherwise. Access the world's `.query` getter
 | 50K entities w/ 2 components | ecsy | ape-ecs | tecs  |
 | :--------------------------- | :--: | :-----: | :---: |
 | Create                       | 80ms |  300ms  | 500ms |
-| Modify                       | 6ms  |   7ms   | 280ms |
+| Modify                       | 6ms  |   7ms   | 275ms |
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
 **A**: Also yes. But again, this is all about ergonomics and my feelings.

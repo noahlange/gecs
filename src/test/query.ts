@@ -1,10 +1,8 @@
-/* eslint-disable max-classes-per-file */
-
 import { test, describe, expect, jest } from '@jest/globals';
 import { Contained, Manager } from '../lib';
 
-import { A, B } from './helpers/containeds';
-import { WithA, WithB, WithAB } from './helpers/containers';
+import { A, B } from './helpers/components';
+import { WithA, WithB, WithAB } from './helpers/entities';
 
 describe('container queries', () => {
   const em = new Manager();

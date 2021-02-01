@@ -1,8 +1,8 @@
 import { test, describe, expect } from '@jest/globals';
 import { Manager } from '../lib';
 
-import { WithABC } from './helpers/containers';
-import { A, B, C } from './helpers/containeds';
+import { WithABC } from './helpers/entities';
+import { A, B, C } from './helpers/components';
 
 describe('creating containers', () => {
   const em = new Manager();
