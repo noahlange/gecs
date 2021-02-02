@@ -5,7 +5,7 @@ import type { EntityClass } from './Entity';
 
 import { useWith } from '../../utils';
 import { Container } from '../../lib/Container';
-import { Manager } from '../../lib/Manager';
+import { ContainerManager } from '../../managers/ContainerManager';
 import type { Query } from '../../lib/Query';
 
 export interface WorldClass<T extends BaseType<System>> {
@@ -66,5 +66,11 @@ export class World<T extends BaseType<System> = {}> extends Container<T> {
     }
   }
 
-  public entities = new Manager();
+  public entities = new ContainerManager();
+
+  public constructor() {
+    super();
+    const systems = new ContainerManager();
+    systems.add(this);
+  }
 }

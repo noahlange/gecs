@@ -1,5 +1,6 @@
 import { test, describe, expect, jest } from '@jest/globals';
-import { Contained, Manager } from '../lib';
+import { Contained } from '../lib';
+import { ContainerManager as Manager } from '../managers';
 
 import { A, B } from './helpers/components';
 import { WithA, WithB, WithAB } from './helpers/entities';
@@ -102,7 +103,10 @@ describe('mutations', () => {
   test('a changed() component is declared unchanged/uncreated after being queried and returned', () => {
     const em = new Manager();
     em.create(WithAB);
-    em.query.changed(A, B).all(); // 1
-    expect(em.query.changed(A, B).all()).toHaveLength(0);
+    const a = em.query.changed(A, B).all(); // [ab]
+    const b = em.query.changed(A, B).all(); // []
+
+    expect(a).toHaveLength(1);
+    expect(b).toHaveLength(0);
   });
 });

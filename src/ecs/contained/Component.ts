@@ -1,11 +1,11 @@
 import type { ContainedClass } from '../../lib';
-import type { PartialContained } from '../../types';
+import type { Entity } from '../container/Entity';
 
 import { Contained } from '../../lib/Contained';
 
 export interface ComponentClass extends ContainedClass {
   readonly type: string;
-  new (data: PartialContained<Component>): Component;
+  new (entity: Entity): Component;
 }
 
 export class Component extends Contained {}

@@ -223,19 +223,19 @@ Queries return collections of entities based on a user's requirements. The resul
 
 They're pretty minimal and naïve, otherwise. Access the world's `.query` getter to get a new Query, and call `with()` or `without()` as needed to pare down the component selection. Adding the same component using both `with()` and `without()` will return nothing without warning.
 
-`changed()` and `unchanged()` add additional restrictions, filtering out entities with components that have not been modified since the last `changed()` query and filtering out ones that have, respectively.
+`changed()` adds the additional restriction of an entity having been created or modified since the last `changed()` query.
 
 ---
 
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: Honestly, pretty bad. It's a work in progress.
+**A/R**: Honestly, not great. It's a work in progress.
 
-| 50K entities w/ 2 components | ecsy | ape-ecs | tecs  |
-| :--------------------------- | :--: | :-----: | :---: |
-| Create                       | 80ms |  300ms  | 500ms |
-| Modify                       | 6ms  |   7ms   | 275ms |
+|                | ecsy | ape-ecs | tecs  |
+| :------------- | :--: | :-----: | :---: |
+| Create 50k, 2x | 80ms |  300ms  | 375ms |
+| Modify 50k, 2x | 6ms  |   7ms   | 175ms |
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
 **A**: Also yes. But again, this is all about ergonomics and my feelings.

@@ -1,5 +1,5 @@
-export { Contained, Container, Manager } from './lib';
-
+export { Contained, Container } from './lib';
 export { Component, Entity, System, World, Query } from './ecs';
+export { ContainerManager as Manager } from './managers';
 
 export type { KeyedByType } from './types';

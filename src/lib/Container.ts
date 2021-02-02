@@ -1,20 +1,14 @@
-import type {
-  BaseType,
-  PartialBaseType,
-  KeyedByType,
-  WithStaticType,
-  Frozen
-} from '../types';
+import type { BaseType, KeyedByType, WithStaticType, Frozen } from '../types';
+import type { ContainerManager } from '../managers/ContainerManager';
 
 import { nanoid } from 'nanoid/non-secure';
-import { Manager } from './Manager';
 import { useWith } from '../utils';
 
 export interface ContainerClass<T extends BaseType = {}> {
   with<A extends WithStaticType[], T extends BaseType = {}>(
     ...items: A
   ): ContainerClass<T & KeyedByType<A>>;
-  new (manager: Manager, data?: PartialBaseType<T>): Container<T>;
+  new (): Container<T>;
 }
 
 export class Container<T extends BaseType = {}> {
@@ -32,7 +26,7 @@ export class Container<T extends BaseType = {}> {
   /**
    * Unique container identifier.
    */
-  public readonly id: string = nanoid(10);
+  public readonly id: string = nanoid(8);
 
   /**
    * Manager of contained items.
@@ -41,7 +35,7 @@ export class Container<T extends BaseType = {}> {
    * This is defined at runtime with `Object.defineProperty()` to avoid embedding
    * a reference to the manager directly into the object.
    */
-  public readonly manager!: Manager;
+  public readonly manager!: ContainerManager;
 
   /**
    * Array of constituent constructors.
@@ -75,12 +69,5 @@ export class Container<T extends BaseType = {}> {
 
   public destroy(): void {
     this.manager.destroy(this.id);
-  }
-
-  public constructor(manager?: Manager, data?: PartialBaseType<T>) {
-    const m = manager ?? new Manager();
-    if (m) {
-      m.add(this, data);
-    }
   }
 }

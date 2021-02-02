@@ -1,33 +1,56 @@
 import type { BaseType, Frozen, PartialBaseType } from '../types';
 
-import type { Contained } from './Contained';
-import type { ContainerClass } from './Container';
-import { Container } from './Container';
+import type { Contained } from '../lib/Contained';
+import type { ContainerClass } from '../lib/Container';
+import { Container } from '../lib/Container';
 import { QueryManager } from './QueryManager';
 import { Query } from '../ecs';
 
-interface ContainerMutations {
-  changed: Set<string>;
-  created: Set<string>;
-  removed: Set<string>;
+export interface Mutations {
+  changed: Record<string, Set<string>>;
+  created: Record<string, Set<string>>;
+  removed: Record<string, Set<string>>;
 }
 
-export class Manager {
-  protected containerMutations: ContainerMutations = {
-    changed: new Set(),
-    created: new Set(),
-    removed: new Set()
+export class ContainerManager {
+  public mutations: Mutations = {
+    changed: {},
+    created: {},
+    removed: {}
   };
 
   // ContainerID => Container
-  protected containers: Record<string, Container> = {};
-  // ContainedID => Contained
-  protected containeds: Record<string, Contained> = {};
-  // ContainerID => ContainedType => Contained
-  protected bindings: Record<string, Record<string, string>> = {};
+  public containers: Record<string, Container> = {};
+  // ContainedID =>  Contained
+  public containeds: Record<string, Contained> = {};
+  // ContainerID => ContainedType => ContainedID
+  public bindings: Record<string, Record<string, string>> = {};
+  // cached immutable bindings
+  protected $: Record<string, any> = {};
+
   // entities to destroy at cleanup()
   protected toDestroy: string[] = [];
   protected queries: QueryManager;
+
+  protected createBindings(id: string, mutable: boolean = false): any {
+    const bindings = this.bindings[id];
+    const res = {};
+    for (const type in bindings) {
+      Object.defineProperty(res, type, {
+        enumerable: true,
+        get: mutable
+          ? () => {
+              const changed = (this.mutations.changed[id] ??= new Set());
+              const value = this.containeds[bindings[type]];
+              changed.add(value.id);
+              return value;
+            }
+          : () =>
+              new Proxy(this.containeds[bindings[type]], { set: () => false })
+      });
+    }
+    return res;
+  }
 
   /**
    * Given a container, return the corresponding structure for the contained bindings.
@@ -52,28 +75,11 @@ export class Manager {
     container: Container,
     mutable: boolean = false
   ): T | Frozen<T> {
-    // type system abuse
-    const bindings = this.bindings[container.id];
-    const res = {};
-    for (const type in bindings) {
-      const value = this.containeds[bindings[type]];
-      Object.defineProperty(res, type, {
-        enumerable: true,
-        get: () => {
-          if (mutable) {
-            this.containerMutations.changed.add(value.id);
-            return value;
-          } else {
-            return new Proxy(value, { set: () => false });
-          }
-        }
-      });
+    if (!mutable) {
+      return (this.$[container.id] ??= this.createBindings(container.id));
+    } else {
+      return this.createBindings(container.id, true);
     }
-    return res as T;
-  }
-
-  public getContainer(id: string): Container {
-    return this.containers[id] ?? null;
   }
 
   /**
@@ -81,9 +87,12 @@ export class Manager {
    */
   public destroy(id: string): void {
     const bindings = this.bindings[id];
+    const removed = new Set<string>();
     for (const type in bindings) {
-      this.mutations.removed.add(bindings[type]);
+      removed.add(bindings[type]);
     }
+    delete this.$[id];
+    this.mutations.removed[id] = removed;
     this.toDestroy.push(id);
   }
 
@@ -91,7 +100,8 @@ export class Manager {
     Constructor: ContainerClass<T>,
     data?: PartialBaseType<T>
   ): Container<T> {
-    const instance = new Constructor(this, data);
+    const instance = new Constructor();
+    this.add(instance, data);
     if (instance instanceof Container) {
       return instance;
     } else {
@@ -108,63 +118,52 @@ export class Manager {
     container: Container<T>,
     data: PartialBaseType<T> = {}
   ): this {
+    const id = container.id;
     const bindings: Record<string, string> = {};
+    const created = (this.mutations.created[id] ??= new Set());
+    const changed = (this.mutations.changed[id] ??= new Set());
 
     for (const Ctor of container.items ?? []) {
-      const type = Ctor.type;
-      if (type) {
-        // instantiate and overwrite with user data
-        const contained = new Ctor();
-        // add to the manager's data hash and
-        this.containeds[contained.id] = contained;
-
-        // set the corresponding property on the container bindings.
-        bindings[Ctor.type] = contained.id;
-        Object.assign(contained, data[type] ?? {});
-
-        // define a `.container` accessor, perserving the reference without
-        // adding a pointless read-only property to the object.
-        Object.defineProperty(contained, 'container', {
-          configurable: false,
-          enumerable: false,
-          get: () => container
-        });
-
-        // declare the component mutated for queries
-        this.containerMutations.created.add(contained.id);
-        this.containerMutations.changed.add(contained.id);
-        // if we've cached a query with this component, it'll need to be nuked.
-        this.queries.invalidateType(type);
-      } else {
+      if (!Ctor.type) {
         console.warn(
           `No static type property specified for "${Ctor.name}" belonging to ${
             container.constructor.name ?? 'unnamed container'
           }.`
         );
+        continue;
       }
+
+      // create a new class instnace.
+      const contained = new Ctor(container, {});
+      // classes with defined properties overwrite assigned data.
+      Object.assign(contained, data[Ctor.type]);
+
+      // declare the component mutated for queries
+      created.add(contained.id);
+      changed.add(contained.id);
+
+      // set the corresponding property on the container bindings.
+      bindings[Ctor.type] = contained.id;
+      // add to the manager's data hash and mark mutations
+      this.containeds[contained.id] = contained;
     }
 
-    // dynamically define a manager accessor for the reasons listed above.
     Object.defineProperty(container, 'manager', {
       configurable: false,
       enumerable: false,
-      get: () => this
+      value: this
     });
 
     // add container, bindings and id
-    this.containers[container.id] = container;
-    this.bindings[container.id] = bindings;
+    this.containers[id] = container;
+    this.bindings[id] = bindings;
     return this;
   }
 
-  public getIDBindings(id: string): Record<string, string> | null {
-    return this.bindings[id] ?? null;
-  }
-
   public cleanup(): void {
-    this.containerMutations.changed = new Set();
-    this.containerMutations.created = new Set();
-    this.containerMutations.removed = new Set();
+    this.mutations.changed = {};
+    this.mutations.created = {};
+    this.mutations.removed = {};
     // destroy entities marked for removal
     for (const id of this.toDestroy) {
       for (const key in this.bindings[id]) {
@@ -182,10 +181,6 @@ export class Manager {
 
   public get ids(): string[] {
     return Object.keys(this.containers);
-  }
-
-  public get mutations(): ContainerMutations {
-    return this.containerMutations;
   }
 
   public get query(): Query<{}> {

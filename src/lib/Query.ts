@@ -8,7 +8,7 @@ import type { ComponentClass } from '../ecs';
 import type { Container } from './Container';
 import type { U } from 'ts-toolbelt';
 import type { ContainedClass } from './Contained';
-import type { QueryManager, QueryOptions } from './QueryManager';
+import type { QueryManager, QueryOptions } from '../managers/QueryManager';
 
 type QueryType<T, A extends WithStaticType[]> = Query<
   U.Merge<T & PartialByType<A>>
