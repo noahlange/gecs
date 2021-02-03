@@ -1,5 +1,7 @@
 import type { U } from 'ts-toolbelt';
+
 import type { Contained } from './lib';
+import type { EntityClass } from './ecs/container/Entity';
 
 export type KeyedByType<A extends WithStaticType[]> = U.Merge<
   A extends (infer R)[]
@@ -37,3 +39,7 @@ export type PartialBaseType<T extends BaseType> = {
 export type Frozen<T extends BaseType> = {
   readonly [K in keyof T]: Readonly<T[K]>;
 };
+
+export type DataType<T> = T extends EntityClass<infer D>
+  ? PartialBaseType<D>
+  : never;

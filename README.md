@@ -25,53 +25,11 @@ There are a lot of ECS frameworks written for various JS runtimes (particular sh
 
 So how about something a little terser and more declarative, and with TypeScript integration? That idea seemed promising, so I sketched out the code I wanted to write and then tried to figure out how to make it work; this is the result.
 
-## Containers & Containees
-
-The whole thing boils down to two basic types: the `Container<T>` and the `Containee`.
-
-A `Containee` is a class constructor with a unique, read-only property named `type` that holds its human-readable name.
-
-```typescript
-class FooThing {
-  public static readonly type = 'foo';
-}
-```
-
-A `Container<T>` contains containees. A container's containees can be accessed in the container's `$` (mutable) and `$$` (immutable) properties, as keyed by the containee constructor's `type` property. In other words:
-
-```typescript
-import { Container, FooThing, BarThing } from './';
-
-interface Containees {
-  foo: FooThing;
-  bar: BarThing;
-}
-
-const container = new Container<Containees>();
-
-container.$.foo instanceof FooThing; // true
-container.$.bar instanceof BarThing; // true
-```
-
-_"Wow, writing a different type signature for every theoretical combination of containees seems like it'd be an enormous pain!"_, one might say.
-
-I would agree. But with a bit of trickery and flagrant abuse of type assertions, we can skirt around this obstacle and come up with something that is clean, terse and nicely type-hinted.
-
-```typescript
-const FooBar = Container.with(FooThing, BarThing);
-// inferred as Container<{ foo: FooThing; bar: BarThing }>
-
-const fooBar = new FooBar();
-
-fooBar.$.foo instanceof FooThing; // true
-fooBar.$.bar instanceof BarThing; // true
-```
-
-So, now with the basic interface established, we'll shift gears over to the framework side of things. Within **tecs**, there are are two "levels" of this container-containee relationship: World/Systems and Entity/Components.
-
 ## Entities & Components
 
-An Entity contains any number of Components (logic-less chunks of data, each tagged with their own `type`).
+An Entity is a loose wrapper around an arbitrary collection of Components.
+
+Each component extends the `Component` class and must define a static `type` property. This property should also be readonly, or TS won't be able to resolve the name of the Component.
 
 ```typescript
 export class Position extends Component {
@@ -90,97 +48,65 @@ export class Sprite extends Component {
 }
 ```
 
-There are two ways to create Entity classes: `extend`ing the result of the `with()` call or using the returned constructor as-is.
+By passing a series of component classes to the entity's static `with()` method, you can declaratively define the structure of your entity.
 
-```typescript
-import { Entity } from 'tecs';
-import { Position, Sprite } from './components';
+An entity's component instances can be accessed using the `$` or `$$` properties—returning immutable and mutable instances of the component, respectively. The static `type` property of each component class serves as the key by which the component can be accessed from its containing entity.
 
-// "MyEntity1" is a class constructor
-const MyEntity1 = Entity.with(Position, Sprite);
+```js
+import { Component, Entity } from 'tecs';
 
-// ooh, arrays of components!
-class MyEntity2 extends Entity.with(Position, Sprite) {}
+export class Foo extends Component {
+  // this component is accessed via `foobly`
+  public static readonly type = 'foobly';
+  public value: string = '1';
+}
 
-const [entity1, entity2] = [new MyEntity1(), new MyEntity2()];
-// components in place
-entity1.$.position instanceof Position; // true
-entity2.$.sprite instanceof Sprite; // true
+export class Bar extends Component {
+  // this component is accessed via `woobly`
+  public static readonly type = 'woobly';
+  public value: number = 1
+}
+
+class MyEntity extends Entity.with(Foo, Bar) {
+  public myMethod() {
+    // components accessed by key defined in `type`
+    this.$.foobly.value = '???' // cannot assign to read-only property
+    this.$$.woobly.value = 2; // component marked as changed
+  }
+}
 ```
 
-In either case, the components in `$` aren't attached to the component itself: instead, they're accessed via an entity manager, which stores the components, the entities and the relationships between them.
+As above, you can `extend` the result of the `with()` call to create a custom entity class, or create new instances using the return value as-is.
+
+There are two ways to create Entity instances: `extend`ing the result of the `with()` call or using the returned constructor as-is. In practice, the latter is often preferable—you don't want to get in the habit of putting significant amounts of logic into your entities.
+
+```typescript
+const MyEntity1 = Entity.with(Position, Sprite);
+class MyEntity2 extends Entity.with(Position, Sprite) {}
+```
 
 ## Worlds & Systems
 
-A `World` contains any number of `Systems` (and an Entity manager). The world serves as the point of connection between systems and entities.
+The relationship between the `World` and its `Systems` parallels that of an `Entity` and its `Components`. A `World` serves as a container for an arbitrary number of `Systems`, each of which performs a single, well-defined task that operates across numerous entities.
 
-On `start()`, the world invokes the `init()` function of itself and all its systems (if defined).
+The key functionality of a System is executed within its `init()` and `tick()` methods. While both methods are technically optional, nearly every system will have at least one. Some run once or twice—map generation, for example—while others might run on every tick and have no initialization code to speak of.
 
-```typescript
-import { World, Entities } from 'tecs';
-
-import { Position, Sprite, Stat } from './components';
-import { Renderer } from './systems';
-
-const MyObject = Entities.with(Position, Sprite, [Stat, Stat]);
-
-export class MyWorld extends World.with(Renderer) {
-  public init(): void {
-    // create a visible, positionable object with a single stat: "gumption"
-    // pass component data as a second param, patterning after `$`
-    this.create(MyObject, {
-      sprite: { anchor: 1 },
-      stat: { name: 'gumption', value: 1 }
-    });
-  }
-
-  // for demo purposes; we'd ordinarily put this logic in its own system
-  public tick(delta: number, time?: number): void {
-    // query for specific numbers and configurations of components
-    for (const { $ } of this.query.with(Stat)) {
-      // $: read-only component
-      console.log($.stat);
-    }
-
-    // find all entities with a Position component
-    for (const { $$ } of this.query.with(Position)) {
-      // $$: read/write component
-      $$.position.r = ($$.position.r + 0.1) % 360;
-    }
-
-    // ...make sure to invoke super.tick() if you're going to override it
-    super.tick(delta, time);
-  }
-}
-
-const world = new MyWorld();
-world.start();
-```
-
-Each time `tick()` is called, the world invokes the `tick()` method of each of
-its systems (again, if defined). Most systems will have a `tick()` method, but
-it's not _strictly_ necessary, and it might make sense to sequester particular
-bits of entity creation to dedicated systems within an `init()` function and
-ignore `tick()` entirely.
-
-Systems operate on Entities via their Components—usually by querying the world
-for all entities with/without particular combinations of components.
+An example implementation of a simple PIXI.js renderer:
 
 ```typescript
 import * as PIXI from 'pixi.js';
-
 import { System } from 'tecs';
+
 import { Sprite, Position, Player } from './components';
 
 class Renderer extends System {
   public static readonly type = 'renderer';
 
-  public sprites: Record<string, PIXI.Sprite> = {};
+  protected sprites: Record<string, PIXI.Sprite> = {};
 
-  // run on tick
   public tick(delta: number, time?: number): void {
-    // find all entities that have Sprite and Position components, but not a Player
-    const query = this.world.query.with(Position, Sprite).without(Player);
+    // find all updated entities with Sprite and Position components
+    const query = this.world.query.changed(Position, Sprite);
     for (const { $ } of query) {
       const child = this.sprites[$.sprite.id];
       if (child) {
@@ -191,33 +117,51 @@ class Renderer extends System {
     }
   }
 
-  // invoked on `world.init()`
-  public init(): void {
+  // init functions can be async
+  public async init(): Promise<void> {
     this.app = new PIXI.Application();
-    // bind the "tick" method to PIXI's ticker
-    this.app.ticker.add(this.world.tick.bind(this.world));
-
-    // create all sprites
+    // create all sprites and add to the stage
     for (const { $ } of this.world.query.with(Sprite)) {
       const child = PIXI.Sprite.from($.sprite.path);
       child.anchor = $.sprite.anchor;
       this.sprites[$.sprite.id] = child;
-    }
-
-    // add sprites to stage
-    for (const child of Object.values(this.sprites)) {
       this.app.stage.addChild(child);
     }
-
+    // bind the world's "tick" method to PIXI's ticker
+    this.app.ticker.add(this.world.tick.bind(this.world));
     // mount stage to DOM
     document.body.appendChild(this.app.view);
   }
 }
 ```
 
-## Managers and Queries
+Like an entity is created `with()` components, a world is created `with()` systems.
 
-A mangers handles all the relationships between containers and containees. When you access `$` on an entity, it's proxied through the manager—every component is stored in the same place.
+```typescript
+import { World, Entity } from 'tecs';
+
+import { Renderer } from './systems';
+
+class MyWorld extends World.with(Renderer) {
+  public init(): void {
+    console.log('initializing!');
+  }
+}
+
+(async () => {
+  const world = new MyWorld();
+  await world.start();
+})();
+```
+
+When the world's `start()` method is invoked, each of the world's systems is booted in the order it was passed to `with()`.
+
+Each time `tick()` is called, the world invokes the `tick()` method of each of
+its systems (again, in order).
+
+## Queries
+
+The entity manger handles all the relationships between entities and their components. When you access `$` on an entity, variable access is being proxied through the manager—every component is stored in the same place.
 
 Queries return collections of entities based on a user's requirements. The results of queries are typed exactly like the ordinary entity's `$` property, so you'll have access to each of the components you've requested in your query—and nothing more.
 
@@ -235,7 +179,7 @@ They're pretty minimal and naïve, otherwise. Access the world's `.query` getter
 |                | ecsy | ape-ecs | tecs  |
 | :------------- | :--: | :-----: | :---: |
 | Create 50k, 2x | 80ms |  300ms  | 375ms |
-| Modify 50k, 2x | 6ms  |   7ms   | 175ms |
+| Modify 50k, 2x | 6ms  |   7ms   | 150ms |
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
 **A**: Also yes. But again, this is all about ergonomics and my feelings.

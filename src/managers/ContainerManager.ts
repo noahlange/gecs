@@ -1,7 +1,7 @@
 import type { BaseType, Frozen, PartialBaseType } from '../types';
-
 import type { Contained } from '../lib/Contained';
 import type { ContainerClass } from '../lib/Container';
+
 import { Container } from '../lib/Container';
 import { QueryManager } from './QueryManager';
 import { Query } from '../ecs';
@@ -28,7 +28,7 @@ export class ContainerManager {
   // cached immutable bindings
   protected $: Record<string, any> = {};
 
-  // entities to destroy at cleanup()
+  // entities to destroy on cleanup()
   protected toDestroy: string[] = [];
   protected queries: QueryManager;
 
@@ -36,18 +36,30 @@ export class ContainerManager {
     const bindings = this.bindings[id];
     const res = {};
     for (const type in bindings) {
-      Object.defineProperty(res, type, {
-        enumerable: true,
-        get: mutable
-          ? () => {
-              const changed = (this.mutations.changed[id] ??= new Set());
-              const value = this.containeds[bindings[type]];
-              changed.add(value.id);
-              return value;
+      const value = this.containeds[bindings[type]];
+      if (mutable) {
+        Object.defineProperty(res, type, {
+          enumerable: true,
+          configurable: false,
+          value: new Proxy(value, {
+            set: <K extends keyof Contained>(
+              target: Contained,
+              key: K,
+              value: Contained[K]
+            ) => {
+              target[key] = value;
+              this.mutations.changed[id].add(target.id);
+              return true;
             }
-          : () =>
-              new Proxy(this.containeds[bindings[type]], { set: () => false })
-      });
+          })
+        });
+      } else {
+        Object.defineProperty(res, type, {
+          enumerable: true,
+          configurable: false,
+          value: new Proxy(value, { set: () => false })
+        });
+      }
     }
     return res;
   }
@@ -57,11 +69,9 @@ export class ContainerManager {
    * @param container
    * @param mutable - whether or not the returned bindings should be mutable
    *
-   *
    * @privateRemarks
-   * The current implementation involves the use of a Proxy to track changes to
+   * The current implementation uses a Proxy to track changes to
    * mutable components and prevent modification of immutable components.
-   * There's about a 10% performance hit vs. returning the raw value.
    */
   public getBindings<T extends BaseType<Contained>>(
     container: Container,
