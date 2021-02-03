@@ -5,7 +5,7 @@ import type {
   WithStaticType
 } from '../types';
 import type { ComponentClass } from '../ecs';
-import type { Container } from './Container';
+import type { Container, ContainerClass } from './Container';
 import type { U } from 'ts-toolbelt';
 import type { ContainedClass } from './Contained';
 import type { QueryManager, QueryOptions } from '../managers/QueryManager';
@@ -21,12 +21,21 @@ function sort(set: Set<string>): string[] | null {
 }
 
 type QueryCondition =
+  | 'typeID'
   | 'includes'
   | 'excludes'
   | 'changed'
   | 'created'
   | 'removed';
 
+interface QueryState {
+  typeID: string | null;
+  includes: Set<string>;
+  excludes: Set<string>;
+  changed: Set<string>;
+  created: Set<string>;
+  removed: Set<string>;
+}
 export class Query<
   T extends BaseType = {},
   C extends Container<T> = Container<T>
@@ -34,7 +43,8 @@ export class Query<
   protected manager!: QueryManager;
 
   protected ids: Set<string> = new Set();
-  protected q: Record<QueryCondition, Set<string>> = {
+  protected q: QueryState = {
+    typeID: null,
     includes: new Set(),
     excludes: new Set(),
     changed: new Set(),
@@ -44,6 +54,7 @@ export class Query<
 
   protected get query(): QueryOptions {
     return {
+      typeID: this.q.typeID ?? null,
       ids: sort(this.ids),
       includes: sort(this.q.includes),
       excludes: sort(this.q.excludes),
@@ -62,10 +73,19 @@ export class Query<
         console.warn(`Attempted to query unnamed contained type "${name}."`);
       } else {
         for (const condition of conditions) {
-          this.q[condition] = this.q[condition].add(type);
+          if (condition !== 'typeID') {
+            this.q[condition] = this.q[condition].add(type);
+          }
         }
       }
     }
+  }
+
+  public ofType<C extends ContainerClass>(
+    ContainerClass: C
+  ): Query<{}, InstanceType<C>> {
+    this.q.typeID = ContainerClass.id;
+    return (this as unknown) as Query<{}, InstanceType<C>>;
   }
 
   /**

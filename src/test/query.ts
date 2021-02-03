@@ -32,6 +32,21 @@ describe('container queries', () => {
   });
 });
 
+describe('ofType()', () => {
+  const em = new Manager();
+  for (let i = 0; i < 5; i++) {
+    em.create(WithA);
+  }
+
+  test('should return entities of a given type', () => {
+    const results = em.query.ofType(WithA).all();
+    expect(results).toHaveLength(5);
+    for (const res of results) {
+      expect(res).toBeInstanceOf(WithA);
+    }
+  });
+});
+
 describe('first()', () => {
   const em = new Manager();
   const a = em.create(WithA);
@@ -91,22 +106,26 @@ describe('mutations', () => {
   test('changed() should return modified entities', () => {
     const em = new Manager();
     const entity1 = em.create(WithAB);
-    const entity2 = em.create(WithAB);
-
-    em.query.changed(A, B).all(); // 2
-    em.query.changed(A, B).all(); // 0
+    em.create(WithAB);
+    em.cleanup();
 
     entity1.$$.a.value = '123';
     expect(em.query.changed(A, B).first()).toBe(entity1);
   });
 
-  test('a changed() component is declared unchanged/uncreated after being queried and returned', () => {
+  test('mutation sets are cleared on cleanup()', () => {
     const em = new Manager();
     em.create(WithAB);
-    const a = em.query.changed(A, B).all(); // [ab]
-    const b = em.query.changed(A, B).all(); // []
 
-    expect(a).toHaveLength(1);
-    expect(b).toHaveLength(0);
+    const qCreate = em.query.created(A, B);
+    const qChange = em.query.changed(A, B);
+
+    expect(qChange.all()).toHaveLength(1);
+    expect(qCreate.all()).toHaveLength(1);
+
+    em.cleanup();
+
+    expect(qChange.all()).toHaveLength(0);
+    expect(qCreate.all()).toHaveLength(0);
   });
 });

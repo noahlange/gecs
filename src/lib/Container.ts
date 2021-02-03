@@ -5,6 +5,7 @@ import { nanoid } from 'nanoid/non-secure';
 import { useWith } from '../utils';
 
 export interface ContainerClass<T extends BaseType = {}> {
+  id: string;
   with<A extends WithStaticType[], T extends BaseType = {}>(
     ...items: A
   ): ContainerClass<T & KeyedByType<A>>;
@@ -22,6 +23,8 @@ export class Container<T extends BaseType = {}> {
   ): ContainerClass<T & KeyedByType<A>> {
     return useWith<T & KeyedByType<A>, A>(this, ...items);
   }
+
+  public static id: string = nanoid(8);
 
   /**
    * Unique container identifier.

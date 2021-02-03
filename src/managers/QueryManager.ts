@@ -2,6 +2,7 @@ import type { Container } from '../lib/Container';
 import type { ContainerManager, Mutations } from './ContainerManager';
 
 export interface QueryOptions {
+  typeID: string | null;
   ids: string[] | null;
   includes: string[] | null;
   excludes: string[] | null;
@@ -10,14 +11,24 @@ export interface QueryOptions {
   removed: string[] | null;
 }
 
+/**
+ * Responsible for resolving each query into a series of IDs.
+ */
 export class QueryManager {
-  protected cache: Record<string, string[] | null> = {};
-
-  protected get ids(): string[] {
-    return this.manager.ids;
-  }
-
+  protected cache: Record<string, Set<string> | null> = {};
   protected manager: ContainerManager;
+
+  /**
+   * Remove a specific ID from the queries in which it appears.
+   */
+  public invalidateEntity(id: string): void {
+    for (const q in this.cache) {
+      const set = this.cache[q];
+      if (set?.has(id)) {
+        set.delete(id);
+      }
+    }
+  }
 
   /**
    * Naïve cache-busting implementation.
@@ -32,63 +43,75 @@ export class QueryManager {
 
   public *query(options: QueryOptions): IterableIterator<Container> {
     const cacheKey = JSON.stringify([options.includes, options.excludes]);
-    const cacheHit = options.ids ? null : this.cache[cacheKey];
-    const findMutations = !!(
+    const cacheHit =
+      options.ids || options.typeID ? null : this.cache[cacheKey];
+
+    const queryMutations = !!(
       options.changed ||
       options.removed ||
       options.created
     );
 
-    if (cacheHit && !findMutations) {
+    if (cacheHit && !queryMutations) {
       for (const id of cacheHit) {
         yield this.manager.containers[id];
       }
       return;
     }
 
-    const ids = options.ids ?? cacheHit ?? this.ids;
-    const results: Set<string> = new Set();
+    // in order of priority:
+    const ids =
+      // specifically-requested ids
+      options.ids ??
+      // ids of type-constrained entities
+      (options.typeID ? this.manager.byContainerType[options.typeID] : null) ??
+      // results from a cache hit
+      cacheHit ??
+      // every entity
+      this.manager.ids;
 
     const includes = options.includes ?? [];
     const excludes = options.excludes ?? [];
+    let results: Set<string> = cacheHit ?? new Set();
 
-    search: for (const id of ids) {
-      const bindings = this.manager.bindings[id];
+    if (!cacheHit) {
+      search: for (const id of ids) {
+        const bindings = this.manager.bindings[id];
 
-      if (!bindings) {
-        continue search;
-      }
+        if (!bindings) {
+          continue search;
+        }
 
-      if (!cacheHit) {
         for (const i of includes) {
           if (!(i in bindings)) {
             continue search;
           }
         }
+
         for (const e of excludes) {
           if (e in bindings) {
             continue search;
           }
         }
-      }
 
-      results.add(id);
+        results.add(id);
+      }
     }
 
     if (!options.ids) {
-      this.cache[cacheKey] = Array.from(results);
+      this.cache[cacheKey] = results;
     }
 
-    if (findMutations) {
+    if (queryMutations) {
       const yielded: Set<string> = new Set();
-      const keys = Object.keys(this.manager.mutations).filter(
-        key => options[key as keyof Mutations]
-      ) as (keyof Mutations)[];
+      for (const key in this.manager.mutations) {
+        const types = options[key as keyof Mutations];
+        if (!types) {
+          continue;
+        }
 
-      for (const key of keys) {
-        const types = options[key] ?? [];
-        const containers = this.manager.mutations[key];
-        loop: for (const id of results) {
+        const containers = this.manager.mutations[key as keyof Mutations];
+        search: for (const id of results) {
           if (id in containers && !yielded.has(id)) {
             const mutations = containers[id];
             if (mutations.size) {
@@ -96,24 +119,18 @@ export class QueryManager {
               for (const type of types) {
                 if (mutations.has(bindings[type])) {
                   yielded.add(id);
-                  continue loop;
+                  continue search;
                 }
               }
             }
           }
         }
       }
+      results = yielded;
+    }
 
-      for (const id of yielded) {
-        for (const key of keys) {
-          this.manager.mutations[key][id] = new Set();
-        }
-        yield this.manager.containers[id];
-      }
-    } else {
-      for (const id of results) {
-        yield this.manager.containers[id];
-      }
+    for (const id of results) {
+      yield this.manager.containers[id];
     }
   }
 

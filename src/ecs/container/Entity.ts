@@ -5,6 +5,7 @@ import { Container } from '../../lib/Container';
 import { useWith } from '../../utils';
 
 export interface EntityClass<T extends BaseType<Component>> {
+  id: string;
   with<T, A extends ComponentClass[]>(
     ...components: A
   ): EntityClass<T & KeyedByType<A>>;

@@ -9,6 +9,7 @@ import { ContainerManager } from '../../managers/ContainerManager';
 import type { Query } from '../../lib/Query';
 
 export interface WorldClass<T extends BaseType<System>> {
+  id: string;
   with<A extends SystemClass[], T = {}>(
     ...systems: A
   ): WorldClass<T & KeyedByType<A>>;

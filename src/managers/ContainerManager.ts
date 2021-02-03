@@ -13,21 +13,17 @@ export interface Mutations {
 }
 
 export class ContainerManager {
-  public mutations: Mutations = {
-    changed: {},
-    created: {},
-    removed: {}
-  };
-
+  public mutations: Mutations = { changed: {}, created: {}, removed: {} };
   // ContainerID => Container
   public containers: Record<string, Container> = {};
   // ContainedID =>  Contained
   public containeds: Record<string, Contained> = {};
   // ContainerID => ContainedType => ContainedID
   public bindings: Record<string, Record<string, string>> = {};
+  public byContainerType: Record<string, Set<string>> = {};
+
   // cached immutable bindings
   protected $: Record<string, any> = {};
-
   // entities to destroy on cleanup()
   protected toDestroy: string[] = [];
   protected queries: QueryManager;
@@ -48,7 +44,7 @@ export class ContainerManager {
               value: Contained[K]
             ) => {
               target[key] = value;
-              this.mutations.changed[id].add(target.id);
+              (this.mutations.changed[id] ??= new Set()).add(target.id);
               return true;
             }
           })
@@ -130,8 +126,8 @@ export class ContainerManager {
   ): this {
     const id = container.id;
     const bindings: Record<string, string> = {};
-    const created = (this.mutations.created[id] ??= new Set());
-    const changed = (this.mutations.changed[id] ??= new Set());
+    const created = new Set<string>();
+    const changed = new Set<string>();
 
     for (const Ctor of container.items ?? []) {
       if (!Ctor.type) {
@@ -154,7 +150,7 @@ export class ContainerManager {
 
       // set the corresponding property on the container bindings.
       bindings[Ctor.type] = contained.id;
-      // add to the manager's data hash and mark mutations
+      // add to the manager's data hash
       this.containeds[contained.id] = contained;
     }
 
@@ -167,6 +163,15 @@ export class ContainerManager {
     // add container, bindings and id
     this.containers[id] = container;
     this.bindings[id] = bindings;
+
+    // mutations
+    this.mutations.changed[id] = changed;
+    this.mutations.created[id] = created;
+
+    const typeID = (container.constructor as ContainerClass).id;
+    if (typeID) {
+      (this.byContainerType[typeID] ??= new Set()).add(container.id);
+    }
     return this;
   }
 
@@ -176,12 +181,17 @@ export class ContainerManager {
     this.mutations.removed = {};
     // destroy entities marked for removal
     for (const id of this.toDestroy) {
+      const container = this.containers[id];
+      const type = (container.constructor as ContainerClass).id;
       for (const key in this.bindings[id]) {
         // and invalidate their queries
         this.queries.invalidateType(key);
       }
       delete this.containers[id];
       delete this.bindings[id];
+      delete this.$[id];
+      this.byContainerType[type].delete(id);
+      this.queries.invalidateEntity(id);
     }
   }
 

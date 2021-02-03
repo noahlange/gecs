@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid/non-secure';
 import type { ContainedClass, ContainerClass } from './lib';
 import type { BaseType, KeyedByType } from './types';
 
@@ -12,6 +13,7 @@ export function useWith<T extends BaseType, A extends ContainedClass[] = []>(
 ): ContainerClass<T & KeyedByType<A>> {
   // type system abuse
   return (class extends Constructor {
+    public static id = nanoid(8);
     public get items(): A {
       return items;
     }
