@@ -167,7 +167,7 @@ Queries return collections of entities based on a user's requirements. The resul
 
 They're pretty minimal and naïve, otherwise. Access the world's `.query` getter to get a new Query, and call `with()` or `without()` as needed to pare down the component selection. Adding the same component using both `with()` and `without()` will return nothing without warning.
 
-`changed()` adds the additional restriction of an entity having been created or modified since the last `changed()` query.
+`changed()` adds the additional restriction of an entity having been created or modified during the current tick.
 
 ---
 
@@ -182,4 +182,4 @@ They're pretty minimal and naïve, otherwise. Access the world's `.query` getter
 | Modify 50k, 2x | 6ms  |   7ms   | 150ms |
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
-**A**: Also yes. But again, this is all about ergonomics and my feelings.
+**A/R**: Also yes. But again, this is all about ergonomics and my feelings.

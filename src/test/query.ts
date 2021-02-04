@@ -3,7 +3,7 @@ import { Contained } from '../lib';
 import { ContainerManager as Manager } from '../managers';
 
 import { A, B } from './helpers/components';
-import { WithA, WithB, WithAB } from './helpers/entities';
+import { WithA, WithB, WithAB, cWithA } from './helpers/entities';
 
 describe('container queries', () => {
   const em = new Manager();
@@ -36,6 +36,7 @@ describe('ofType()', () => {
   const em = new Manager();
   for (let i = 0; i < 5; i++) {
     em.create(WithA);
+    em.create(cWithA);
   }
 
   test('should return entities of a given type', () => {
@@ -43,6 +44,14 @@ describe('ofType()', () => {
     expect(results).toHaveLength(5);
     for (const res of results) {
       expect(res).toBeInstanceOf(WithA);
+    }
+  });
+
+  test('...including composed constructors', () => {
+    const results = em.query.ofType(cWithA).all();
+    expect(results).toHaveLength(5);
+    for (const res of results) {
+      expect(res).toBeInstanceOf(cWithA);
     }
   });
 });

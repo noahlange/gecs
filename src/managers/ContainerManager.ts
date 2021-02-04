@@ -1,8 +1,8 @@
 import type { BaseType, Frozen, PartialBaseType } from '../types';
 import type { Contained } from '../lib/Contained';
 import type { ContainerClass } from '../lib/Container';
+import type { Container } from '../lib/Container';
 
-import { Container } from '../lib/Container';
 import { QueryManager } from './QueryManager';
 import { Query } from '../ecs';
 
@@ -108,16 +108,7 @@ export class ContainerManager {
   ): Container<T> {
     const instance = new Constructor();
     this.add(instance, data);
-    if (instance instanceof Container) {
-      return instance;
-    } else {
-      const message = Constructor.name
-        ? 'an unnamed container instance'
-        : `a container instance of '${Constructor.name}'`;
-      throw new Error(
-        `Attempted to create ${message} without extending the Container class.`
-      );
-    }
+    return instance;
   }
 
   public add<T extends BaseType>(
@@ -138,6 +129,8 @@ export class ContainerManager {
         );
         continue;
       }
+      // invalidate queries
+      this.queries.invalidateType(Ctor.type);
 
       // create a new class instnace.
       const contained = new Ctor(container, {});

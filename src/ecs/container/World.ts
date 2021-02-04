@@ -41,8 +41,8 @@ export class World<T extends BaseType<System> = {}> extends Container<T> {
   }
 
   public tick(delta: number, time?: number): void {
-    for (const key in this.$$) {
-      this.$$[key].tick?.(delta, time);
+    for (const system of this.items) {
+      this.$$[system.type].tick?.(delta, time);
     }
     this.manager.cleanup();
     this.entities.cleanup();
@@ -58,12 +58,8 @@ export class World<T extends BaseType<System> = {}> extends Container<T> {
    */
   public async start(): Promise<void> {
     await this.init?.();
-    for (const system in this.$$) {
-      const s = this.$$[system];
-      const systems = Array.isArray(s) ? s : [s];
-      for (const system of systems) {
-        await system.init?.();
-      }
+    for (const system of this.items) {
+      await this.$$[system.type]?.init?.();
     }
   }
 

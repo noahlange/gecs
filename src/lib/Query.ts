@@ -139,7 +139,7 @@ export class Query<
    */
   public created<A extends ContainedClass[]>(
     ...items: A
-  ): Query<U.Merge<T & PartialByType<A>>> {
+  ): Query<U.Merge<T & KeyedByType<A>>> {
     this.add(items, ['includes', 'created']);
     return (this as unknown) as QueryType<T, A>;
   }
