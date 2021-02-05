@@ -1,4 +1,5 @@
 import type { Container } from '../lib/Container';
+import { difference, intersection } from '../utils';
 import type { ContainerManager, Mutations } from './ContainerManager';
 
 export interface QueryOptions {
@@ -6,11 +7,12 @@ export interface QueryOptions {
   ids: string[] | null;
   includes: string[] | null;
   excludes: string[] | null;
+  tagIncludes: string[] | null;
+  tagExcludes: string[] | null;
   created: string[] | null;
   changed: string[] | null;
   removed: string[] | null;
 }
-
 /**
  * Responsible for resolving each query into a series of IDs.
  */
@@ -41,6 +43,100 @@ export class QueryManager {
     }
   }
 
+  protected filterMutations(
+    ids: Set<string>,
+    options: QueryOptions
+  ): Set<string> {
+    const yielded: Set<string> = new Set();
+    for (const key in this.manager.mutations) {
+      const types = options[key as keyof Mutations];
+      if (!types) {
+        continue;
+      }
+      const containers = this.manager.mutations[key as keyof Mutations];
+      search: for (const id of ids) {
+        if (id in containers && !yielded.has(id)) {
+          const mutations = containers[id];
+          if (mutations.size) {
+            const bindings = this.manager.bindings[id];
+            for (const type of types) {
+              if (mutations.has(bindings[type])) {
+                yielded.add(id);
+                continue search;
+              }
+            }
+          }
+        }
+      }
+    }
+    return yielded;
+  }
+
+  protected filterContaineds(
+    ids: Set<string>,
+    options: QueryOptions
+  ): Set<string> {
+    const results = new Set<string>();
+    const includes = options.includes;
+    const excludes = options.excludes;
+
+    search: for (const id of ids) {
+      const bindings = this.manager.bindings[id];
+      if (!bindings) {
+        continue search;
+      }
+      if (includes) {
+        for (const i of includes) {
+          if (!(i in bindings)) {
+            continue search;
+          }
+        }
+      }
+      if (excludes) {
+        for (const e of excludes) {
+          if (e in bindings) {
+            continue search;
+          }
+        }
+      }
+
+      results.add(id);
+    }
+
+    return results;
+  }
+
+  protected filterTags(ids: Set<string>, options: QueryOptions): Set<string> {
+    const byTag = this.manager.byTag;
+    const includes = options.tagIncludes;
+    const excludes = options.tagExcludes;
+
+    if (includes) {
+      // we always want to start by filtering includes
+      for (const include of includes) {
+        if (include in byTag) {
+          ids = intersection(ids, byTag[include]);
+          if (!ids.size) {
+            return ids;
+          }
+        }
+      }
+    }
+
+    if (excludes) {
+      for (const exclude of excludes) {
+        if (exclude in byTag) {
+          ids = difference(ids, byTag[exclude]);
+          if (!ids.size) {
+            return ids;
+          }
+        }
+      }
+    }
+
+    return ids;
+  }
+
   public *query(options: QueryOptions): IterableIterator<Container> {
     const cacheKey = JSON.stringify([options.includes, options.excludes]);
     const cacheHit =
@@ -52,81 +148,46 @@ export class QueryManager {
       options.created
     );
 
-    if (cacheHit && !queryMutations) {
+    const queryTags = !!(options.tagIncludes || options.tagExcludes);
+
+    if (cacheHit && !queryMutations && !queryTags) {
       for (const id of cacheHit) {
         yield this.manager.containers[id];
       }
       return;
     }
 
-    // in order of priority:
-    const ids =
-      // specifically-requested ids
-      options.ids ??
-      // ids of type-constrained entities
-      (options.typeID ? this.manager.byContainerType[options.typeID] : null) ??
-      // results from a cache hit
-      cacheHit ??
-      // every entity
-      this.manager.ids;
+    const ids = new Set(
+      (() => {
+        if (options.ids) {
+          return options.ids;
+        }
+        if (options.typeID) {
+          return this.manager.byContainerType[options.typeID];
+        }
+        if (cacheHit) {
+          return cacheHit;
+        }
+        return this.manager.ids;
+      })()
+    );
 
-    const includes = options.includes ?? [];
-    const excludes = options.excludes ?? [];
     let results: Set<string> = cacheHit ?? new Set();
 
     if (!cacheHit) {
-      search: for (const id of ids) {
-        const bindings = this.manager.bindings[id];
-
-        if (!bindings) {
-          continue search;
-        }
-
-        for (const i of includes) {
-          if (!(i in bindings)) {
-            continue search;
-          }
-        }
-
-        for (const e of excludes) {
-          if (e in bindings) {
-            continue search;
-          }
-        }
-
-        results.add(id);
-      }
+      results = this.filterContaineds(ids, options);
     }
 
     if (!options.ids) {
       this.cache[cacheKey] = results;
     }
 
-    if (queryMutations) {
-      const yielded: Set<string> = new Set();
-      for (const key in this.manager.mutations) {
-        const types = options[key as keyof Mutations];
-        if (!types) {
-          continue;
-        }
+    if (queryTags) {
+      results = this.filterTags(ids, options);
+    }
 
-        const containers = this.manager.mutations[key as keyof Mutations];
-        search: for (const id of results) {
-          if (id in containers && !yielded.has(id)) {
-            const mutations = containers[id];
-            if (mutations.size) {
-              const bindings = this.manager.bindings[id];
-              for (const type of types) {
-                if (mutations.has(bindings[type])) {
-                  yielded.add(id);
-                  continue search;
-                }
-              }
-            }
-          }
-        }
-      }
-      results = yielded;
+    if (queryMutations) {
+      results = this.filterMutations(ids, options);
     }
 
     for (const id of results) {

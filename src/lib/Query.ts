@@ -24,6 +24,8 @@ type QueryCondition =
   | 'typeID'
   | 'includes'
   | 'excludes'
+  | 'tagIncludes'
+  | 'tagExcludes'
   | 'changed'
   | 'created'
   | 'removed';
@@ -32,6 +34,8 @@ interface QueryState {
   typeID: string | null;
   includes: Set<string>;
   excludes: Set<string>;
+  tagIncludes: Set<string>;
+  tagExcludes: Set<string>;
   changed: Set<string>;
   created: Set<string>;
   removed: Set<string>;
@@ -47,6 +51,8 @@ export class Query<
     typeID: null,
     includes: new Set(),
     excludes: new Set(),
+    tagIncludes: new Set(),
+    tagExcludes: new Set(),
     changed: new Set(),
     created: new Set(),
     removed: new Set()
@@ -58,6 +64,8 @@ export class Query<
       ids: sort(this.ids),
       includes: sort(this.q.includes),
       excludes: sort(this.q.excludes),
+      tagIncludes: sort(this.q.tagIncludes),
+      tagExcludes: sort(this.q.tagExcludes),
       changed: sort(this.q.changed),
       created: sort(this.q.created),
       removed: sort(this.q.removed)
@@ -108,6 +116,20 @@ export class Query<
     return this;
   }
 
+  public withTag(...tags: string[]): this {
+    for (const tag of tags) {
+      this.q.tagIncludes.add(tag);
+    }
+    return this;
+  }
+
+  public withoutTag(...tags: string[]): this {
+    for (const tag of tags) {
+      this.q.tagExcludes.add(tag);
+    }
+    return this;
+  }
+
   /**
    * List optional contained types.
    * @param items
@@ -151,10 +173,6 @@ export class Query<
     }
   }
 
-  public all(): C[] {
-    return Array.from(this);
-  }
-
   public find(id: string): C | null {
     this.ids.add(id);
     for (const item of this.manager.query(this.query)) {
@@ -163,11 +181,15 @@ export class Query<
     return null;
   }
 
+  public get(): C[] {
+    return Array.from(this);
+  }
+
   public findIn(ids: string[]): C[] {
     for (const id of ids) {
       this.ids.add(id);
     }
-    return this.all();
+    return this.get();
   }
 
   public first(): C | null {

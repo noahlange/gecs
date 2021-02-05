@@ -20,7 +20,13 @@ export class ContainerManager {
   public containeds: Record<string, Contained> = {};
   // ContainerID => ContainedType => ContainedID
   public bindings: Record<string, Record<string, string>> = {};
+  // ContainerID => Tag[]
+  public tags: Record<string, Set<string>> = {};
+
+  // ContainerType => ContainerID[]
   public byContainerType: Record<string, Set<string>> = {};
+  // Tag: ContainerID[]
+  public byTag: Record<string, Set<string>> = {};
 
   // cached immutable bindings
   protected $: Record<string, any> = {};
@@ -88,6 +94,11 @@ export class ContainerManager {
     }
   }
 
+  public getTags(id: string): Set<string> {
+    // do we care about mutations?
+    return this.tags[id];
+  }
+
   /**
    * Destroy an entity and its components, resetting queries if necessary.
    */
@@ -104,21 +115,31 @@ export class ContainerManager {
 
   public create<T extends BaseType<Contained>>(
     Constructor: ContainerClass<T>,
-    data?: PartialBaseType<T>
+    data?: PartialBaseType<T>,
+    tags?: string[]
   ): Container<T> {
     const instance = new Constructor();
-    this.add(instance, data);
+    this.add(instance, data, tags);
     return instance;
   }
 
   public add<T extends BaseType>(
     container: Container<T>,
-    data: PartialBaseType<T> = {}
+    data: PartialBaseType<T> = {},
+    tags?: string[]
   ): this {
     const id = container.id;
     const bindings: Record<string, string> = {};
     const created = new Set<string>();
     const changed = new Set<string>();
+
+    if (tags?.length) {
+      this.tags[id] = new Set(tags);
+      for (const t of tags) {
+        const set = (this.byTag[t] ??= new Set());
+        set.add(id);
+      }
+    }
 
     for (const Ctor of container.items ?? []) {
       if (!Ctor.type) {

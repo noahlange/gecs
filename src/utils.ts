@@ -19,3 +19,23 @@ export function useWith<T extends BaseType, A extends ContainedClass[] = []>(
     }
   } as unknown) as ContainerClass<T & KeyedByType<A>>;
 }
+
+export function intersection<T>(a: Set<T>, b: Set<T>): Set<T> {
+  const res = new Set<T>();
+  for (const item of a) {
+    if (b.has(item)) {
+      res.add(item);
+    }
+  }
+  return res;
+}
+
+export function difference<T>(a: Set<T>, b: Set<T>): Set<T> {
+  const res = new Set<T>();
+  for (const item of a) {
+    if (!b.has(item)) {
+      res.add(item);
+    }
+  }
+  return res;
+}

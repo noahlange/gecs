@@ -25,6 +25,12 @@ describe('prepopulating components', () => {
   expect(item.$.c.value).toEqual(false);
 });
 
+describe('container tags', () => {
+  const em = new Manager();
+  const item = em.create(WithABC, { a: { value: '???' } }, ['awesome']);
+  expect(item.tags).toContain('awesome');
+});
+
 describe('accessing components', () => {
   const em = new Manager();
   const { $, $$ } = em.create(WithABC);

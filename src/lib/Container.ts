@@ -31,6 +31,10 @@ export class Container<T extends BaseType = {}> {
    */
   public readonly id: string = nanoid(8);
 
+  public get tags(): Set<string> {
+    return this.manager.getTags(this.id);
+  }
+
   /**
    * Manager of contained items.
    *

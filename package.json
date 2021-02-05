@@ -36,7 +36,8 @@
     "lint": "eslint 'src/**/*.{js,ts}' --fix ",
     "pretty": "prettier 'src/**/*.{js,ts}' --write",
     "precommit": "npm-run-all build test lint pretty",
-    "benchmark": "node benchmarks > \"coverage/working\"",
-    "compare": "nanobench-compare \"coverage/working\" \"coverage/head\""
+    "benchmarks:working": "node benchmarks > \"coverage/working\"",
+    "benchmarks:master": "node benchmarks > \"coverage/master\"",
+    "compare": "nanobench-compare \"coverage/working\" \"coverage/master\""
   }
 }
