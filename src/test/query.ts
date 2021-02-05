@@ -1,5 +1,4 @@
-import { test, describe, expect, jest } from '@jest/globals';
-import { Contained } from '../lib';
+import { test, describe, expect } from '@jest/globals';
 import { ContainerManager as Manager } from '../managers';
 
 import { A, B } from './helpers/components';
@@ -107,21 +106,6 @@ describe('find()/findIn()', () => {
     const res = em.query.with(B).findIn([a.id, ab.id]);
     expect(res).toHaveLength(1);
     expect(res.includes(ab)).toBeTruthy();
-  });
-});
-
-describe('warnings', () => {
-  const em = new Manager();
-
-  test('should warn about unnamed components', () => {
-    const spy = jest
-      .spyOn(globalThis.console, 'warn')
-      .mockImplementation(() => {});
-
-    em.query.with(Contained);
-    expect(console.warn).toHaveBeenCalled();
-
-    spy.mockRestore();
   });
 });
 

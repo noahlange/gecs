@@ -7,40 +7,76 @@ import { QueryManager } from './QueryManager';
 import { Query } from '../ecs';
 
 export interface Mutations {
-  changed: Record<string, Set<string>>;
-  created: Record<string, Set<string>>;
-  removed: Record<string, Set<string>>;
+  changed: Record<string, string[]>;
+  created: Record<string, string[]>;
+  removed: Record<string, string[]>;
+}
+
+interface ContainerManagerStore {
+  mutations: Mutations;
+  containers: Record<string, Container>;
+  containeds: Record<string, Contained>;
+  bindings: Record<string, Record<string, string>>;
+  tags: Record<string, string[]>;
+}
+
+interface ContainerManagerIndices {
+  byTag: Record<string, string[]>;
+  byContainerType: Record<string, string[]>;
 }
 
 export class ContainerManager {
-  public mutations: Mutations = { changed: {}, created: {}, removed: {} };
-  // ContainerID => Container
-  public containers: Record<string, Container> = {};
-  // ContainedID =>  Contained
-  public containeds: Record<string, Contained> = {};
-  // ContainerID => ContainedType => ContainedID
-  public bindings: Record<string, Record<string, string>> = {};
-  // ContainerID => Tag[]
-  public tags: Record<string, Set<string>> = {};
-
-  public typeCounts: Record<string, number> = {};
-
-  // ContainerType => ContainerID[]
-  public byContainerType: Record<string, string[]> = {};
-  // Tag: ContainerID[]
-  public byTag: Record<string, Set<string>> = {};
-
   // cached immutable bindings
   protected $: Record<string, any> = {};
   // entities to destroy on cleanup()
   protected toDestroy: string[] = [];
+  // query manager
   protected queries: QueryManager;
 
+  protected store: ContainerManagerStore = {
+    mutations: { changed: {}, created: {}, removed: {} },
+    containers: {},
+    containeds: {},
+    bindings: {},
+    tags: {}
+  };
+
+  protected indices: ContainerManagerIndices = {
+    byTag: {},
+    byContainerType: {}
+  };
+
+  protected cleanupEntities(): void {
+    // destroy entities marked for removal
+    for (const id of this.toDestroy) {
+      const container = this.store.containers[id];
+      const type = (container.constructor as ContainerClass).id;
+      const byType = this.byContainerType[type];
+      this.indices.byContainerType[type] = byType.filter(i => i !== id);
+      this.queries.invalidateTypes(Object.keys(this.store.bindings[id]));
+      this.queries.invalidateEntity(id);
+
+      // update indices given changes to bindings
+      // delete corresonding store items
+      delete this.store.containers[id];
+      delete this.store.bindings[id];
+      delete this.$[id];
+    }
+    this.toDestroy = [];
+  }
+
+  protected cleanupMutations(): void {
+    this.mutations.changed = {};
+    this.mutations.created = {};
+    this.mutations.removed = {};
+  }
+
   protected createBindings(id: string, mutable: boolean = false): any {
-    const bindings = this.bindings[id];
+    const bindings = this.store.bindings[id];
     const res = {};
     for (const type in bindings) {
-      const value = this.containeds[bindings[type]];
+      const value = this.store.containeds[bindings[type]];
+      const changed = this.store.mutations.changed;
       if (mutable) {
         Object.defineProperty(res, type, {
           enumerable: true,
@@ -52,7 +88,7 @@ export class ContainerManager {
               value: Contained[K]
             ) => {
               target[key] = value;
-              (this.mutations.changed[id] ??= new Set()).add(target.id);
+              (changed[id] ??= []).push(target.id);
               return true;
             }
           })
@@ -96,22 +132,32 @@ export class ContainerManager {
     }
   }
 
-  public getTags(id: string): Set<string> {
-    // do we care about mutations?
-    return this.tags[id];
+  public addTags(id: string, tags: string[]): void {
+    const allTags = this.store.tags[id];
+    this.store.tags[id] = allTags.concat(
+      tags.filter(t => allTags.indexOf(t) === -1)
+    );
+  }
+
+  public hasTags(id: string, tags: string[]): boolean {
+    const allTags = this.store.tags[id];
+    return tags.every(t => allTags.indexOf(t) > -1);
+  }
+
+  public removeTags(id: string, tags: string[]): void {
+    const allTags = this.store.tags[id];
+    this.store.tags[id] = allTags.filter(t => tags.indexOf(t) === -1);
   }
 
   /**
    * Destroy an entity and its components, resetting queries if necessary.
    */
   public destroy(id: string): void {
-    const bindings = this.bindings[id];
-    const removed = new Set<string>();
-    for (const type in bindings) {
-      removed.add(bindings[type]);
-    }
     delete this.$[id];
-    this.mutations.removed[id] = removed;
+    const bindings = this.bindings[id];
+    this.mutations.removed[id] = Object.keys(bindings).map(
+      type => bindings[type]
+    );
     this.toDestroy.push(id);
   }
 
@@ -130,45 +176,28 @@ export class ContainerManager {
     data: PartialBaseType<T> = {},
     tags?: string[]
   ): this {
-    const id = container.id;
+    const store = this.store;
     const bindings: Record<string, string> = {};
-    const created = new Set<string>();
-    const changed = new Set<string>();
+    const id = container.id;
 
-    if (tags?.length) {
-      this.tags[id] = new Set(tags);
-      for (const t of tags) {
-        const set = (this.byTag[t] ??= new Set());
-        set.add(id);
-      }
-    }
+    const containeds: Contained[] = [];
 
-    for (const Ctor of container.items ?? []) {
-      if (!Ctor.type) {
-        console.warn(
-          `No static type property specified for "${Ctor.name}" belonging to ${
-            container.constructor.name ?? 'unnamed container'
-          }.`
-        );
-        continue;
-      }
-      // invalidate queries
-      this.queries.invalidateType(Ctor.type);
-
+    for (const Ctor of container.items) {
       // create a new class instnace.
       const contained = new Ctor(container, {});
       // classes with defined properties overwrite assigned data.
       Object.assign(contained, data[Ctor.type]);
-
-      // declare the component mutated for queries
-      created.add(contained.id);
-      changed.add(contained.id);
-
       // set the corresponding property on the container bindings.
       bindings[Ctor.type] = contained.id;
-      // add to the manager's data hash
-      this.containeds[contained.id] = contained;
-      this.typeCounts[Ctor.type] = (this.typeCounts[Ctor.type] ?? 0) + 1;
+      containeds.push(contained);
+    }
+
+    // add tags
+    if (tags?.length) {
+      this.tags[id] = tags;
+      for (const t of tags) {
+        (this.byTag[t] ??= []).push(id);
+      }
     }
 
     Object.defineProperty(container, 'manager', {
@@ -177,48 +206,73 @@ export class ContainerManager {
       value: this
     });
 
-    // add container, bindings and id
-    this.containers[id] = container;
-    this.bindings[id] = bindings;
+    // add container, bindings
+    store.containers[id] = container;
+    store.bindings[id] = bindings;
+    // add containeds
+    for (const c of containeds) {
+      store.containeds[c.id] = c;
+    }
 
     // mutations
-    this.mutations.changed[id] = changed;
-    this.mutations.created[id] = created;
+    const ids = containeds.map(c => c.id);
+    store.mutations.changed[id] = ids.slice();
+    store.mutations.created[id] = ids.slice();
 
-    const typeID = (container.constructor as ContainerClass).id;
-    if (typeID) {
-      (this.byContainerType[typeID] ??= []).push(container.id);
+    // flush invalidated queries
+    this.queries.invalidateTypes(container.items.map(i => i.type));
+
+    if ('id' in container.constructor) {
+      (this.indices.byContainerType[
+        (container.constructor as ContainerClass).id
+      ] ??= []).push(container.id);
     }
     return this;
   }
 
   public cleanup(): void {
-    this.mutations.changed = {};
-    this.mutations.created = {};
-    this.mutations.removed = {};
-    // destroy entities marked for removal
-    for (const id of this.toDestroy) {
-      const container = this.containers[id];
-      const type = (container.constructor as ContainerClass).id;
-      for (const key in this.bindings[id]) {
-        // and invalidate their queries
-        this.queries.invalidateType(key);
-      }
-      delete this.containers[id];
-      delete this.bindings[id];
-      delete this.$[id];
-      const byType = this.byContainerType[type];
-      this.byContainerType[type].splice(byType.indexOf(id), 1);
-      this.queries.invalidateEntity(id);
+    this.cleanupMutations();
+    if (this.toDestroy.length) {
+      this.cleanupEntities();
     }
   }
 
-  public get items(): Container[] {
-    return Object.values(this.containers);
+  public get mutations(): Mutations {
+    return this.store.mutations;
   }
 
-  public get ids(): string[] {
-    return Object.keys(this.containers);
+  // ContainerID => Container
+  public get containers(): Record<string, Container> {
+    return this.store.containers;
+  }
+
+  // ContainedID =>  Contained
+  public get containeds(): Record<string, Contained> {
+    return this.store.containeds;
+  }
+
+  // ContainerID => ContainedType => ContainedID
+  public get bindings(): Record<string, Record<string, string>> {
+    return this.store.bindings;
+  }
+
+  // ContainerID => Tag[]
+  public get tags(): Record<string, string[]> {
+    return this.store.tags;
+  }
+
+  // Tag: ContainerID[]
+  public get byTag(): Record<string, string[]> {
+    return this.indices.byTag;
+  }
+
+  // ContainerType => ContainerID[]
+  public get byContainerType(): Record<string, string[]> {
+    return this.indices.byContainerType;
+  }
+
+  public get items(): Container[] {
+    return Object.values(this.store.containers);
   }
 
   public get query(): Query<{}> {
