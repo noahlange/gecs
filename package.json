@@ -32,7 +32,7 @@
   },
   "scripts": {
     "test": "jest --coverage",
-    "build": "tsc",
+    "build": "tsc --project tsconfig.prod.json",
     "lint": "eslint 'src/**/*.{js,ts}' --fix ",
     "pretty": "prettier 'src/**/*.{js,ts}' --write",
     "precommit": "npm-run-all build test lint pretty",
