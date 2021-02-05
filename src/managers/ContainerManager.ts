@@ -72,32 +72,37 @@ export class ContainerManager {
   }
 
   protected createBindings(id: string, mutable: boolean = false): any {
+    const containeds = this.store.containeds;
     const bindings = this.store.bindings[id];
     const res = {};
-    for (const type in bindings) {
-      const value = this.store.containeds[bindings[type]];
-      const changed = this.store.mutations.changed;
-      if (mutable) {
+
+    if (mutable) {
+      for (const type in bindings) {
+        const contained = containeds[bindings[type]];
+        const changed = (this.store.mutations.changed[id] ??= []);
         Object.defineProperty(res, type, {
           enumerable: true,
           configurable: false,
-          value: new Proxy(value, {
+          value: new Proxy(contained, {
             set: <K extends keyof Contained>(
               target: Contained,
               key: K,
               value: Contained[K]
             ) => {
               target[key] = value;
-              (changed[id] ??= []).push(target.id);
+              changed.push(target.id);
               return true;
             }
           })
         });
-      } else {
+      }
+      return res;
+    } else {
+      for (const type in bindings) {
         Object.defineProperty(res, type, {
           enumerable: true,
           configurable: false,
-          value: new Proxy(value, { set: () => false })
+          value: new Proxy(containeds[bindings[type]], { set: () => false })
         });
       }
     }
@@ -166,30 +171,25 @@ export class ContainerManager {
     data?: PartialBaseType<T>,
     tags?: string[]
   ): Container<T> {
-    const instance = new Constructor();
-    this.add(instance, data, tags);
-    return instance;
+    return this.add(new Constructor(), data, tags);
   }
 
   public add<T extends BaseType>(
     container: Container<T>,
     data: PartialBaseType<T> = {},
     tags?: string[]
-  ): this {
-    const store = this.store;
+  ): Container<T> {
     const bindings: Record<string, string> = {};
+    const containeds: Contained[] = [];
     const id = container.id;
 
-    const containeds: Contained[] = [];
-
     for (const Ctor of container.items) {
-      // create a new class instnace.
-      const contained = new Ctor(container, {});
+      // create a new class instance.
       // classes with defined properties overwrite assigned data.
-      Object.assign(contained, data[Ctor.type]);
+      const res = Object.assign(new Ctor(container, {}), data[Ctor.type], {});
       // set the corresponding property on the container bindings.
-      bindings[Ctor.type] = contained.id;
-      containeds.push(contained);
+      bindings[Ctor.type] = res.id;
+      containeds.push(res);
     }
 
     // add tags
@@ -200,25 +200,20 @@ export class ContainerManager {
       }
     }
 
-    Object.defineProperty(container, 'manager', {
-      configurable: false,
-      enumerable: false,
-      value: this
-    });
-
     // add container, bindings
-    store.containers[id] = container;
-    store.bindings[id] = bindings;
+    this.store.containers[id] = container;
+    this.store.bindings[id] = bindings;
+
     // add containeds
+    const ids: string[] = [];
     for (const c of containeds) {
-      store.containeds[c.id] = c;
+      this.store.containeds[c.id] = c;
+      ids.push(c.id);
     }
 
     // mutations
-    const ids = containeds.map(c => c.id);
-    store.mutations.changed[id] = ids.slice();
-    store.mutations.created[id] = ids.slice();
-
+    this.store.mutations.changed[id] = ids;
+    this.store.mutations.created[id] = ids;
     // flush invalidated queries
     this.queries.invalidateTypes(container.items.map(i => i.type));
 
@@ -227,7 +222,9 @@ export class ContainerManager {
         (container.constructor as ContainerClass).id
       ] ??= []).push(container.id);
     }
-    return this;
+    // @ts-ignore
+    container.manager = this;
+    return container;
   }
 
   public cleanup(): void {

@@ -36,7 +36,7 @@ export class QueryManager {
    */
   public invalidateTypes(types: string[]): void {
     const toClear = Object.keys(this.cache).filter(q =>
-      types.some(t => t.includes(q))
+      types.some(t => q.includes(t))
     );
     for (const q of toClear) {
       delete this.cache[q];
@@ -56,12 +56,12 @@ export class QueryManager {
       const containers = allMutations[key as keyof Mutations];
       search: for (const id of ids) {
         if (id in containers && results.indexOf(id) === -1) {
-          const mutations = containers[id];
+          const mutations = containers[id] ?? [];
           if (mutations.length) {
             const bindings = allBindings[id];
             // if anything comes back changed, we'll bail and call it good
             for (const type of types) {
-              if (mutations.includes(bindings[type])) {
+              if (mutations.indexOf(bindings[type]) > -1) {
                 results.push(id);
                 continue search;
               }
@@ -167,8 +167,8 @@ export class QueryManager {
 
     if (!cachedItems) {
       ids = this.filterContaineds(ids, options);
-      if (cacheKey && !options.ids.length) {
-        this.cache[cacheKey] = ids;
+      if (!options.ids.length && cacheKey) {
+        this.cache[cacheKey] = ids.slice();
       }
     }
 
