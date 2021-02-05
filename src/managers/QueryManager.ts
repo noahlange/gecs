@@ -146,22 +146,24 @@ export class QueryManager {
     const cacheHit = cacheKey ? this.cache[cacheKey] : null;
 
     const queryMutations = !!(
-      options.changed ||
-      options.removed ||
-      options.created
+      options.changed.length ||
+      options.removed.length ||
+      options.created.length
     );
 
-    const queryTags = !!(options.tagIncludes || options.tagExcludes);
+    const queryTags = !!(
+      options.tagIncludes.length || options.tagExcludes.length
+    );
 
-    let ids: string[] =
-      options.ids ??
-      (options.typeID ? this.manager.byContainerType[options.typeID] : null) ??
-      this.manager.ids;
+    let ids: string[] = options.ids?.length
+      ? options.ids
+      : (options.typeID
+          ? this.manager.byContainerType[options.typeID]
+          : null) ?? this.manager.ids;
 
     if (!cacheHit) {
-      options.includes = options.includes && this.sortTypes(options.includes);
-      options.excludes =
-        options.excludes && this.sortTypes(options.excludes, true);
+      options.includes = this.sortTypes(options.includes);
+      options.excludes = this.sortTypes(options.excludes, true);
 
       ids = this.filterContaineds(ids, options);
       if (!options.ids && cacheKey) {
@@ -172,6 +174,7 @@ export class QueryManager {
     if (queryTags) {
       ids = this.filterTags(ids, options);
     }
+
     if (queryMutations) {
       ids = this.filterMutations(ids, options);
     }
