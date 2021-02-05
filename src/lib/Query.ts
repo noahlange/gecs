@@ -24,17 +24,21 @@ type QueryCondition =
   | 'typeID'
   | 'includes'
   | 'excludes'
+  | 'tagIncludes'
+  | 'tagExcludes'
   | 'changed'
   | 'created'
   | 'removed';
 
 interface QueryState {
   typeID: string | null;
-  includes: Set<string>;
-  excludes: Set<string>;
-  changed: Set<string>;
-  created: Set<string>;
-  removed: Set<string>;
+  includes: string[];
+  excludes: string[];
+  tagIncludes: string[];
+  tagExcludes: string[];
+  changed: string[];
+  created: string[];
+  removed: string[];
 }
 export class Query<
   T extends BaseType = {},
@@ -45,22 +49,26 @@ export class Query<
   protected ids: Set<string> = new Set();
   protected q: QueryState = {
     typeID: null,
-    includes: new Set(),
-    excludes: new Set(),
-    changed: new Set(),
-    created: new Set(),
-    removed: new Set()
+    includes: [],
+    excludes: [],
+    tagIncludes: [],
+    tagExcludes: [],
+    changed: [],
+    created: [],
+    removed: []
   };
 
   protected get query(): QueryOptions {
     return {
       typeID: this.q.typeID ?? null,
-      ids: sort(this.ids),
-      includes: sort(this.q.includes),
-      excludes: sort(this.q.excludes),
-      changed: sort(this.q.changed),
-      created: sort(this.q.created),
-      removed: sort(this.q.removed)
+      ids: Array.from(this.ids),
+      includes: this.q.includes,
+      excludes: this.q.excludes,
+      tagIncludes: this.q.tagIncludes,
+      tagExcludes: this.q.tagExcludes,
+      changed: this.q.changed,
+      created: this.q.created,
+      removed: this.q.removed
     };
   }
 
@@ -68,13 +76,17 @@ export class Query<
     Constructors: ContainedClass[],
     conditions: QueryCondition[]
   ): void {
-    for (const { type, name } of Constructors) {
+    const sorted = Constructors.sort((a, b) => a.type.localeCompare(b.type));
+    for (const { type, name } of sorted) {
       if (!type) {
         console.warn(`Attempted to query unnamed contained type "${name}."`);
       } else {
         for (const condition of conditions) {
           if (condition !== 'typeID') {
-            this.q[condition] = this.q[condition].add(type);
+            const value = this.q[condition];
+            if (!value.includes(type)) {
+              value?.push(type);
+            }
           }
         }
       }
@@ -105,6 +117,20 @@ export class Query<
    */
   public without(...items: ComponentClass[]): this {
     this.add(items, ['excludes']);
+    return this;
+  }
+
+  public withTag(...tags: string[]): this {
+    for (const tag of tags) {
+      this.q.tagIncludes.push(tag);
+    }
+    return this;
+  }
+
+  public withoutTag(...tags: string[]): this {
+    for (const tag of tags) {
+      this.q.tagExcludes.push(tag);
+    }
     return this;
   }
 
@@ -151,23 +177,20 @@ export class Query<
     }
   }
 
-  public all(): C[] {
-    return Array.from(this);
-  }
-
   public find(id: string): C | null {
     this.ids.add(id);
-    for (const item of this.manager.query(this.query)) {
-      return item as C;
-    }
-    return null;
+    return (this.manager.query(this.query).shift() as C) ?? null;
+  }
+
+  public get(): C[] {
+    return this.manager.query(this.query) as C[];
   }
 
   public findIn(ids: string[]): C[] {
     for (const id of ids) {
       this.ids.add(id);
     }
-    return this.all();
+    return this.get();
   }
 
   public first(): C | null {

@@ -22,7 +22,8 @@ function setup(create, components) {
 
 function setupChanged(create, components) {
   const em = setup(create, components);
-  const entities = em.query.all();
+
+  const entities = em.query.get();
   for (let i = 0; i < entities.length; i++) {
     const { $$ } = entities[i];
     $$.test1.a = i;

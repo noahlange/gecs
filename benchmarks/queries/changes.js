@@ -7,21 +7,21 @@ for (const count of [1, 10, 50, 100]) {
   bench(`query changes in ${count}k entities (1 component)`, b => {
     const em = setup(count, 1);
     b.start();
-    em.query.changed(Test3).all();
+    em.query.changed(Test3).get();
     b.end();
   });
 
   bench(`query changes in ${count}k entities (2 components)`, b => {
     const em = setup(count, 2);
     b.start();
-    em.query.changed(Test1, Test2).all();
+    em.query.changed(Test1, Test2).get();
     b.end();
   });
 
   bench(`query changes in ${count}k entities (3 components)`, b => {
     const em = setup(count, 3);
     b.start();
-    em.query.changed(Test1, Test2, Test3).all();
+    em.query.changed(Test1, Test2, Test3).get();
     b.end();
   });
 }
