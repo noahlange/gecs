@@ -178,7 +178,7 @@ They're pretty minimal and naïve, otherwise. Access the world's `.query` getter
 
 |                | ecsy | ape-ecs | tecs  |
 | :------------- | :--: | :-----: | :---: |
-| Create 50k, 2x | 80ms |  300ms  | 375ms |
+| Create 50k, 2x | 80ms |  300ms  | 350ms |
 | Modify 50k, 2x | 6ms  |   7ms   | 150ms |
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  

@@ -4,6 +4,11 @@ import type { ContainerManager } from '../managers/ContainerManager';
 import { nanoid } from 'nanoid/non-secure';
 import { useWith } from '../utils';
 
+interface ContainerTags {
+  has: (...tags: string[]) => void;
+  add: (...tags: string[]) => void;
+  remove: (...tags: string[]) => void;
+}
 export interface ContainerClass<T extends BaseType = {}> {
   id: string;
   with<A extends WithStaticType[], T extends BaseType = {}>(
@@ -31,8 +36,13 @@ export class Container<T extends BaseType = {}> {
    */
   public readonly id: string = nanoid(8);
 
-  public get tags(): Set<string> {
-    return this.manager.getTags(this.id);
+  // @todo - figure out how to handle tag modifications
+  public get tags(): ContainerTags {
+    return {
+      add: (...tags: string[]) => this.manager.addTags(this.id, tags),
+      has: (...tags: string[]) => this.manager.hasTags(this.id, tags),
+      remove: (...tags: string[]) => this.manager.removeTags(this.id, tags)
+    };
   }
 
   /**

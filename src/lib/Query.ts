@@ -14,22 +14,6 @@ type QueryType<T, A extends WithStaticType[]> = Query<
   U.Merge<T & PartialByType<A>>
 >;
 
-function sort(set: Set<string>): string[] | null {
-  return set.size
-    ? Array.from(set.values()).sort((a, b) => a.localeCompare(b))
-    : null;
-}
-
-type QueryCondition =
-  | 'typeID'
-  | 'includes'
-  | 'excludes'
-  | 'tagIncludes'
-  | 'tagExcludes'
-  | 'changed'
-  | 'created'
-  | 'removed';
-
 interface QueryState {
   typeID: string | null;
   includes: string[];
@@ -72,27 +56,6 @@ export class Query<
     };
   }
 
-  protected add(
-    Constructors: ContainedClass[],
-    conditions: QueryCondition[]
-  ): void {
-    const sorted = Constructors.sort((a, b) => a.type.localeCompare(b.type));
-    for (const { type, name } of sorted) {
-      if (!type) {
-        console.warn(`Attempted to query unnamed contained type "${name}."`);
-      } else {
-        for (const condition of conditions) {
-          if (condition !== 'typeID') {
-            const value = this.q[condition];
-            if (!value.includes(type)) {
-              value?.push(type);
-            }
-          }
-        }
-      }
-    }
-  }
-
   public ofType<C extends ContainerClass>(
     ContainerClass: C
   ): Query<{}, InstanceType<C>> {
@@ -107,7 +70,9 @@ export class Query<
   public with<A extends ContainedClass[]>(
     ...items: A
   ): Query<U.Merge<T & KeyedByType<A>>> {
-    this.add(items, ['includes']);
+    for (const { type } of items) {
+      this.q.includes.push(type);
+    }
     return (this as unknown) as QueryType<T, A>;
   }
 
@@ -116,7 +81,9 @@ export class Query<
    * @param items
    */
   public without(...items: ComponentClass[]): this {
-    this.add(items, ['excludes']);
+    for (const { type } of items) {
+      this.q.excludes.push(type);
+    }
     return this;
   }
 
@@ -155,7 +122,10 @@ export class Query<
   public changed<A extends ContainedClass[]>(
     ...items: A
   ): Query<U.Merge<T & KeyedByType<A>>> {
-    this.add(items, ['includes', 'changed']);
+    for (const { type } of items) {
+      this.q.includes.push(type);
+      this.q.changed.push(type);
+    }
     return (this as unknown) as QueryType<T, A>;
   }
 
@@ -166,7 +136,10 @@ export class Query<
   public created<A extends ContainedClass[]>(
     ...items: A
   ): Query<U.Merge<T & KeyedByType<A>>> {
-    this.add(items, ['includes', 'created']);
+    for (const { type } of items) {
+      this.q.includes.push(type);
+      this.q.created.push(type);
+    }
     return (this as unknown) as QueryType<T, A>;
   }
 
@@ -179,7 +152,12 @@ export class Query<
 
   public find(id: string): C | null {
     this.ids.add(id);
-    return (this.manager.query(this.query).shift() as C) ?? null;
+    for (const item of this.manager.query(this.query)) {
+      if (item) {
+        return item as C;
+      }
+    }
+    return null;
   }
 
   public get(): C[] {
