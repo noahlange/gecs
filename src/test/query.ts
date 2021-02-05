@@ -135,12 +135,14 @@ describe('mutations', () => {
 
   test('changed() should return modified entities', () => {
     const em = new Manager();
-    const entity1 = em.create(WithAB);
-    em.create(WithAB);
+    const a = em.create(WithA);
+
     em.cleanup();
 
-    entity1.$$.a.value = '123';
-    expect(em.query.changed(A, B).first()).toBe(entity1);
+    a.$$.a.value = '123';
+
+    expect(em.query.changed(A, B).first()).toBeNull();
+    expect(em.query.changed(A).first()).toBe(a);
   });
 
   test('mutation sets are cleared on cleanup()', () => {

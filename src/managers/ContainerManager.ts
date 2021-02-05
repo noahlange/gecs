@@ -23,8 +23,10 @@ export class ContainerManager {
   // ContainerID => Tag[]
   public tags: Record<string, Set<string>> = {};
 
+  public typeCounts: Record<string, number> = {};
+
   // ContainerType => ContainerID[]
-  public byContainerType: Record<string, Set<string>> = {};
+  public byContainerType: Record<string, string[]> = {};
   // Tag: ContainerID[]
   public byTag: Record<string, Set<string>> = {};
 
@@ -166,6 +168,7 @@ export class ContainerManager {
       bindings[Ctor.type] = contained.id;
       // add to the manager's data hash
       this.containeds[contained.id] = contained;
+      this.typeCounts[Ctor.type] = (this.typeCounts[Ctor.type] ?? 0) + 1;
     }
 
     Object.defineProperty(container, 'manager', {
@@ -184,7 +187,7 @@ export class ContainerManager {
 
     const typeID = (container.constructor as ContainerClass).id;
     if (typeID) {
-      (this.byContainerType[typeID] ??= new Set()).add(container.id);
+      (this.byContainerType[typeID] ??= []).push(container.id);
     }
     return this;
   }
@@ -204,7 +207,8 @@ export class ContainerManager {
       delete this.containers[id];
       delete this.bindings[id];
       delete this.$[id];
-      this.byContainerType[type].delete(id);
+      const byType = this.byContainerType[type];
+      this.byContainerType[type].splice(byType.indexOf(id), 1);
       this.queries.invalidateEntity(id);
     }
   }

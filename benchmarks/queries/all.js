@@ -1,5 +1,5 @@
 const bench = require('nanobench');
-const { Entity } = require('../../lib');
+const { Entity, Manager } = require('../../lib');
 const { Test1, Test2, Test3 } = require('../helpers/components');
 const { setup } = require('../helpers/queries');
 
