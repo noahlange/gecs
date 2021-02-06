@@ -1,10 +1,11 @@
-import type { BaseType, KeyedByType } from '../../types';
+import type { BaseType, KeyedByType, PartialBaseType } from '../../types';
 import type { Component, ComponentClass } from '../contained/Component';
 
 import { Container } from '../../lib/Container';
 import { useWith } from '../../utils';
 
 export interface EntityClass<T extends BaseType<Component>> {
+  data?: PartialBaseType<T>;
   id: string;
   with<T, A extends ComponentClass[]>(
     ...components: A

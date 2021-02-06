@@ -1,4 +1,10 @@
-import type { BaseType, KeyedByType, WithStaticType, Frozen } from '../types';
+import type {
+  BaseType,
+  KeyedByType,
+  WithStaticType,
+  Frozen,
+  PartialBaseType
+} from '../types';
 import type { ContainerManager } from '../managers/ContainerManager';
 
 import { nanoid } from 'nanoid/non-secure';
@@ -10,6 +16,7 @@ interface ContainerTags {
   remove: (...tags: string[]) => void;
 }
 export interface ContainerClass<T extends BaseType = {}> {
+  data?: PartialBaseType<T>;
   id: string;
   with<A extends WithStaticType[], T extends BaseType = {}>(
     ...items: A

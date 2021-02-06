@@ -179,6 +179,7 @@ export class ContainerManager {
     data: PartialBaseType<T> = {},
     tags?: string[]
   ): Container<T> {
+    const ContainerCtor = container.constructor as ContainerClass;
     const bindings: Record<string, string> = {};
     const containeds: Contained[] = [];
     const id = container.id;
@@ -186,7 +187,11 @@ export class ContainerManager {
     for (const Ctor of container.items) {
       // create a new class instance.
       // classes with defined properties overwrite assigned data.
-      const res = Object.assign(new Ctor(container, {}), data[Ctor.type], {});
+      const res = Object.assign(
+        new Ctor(container, {}),
+        ContainerCtor.data ?? {},
+        data[Ctor.type] ?? {}
+      );
       // set the corresponding property on the container bindings.
       bindings[Ctor.type] = res.id;
       containeds.push(res);
@@ -217,10 +222,10 @@ export class ContainerManager {
     // flush invalidated queries
     this.queries.invalidateTypes(container.items.map(i => i.type));
 
-    if ('id' in container.constructor) {
-      (this.indices.byContainerType[
-        (container.constructor as ContainerClass).id
-      ] ??= []).push(container.id);
+    if ('id' in ContainerCtor) {
+      (this.indices.byContainerType[ContainerCtor.id] ??= []).push(
+        container.id
+      );
     }
     // @ts-ignore
     container.manager = this;
