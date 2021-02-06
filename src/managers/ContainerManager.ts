@@ -4,8 +4,7 @@ import type { ContainerClass } from '../lib/Container';
 import type { Container } from '../lib/Container';
 
 import { QueryManager } from './QueryManager';
-import { Query } from '../ecs';
-import { QueryBuilder } from '../lib/QueryBuilder';
+import { Query } from '../lib/Query';
 
 export enum Mutation {
   CHANGED = 'changed',
@@ -223,15 +222,17 @@ export class ContainerManager {
     this.store.mutations.changed[id] = ids;
     this.store.mutations.created[id] = ids;
     // flush invalidated queries
-    this.queries.invalidateTypes(container.items.map(i => i.type));
+    // this.queries.invalidateTypes(container.items.map(i => i.type));
 
     if ('id' in ContainerCtor) {
       (this.indices.byContainerType[ContainerCtor.id] ??= []).push(
         container.id
       );
     }
+
     // @ts-ignore
     container.manager = this;
+    // Object.defineProperty(container, 'manager', { get: () => this });
     return container;
   }
 
@@ -280,12 +281,8 @@ export class ContainerManager {
     return Object.values(this.store.containers);
   }
 
-  public get oldQuery(): Query<{}> {
-    return new Query<{}>(this.queries);
-  }
-
-  public get query(): QueryBuilder {
-    return new QueryBuilder(this.queries);
+  public get query(): Query {
+    return new Query(this.queries);
   }
 
   public constructor() {

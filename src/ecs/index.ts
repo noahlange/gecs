@@ -6,4 +6,4 @@ export { Component } from './contained/Component';
 export { Entity } from './container/Entity';
 export { System } from './contained/System';
 export { World } from './container/World';
-export { Query } from '../lib/Query';
+export { Query as Query } from '../lib/Query';
