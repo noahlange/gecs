@@ -11,6 +11,7 @@ import { nanoid } from 'nanoid/non-secure';
 import { useWith } from '../utils';
 
 interface ContainerTags {
+  all: () => readonly string[];
   has: (...tags: string[]) => void;
   add: (...tags: string[]) => void;
   remove: (...tags: string[]) => void;
@@ -46,6 +47,7 @@ export class Container<T extends BaseType = {}> {
   // @todo - figure out how to handle tag modifications
   public get tags(): ContainerTags {
     return {
+      all: () => this.manager.tags[this.id].slice(0),
       add: (...tags: string[]) => this.manager.addTags(this.id, tags),
       has: (...tags: string[]) => this.manager.hasTags(this.id, tags),
       remove: (...tags: string[]) => this.manager.removeTags(this.id, tags)

@@ -32,6 +32,7 @@
   },
   "scripts": {
     "test": "jest --coverage",
+    "start": "tsc --watch",
     "build": "tsc --project tsconfig.prod.json",
     "lint": "eslint 'src/**/*.{js,ts}' --fix ",
     "pretty": "prettier 'src/**/*.{js,ts}' --write",

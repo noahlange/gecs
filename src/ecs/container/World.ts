@@ -27,7 +27,7 @@ export class World<T extends BaseType<System> = {}> extends Container<T> {
   }
 
   public get query(): Query<{}> {
-    return this.entities.query;
+    return this.entities.oldQuery;
   }
 
   /**

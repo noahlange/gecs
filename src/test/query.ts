@@ -15,13 +15,13 @@ describe('tag queries', () => {
   }
 
   test('withTags() includes', () => {
-    expect(em.query.withTag('nice').get()).toHaveLength(15);
-    expect(em.query.withTag('super-duper-nice').get()).toHaveLength(5);
+    expect(em.oldQuery.withTag('nice').get()).toHaveLength(15);
+    expect(em.oldQuery.withTag('super-duper-nice').get()).toHaveLength(5);
   });
 
   test('withoutTags() excludes', () => {
-    expect(em.query.withoutTag('super-nice').get()).toHaveLength(5);
-    expect(em.query.withoutTag('nice').get()).toHaveLength(0);
+    expect(em.oldQuery.withoutTag('super-nice').get()).toHaveLength(5);
+    expect(em.oldQuery.withoutTag('nice').get()).toHaveLength(0);
   });
 });
 
@@ -36,19 +36,19 @@ describe('container queries', () => {
   }
 
   test('return with() specified containeds', () => {
-    const hasA = em.query.with(A).get();
-    const hasB = em.query.with(B).get();
+    const hasA = em.oldQuery.with(A).get();
+    const hasB = em.oldQuery.with(B).get();
     expect(hasA).toHaveLength(count * 2);
     expect(hasB).toHaveLength(count * 2);
   });
 
   test('return without() specified containers', () => {
-    expect(em.query.without(A).get()).toHaveLength(count);
-    expect(em.query.without(A, B).get()).toHaveLength(0);
+    expect(em.oldQuery.without(A).get()).toHaveLength(count);
+    expect(em.oldQuery.without(A, B).get()).toHaveLength(0);
   });
 
   test('return with()/without() specified containers', () => {
-    expect(em.query.with(A).without(B).get()).toHaveLength(count);
+    expect(em.oldQuery.with(A).without(B).get()).toHaveLength(count);
   });
 });
 
@@ -60,7 +60,7 @@ describe('ofType()', () => {
   }
 
   test('should return entities of a given type', () => {
-    const results = em.query.ofType(WithA).get();
+    const results = em.oldQuery.ofType(WithA).get();
     expect(results).toHaveLength(5);
     for (const res of results) {
       expect(res).toBeInstanceOf(WithA);
@@ -68,7 +68,7 @@ describe('ofType()', () => {
   });
 
   test('...including composed constructors', () => {
-    const results = em.query.ofType(cWithA).get();
+    const results = em.oldQuery.ofType(cWithA).get();
     expect(results).toHaveLength(5);
     for (const res of results) {
       expect(res).toBeInstanceOf(cWithA);
@@ -84,7 +84,7 @@ describe('first()', () => {
   em.create(WithAB);
 
   test('first() should return a single entity', () => {
-    expect(em.query.with(A).first()).toBe(a);
+    expect(em.oldQuery.with(A).first()).toBe(a);
   });
 });
 
@@ -95,15 +95,15 @@ describe('find()/findIn()', () => {
   const ab = em.create(WithAB);
 
   test('find() should return a single entity by id', () => {
-    expect(em.query.with(A).find(a.id)).toBe(a);
+    expect(em.oldQuery.with(A).find(a.id)).toBe(a);
   });
 
   test('find() should return null if no match is found', () => {
-    expect(em.query.with(A).find(b.id)).toBeNull();
+    expect(em.oldQuery.with(A).find(b.id)).toBeNull();
   });
 
   test('findIn() should return an array of entries', () => {
-    const res = em.query.with(B).findIn([a.id, ab.id]);
+    const res = em.oldQuery.with(B).findIn([a.id, ab.id]);
     expect(res).toHaveLength(1);
     expect(res.includes(ab)).toBeTruthy();
   });
@@ -113,7 +113,7 @@ describe('mutations', () => {
   test('created() should return newly-created entities', () => {
     const em = new Manager();
     const entity1 = em.create(WithAB);
-    const res = em.query.created(A, B).first();
+    const res = em.oldQuery.created(A, B).first();
     expect(res).toEqual(entity1);
   });
 
@@ -125,16 +125,16 @@ describe('mutations', () => {
 
     a.$$.a.value = '123';
 
-    expect(em.query.changed(A, B).first()).toBeNull();
-    expect(em.query.changed(A).first()).toBe(a);
+    expect(em.oldQuery.changed(A, B).first()).toBeNull();
+    expect(em.oldQuery.changed(A).first()).toBe(a);
   });
 
   test('mutation sets are cleared on cleanup()', () => {
     const em = new Manager();
     em.create(WithAB);
 
-    const qCreate = em.query.created(A, B);
-    const qChange = em.query.changed(A, B);
+    const qCreate = em.oldQuery.created(A, B);
+    const qChange = em.oldQuery.changed(A, B);
 
     expect(qChange.get()).toHaveLength(1);
     expect(qCreate.get()).toHaveLength(1);

@@ -1,6 +1,26 @@
 import type { Container } from '../lib/Container';
-import { difference, intersection } from '../utils';
-import type { ContainerManager, Mutations } from './ContainerManager';
+import type { ContainerManager } from './ContainerManager';
+import { Mutation } from './ContainerManager';
+
+export enum QueryType {
+  ID = 1,
+  CONTAINED = 2,
+  CONTAINER = 3,
+  TAG = 4
+}
+
+export interface QueryState {
+  type: QueryType | null;
+  items: string[];
+  tag: QueryTag;
+  mutation: Mutation | null;
+}
+
+export enum QueryTag {
+  AND = 'and',
+  OR = 'or',
+  NONE = 'none'
+}
 
 export interface QueryOptions {
   typeID: string | null;
@@ -13,12 +33,201 @@ export interface QueryOptions {
   changed: string[];
   removed: string[];
 }
+
+interface O {
+  includesAny: any[];
+  includesAll: any[];
+  excludes: any[];
+}
+
+const DEFAULT = {
+  includesAny: [],
+  includesAll: [],
+  excludes: []
+};
 /**
  * Responsible for resolving each query into a series of IDs.
  */
 export class QueryManager {
   protected cache: Record<string, string[]> = {};
   protected manager: ContainerManager;
+
+  protected filterIDs(
+    ids: string[],
+    options: { includes: string[]; excludes: string[] }
+  ): string[] {
+    if (options.includes.length || options.excludes.length) {
+      const results = [];
+      for (const id of options.includes) {
+        if (ids.includes(id) && !options.excludes.includes(id)) {
+          results.push(id);
+        }
+      }
+      return results;
+    } else {
+      return ids;
+    }
+  }
+
+  protected filterTags(ids: string[], options: O): string[] {
+    const results: string[] = [];
+
+    search: for (const id of ids) {
+      const tags = this.manager.tags[id] ?? [];
+
+      for (const e of options.excludes) {
+        if (tags.includes(e)) {
+          continue search;
+        }
+      }
+
+      for (const i of options.includesAll) {
+        if (!tags.includes(i)) {
+          continue search;
+        }
+      }
+
+      any: for (const i of options.includesAny) {
+        if (tags.includes(i)) {
+          break any;
+        }
+        continue search;
+      }
+
+      results.push(id);
+    }
+
+    return results;
+  }
+
+  protected filterContaineds(ids: string[], options: O): string[] {
+    const results: string[] = [];
+    const allBindings = this.manager.bindings;
+    search: for (const id of ids) {
+      if (!(id in allBindings)) {
+        continue search;
+      }
+      const bindings = allBindings[id];
+      for (const e of options.excludes) {
+        if (e in bindings) {
+          continue search;
+        }
+      }
+      for (const i of options.includesAll) {
+        if (!(i in bindings)) {
+          continue search;
+        }
+      }
+      any: for (const i of options.includesAny) {
+        if (i in bindings) {
+          break any;
+        }
+        continue search;
+      }
+      results.push(id);
+    }
+    return results;
+  }
+
+  protected filterMutations(
+    ids: string[],
+    mutation: Mutation,
+    options: O
+  ): string[] {
+    const results: string[] = [];
+    const allBindings = this.manager.bindings;
+    const containers = this.manager.mutations[mutation];
+    search: for (const id of ids) {
+      const mutations = containers[id] ?? [];
+      const bindings = allBindings[id];
+      const includesAll = options.includesAll.map(t => bindings[t]);
+      const includesAny = options.includesAny.map(t => bindings[t]);
+      const excludes = options.excludes.map(t => bindings[t]);
+      for (const e of excludes) {
+        if (mutations.includes(e)) {
+          continue search;
+        }
+      }
+      for (const i of includesAll) {
+        if (!mutations.includes(i)) {
+          continue search;
+        }
+      }
+      any: for (const i of includesAny) {
+        if (mutations.includes(i)) {
+          break any;
+        }
+        continue search;
+      }
+      results.push(id);
+    }
+    return results;
+  }
+
+  public *execute(criteria: QueryState[]): IterableIterator<Container> {
+    const idInclude: string[] = [];
+    const idExclude: string[] = [];
+    const mutations = {
+      created: { includes: [], excludes: [] },
+      changed: { includes: [], excludes: [] },
+      removed: { includes: [], excludes: [] }
+    };
+
+    let ids = Object.keys(this.manager.containers);
+
+    for (const step of criteria) {
+      if (!step.type) {
+        continue;
+      }
+
+      const options: Partial<Record<QueryType, O>> = {};
+
+      switch (step.type) {
+        case QueryType.ID: {
+          if (step.tag === QueryTag.NONE) {
+            idExclude.push(...step.items);
+          } else {
+            idInclude.push(...step.items);
+          }
+          break;
+        }
+        case QueryType.CONTAINER: {
+          ids = step.items.reduce((a: string[], b) => {
+            return a.concat(this.manager.byContainerType[b]);
+          }, []);
+
+          mutations.changed;
+
+          break;
+        }
+        case QueryType.TAG:
+        case QueryType.CONTAINED: {
+          const o: O = { includesAny: [], excludes: [], includesAll: [] };
+          if (step.tag === QueryTag.AND) {
+            o.includesAll.push(...step.items);
+          }
+          if (step.tag === QueryTag.OR) {
+            o.includesAny.push(...step.items);
+          }
+          if (step.tag === QueryTag.NONE) {
+            o.excludes.push(...step.items);
+          }
+          options[step.type] = o;
+          break;
+        }
+      }
+
+      ids = this.filterIDs(ids, { includes: idInclude, excludes: idExclude });
+      ids = this.filterContaineds(ids, options[QueryType.CONTAINED] ?? DEFAULT);
+      ids = this.filterTags(ids, options[QueryType.TAG] ?? DEFAULT);
+    }
+
+    for (const id of ids) {
+      yield this.manager.containers[id];
+    }
+
+    return;
+  }
 
   /**
    * Remove a specific ID from the queries in which it appears.
@@ -41,91 +250,6 @@ export class QueryManager {
     for (const q of toClear) {
       delete this.cache[q];
     }
-  }
-
-  protected filterMutations(ids: string[], options: QueryOptions): string[] {
-    const allMutations = this.manager.mutations;
-    const allBindings = this.manager.bindings;
-    const results: string[] = [];
-
-    mutations: for (const key in allMutations) {
-      const types = options[key as keyof Mutations];
-      if (!types.length) {
-        continue mutations;
-      }
-      const containers = allMutations[key as keyof Mutations];
-      search: for (const id of ids) {
-        if (id in containers && results.indexOf(id) === -1) {
-          const mutations = containers[id] ?? [];
-          if (mutations.length) {
-            const bindings = allBindings[id];
-            // if anything comes back changed, we'll bail and call it good
-            for (const type of types) {
-              if (mutations.indexOf(bindings[type]) > -1) {
-                results.push(id);
-                continue search;
-              }
-            }
-          }
-        }
-      }
-    }
-    return results;
-  }
-
-  protected filterContaineds(ids: string[], options: QueryOptions): string[] {
-    const results: string[] = [];
-    const allBindings = this.manager.bindings;
-
-    search: for (const id of ids) {
-      if (!(id in allBindings)) {
-        continue search;
-      }
-
-      const bindings = allBindings[id];
-
-      for (const i of options.includes) {
-        if (!(i in bindings)) {
-          continue search;
-        }
-      }
-
-      for (const e of options.excludes) {
-        if (e in bindings) {
-          continue search;
-        }
-      }
-
-      results.push(id);
-    }
-
-    return results;
-  }
-
-  protected filterTags(ids: string[], options: QueryOptions): string[] {
-    let res: string[] = [];
-    const byTag = this.manager.byTag;
-
-    // we always want to start by filtering includes
-    for (const include of options.tagIncludes) {
-      if (include in byTag) {
-        res = intersection(ids, byTag[include]);
-        if (!res.length) {
-          return Array.from(res);
-        }
-      }
-    }
-
-    for (const exclude of options.tagExcludes) {
-      if (exclude in byTag) {
-        res = difference(ids, byTag[exclude]);
-        if (!res.length) {
-          return Array.from(res);
-        }
-      }
-    }
-
-    return Array.from(res);
   }
 
   public getCacheKey(options: QueryOptions): string | null {
@@ -166,17 +290,32 @@ export class QueryManager {
     }
 
     if (!cachedItems) {
-      ids = this.filterContaineds(ids, options);
+      ids = this.filterContaineds(ids, {
+        excludes: options.excludes,
+        includesAll: options.includes,
+        includesAny: []
+      });
       if (!options.ids.length && cacheKey) {
         this.cache[cacheKey] = ids.slice();
       }
     }
 
     if (queryTags) {
-      ids = this.filterTags(ids, options);
+      ids = this.filterTags(ids, {
+        excludes: options.tagExcludes,
+        includesAll: options.tagIncludes,
+        includesAny: []
+      });
     }
+
     if (queryMutations) {
-      ids = this.filterMutations(ids, options);
+      for (const m of [Mutation.CHANGED, Mutation.REMOVED, Mutation.CREATED]) {
+        ids = this.filterMutations(ids, m, {
+          includesAny: options[m],
+          includesAll: [],
+          excludes: []
+        });
+      }
     }
 
     return ids.map(id => containers[id]);

@@ -5,12 +5,15 @@ import type { Container } from '../lib/Container';
 
 import { QueryManager } from './QueryManager';
 import { Query } from '../ecs';
+import { QueryBuilder } from '../lib/QueryBuilder';
 
-export interface Mutations {
-  changed: Record<string, string[]>;
-  created: Record<string, string[]>;
-  removed: Record<string, string[]>;
+export enum Mutation {
+  CHANGED = 'changed',
+  CREATED = 'created',
+  REMOVED = 'removed'
 }
+
+export type Mutations = Record<Mutation, Record<string, string[]>>;
 
 interface ContainerManagerStore {
   mutations: Mutations;
@@ -277,8 +280,12 @@ export class ContainerManager {
     return Object.values(this.store.containers);
   }
 
-  public get query(): Query<{}> {
+  public get oldQuery(): Query<{}> {
     return new Query<{}>(this.queries);
+  }
+
+  public get query(): QueryBuilder {
+    return new QueryBuilder(this.queries);
   }
 
   public constructor() {
