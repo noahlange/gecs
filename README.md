@@ -190,7 +190,7 @@ Query steps can be modified with `.all`, `.any`, `.some` and `.none` to perform 
 
 ```typescript
 const q1 = world.query.all.components(A, B); // A & B
-const q2 = world.query.some.components(A, B); // A | B
+const q2 = world.query.any.components(A, B); // A | B
 const q3 = world.query.some.components(A, B); // A? | B?
 const q4 = world.query.none.components(A, B); // !(A | B)
 ```
@@ -207,7 +207,7 @@ Of course, mutation queries can use the aforementioned modifiers.
 
 ```typescript
 const q1 = world.query.all.changed.components(A, B); // ΔA & ΔB
-const q2 = world.query.some.removed.components(A, B); // ΔA | ΔB
+const q2 = world.query.any.removed.components(A, B); // ΔA | ΔB
 ```
 
 ---
