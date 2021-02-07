@@ -206,8 +206,8 @@ const q3 = world.query.removed.components(A, B);
 Of course, mutation queries can use the aforementioned modifiers.
 
 ```typescript
-const q1 = world.query.all.changed.components(A, B); // ΔA & ΔB
-const q2 = world.query.any.removed.components(A, B); // ΔA | ΔB
+const q1 = world.query.changed.all.components(A, B); // ΔA & ΔB
+const q2 = world.query.removed.any.components(A, B); // ΔA | ΔB
 ```
 
 ---

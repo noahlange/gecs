@@ -219,7 +219,7 @@ export class ContainerManager {
     this.store.mutations.changed[id] = ids;
     this.store.mutations.created[id] = ids;
     // flush invalidated queries
-    // this.queries.invalidateTypes(container.items.map(i => i.type));
+    this.queries.invalidateTypes(container.items.map(i => i.type));
 
     if ('id' in ContainerCtor) {
       (this.indices.byContainerType[ContainerCtor.id] ??= []).push(
@@ -229,6 +229,9 @@ export class ContainerManager {
 
     // @ts-ignore
     container.manager = this;
+    // So this is a bit of a pickle. Dynamically defining the property imposes a
+    // bonkers performance hit, but inspection and serialization gets more
+    // difficult w/r/t circular structures.
     // Object.defineProperty(container, 'manager', { get: () => this });
     return container;
   }

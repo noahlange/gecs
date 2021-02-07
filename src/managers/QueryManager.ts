@@ -42,6 +42,7 @@ export class QueryManager {
   protected cache: Record<string, string[]> = {};
   protected manager: ContainerManager;
   protected ids: string[] = [];
+  protected canCache = true;
 
   // really heavy-handed
   public invalidateTypes(types: string[]): void {
@@ -66,14 +67,14 @@ export class QueryManager {
     items: string[]
   ): string[] {
     const results: string[] = [];
-    const allTags = this.manager.tags;
+    const tags = this.manager.tags;
 
     if (tag === QueryTag.ALL) {
       search: for (const id of ids) {
-        if (id in allTags) {
-          const tags = allTags[id];
+        if (id in tags) {
+          const itemTags = tags[id];
           for (const i of items) {
-            if (tags.indexOf(i) === -1) {
+            if (itemTags.indexOf(i) === -1) {
               continue search;
             }
           }
@@ -84,10 +85,10 @@ export class QueryManager {
 
     if (tag === QueryTag.ANY) {
       search: for (const id of ids) {
-        if (id in allTags) {
-          const tags = allTags[id];
+        if (id in tags) {
+          const itemTags = tags[id];
           for (const i of items) {
-            if (tags.indexOf(i) > -1) {
+            if (itemTags.indexOf(i) > -1) {
               results.push(id);
               continue search;
             }
@@ -98,10 +99,10 @@ export class QueryManager {
 
     if (tag === QueryTag.NONE) {
       search: for (const id of ids) {
-        if (id in allTags) {
-          const tags = allTags[id];
+        if (id in tags) {
+          const itemTags = tags[id];
           for (const i of items) {
-            if (tags.indexOf(i) > -1) {
+            if (itemTags.indexOf(i) > -1) {
               continue search;
             }
           }
@@ -119,13 +120,13 @@ export class QueryManager {
     items: string[]
   ): string[] {
     const results: string[] = [];
-    const allBindings = this.manager.bindings;
+    const bindings = this.manager.bindings;
 
     if (tag === QueryTag.ALL) {
       search: for (const id of ids) {
-        const bindings = allBindings[id];
+        const b = bindings[id];
         for (const i of items) {
-          if (!(i in bindings)) {
+          if (!(i in b)) {
             continue search;
           }
         }
@@ -135,9 +136,9 @@ export class QueryManager {
 
     if (tag === QueryTag.ANY) {
       search: for (const id of ids) {
-        const bindings = allBindings[id];
+        const b = bindings[id];
         for (const i of items) {
-          if (i in bindings) {
+          if (i in b) {
             results.push(id);
             continue search;
           }
@@ -147,9 +148,9 @@ export class QueryManager {
 
     if (tag === QueryTag.NONE) {
       search: for (const id of ids) {
-        const bindings = allBindings[id];
+        const b = bindings[id];
         for (const i of items) {
-          if (i in bindings) {
+          if (i in b) {
             continue search;
           }
         }
@@ -160,23 +161,23 @@ export class QueryManager {
     return results;
   }
 
-  protected filterMutations(
+  protected filterContainedMutations(
     ids: string[],
     mut: Mutation,
     tag: QueryTag,
     items: string[]
   ): string[] {
     const results: string[] = [];
-    const allBindings = this.manager.bindings;
+    const bindings = this.manager.bindings;
     const containers = this.manager.mutations[mut];
 
     if (tag === QueryTag.ALL) {
       search: for (const id of ids) {
         const mutations = containers[id];
         if (mutations?.length) {
-          const bindings = allBindings[id];
+          const b = bindings[id];
           for (const item of items) {
-            if (mutations.indexOf(bindings[item]) === -1) {
+            if (mutations.indexOf(b[item]) === -1) {
               continue search;
             }
           }
@@ -187,11 +188,11 @@ export class QueryManager {
 
     if (tag === QueryTag.ANY) {
       search: for (const id of ids) {
-        const mutations = containers[id] ?? [];
+        const mutations = containers[id];
         if (mutations?.length) {
-          const bindings = allBindings[id];
+          const b = bindings[id];
           for (const i of items) {
-            if (mutations.indexOf(bindings[i]) > -1) {
+            if (mutations.indexOf(b[i]) > -1) {
               results.push(id);
               continue search;
             }
@@ -202,11 +203,11 @@ export class QueryManager {
 
     if (tag === QueryTag.NONE) {
       search: for (const id of ids) {
-        const mutations = containers[id] ?? [];
+        const mutations = containers[id];
         if (mutations?.length) {
-          const bindings = allBindings[id];
+          const b = bindings[id];
           for (const i of items) {
-            if (mutations.indexOf(bindings[i]) > -1) {
+            if (mutations.indexOf(b[i]) > -1) {
               continue search;
             }
           }
@@ -218,6 +219,40 @@ export class QueryManager {
     return results;
   }
 
+  protected filterIDMutations(
+    ids: string[],
+    mut: Mutation,
+    tag: QueryTag,
+    identifiers: string[] | null
+  ): string[] {
+    const containers = this.manager.mutations[mut];
+    const results: string[] = [];
+
+    if (tag !== QueryTag.NONE) {
+      search: for (const id of ids) {
+        const hasMutations = containers[id]?.length > 0;
+        if ((!identifiers || identifiers.indexOf(id) > -1) && hasMutations) {
+          results.push(id);
+          continue search;
+        }
+      }
+    }
+    if (tag === QueryTag.NONE) {
+      search: for (const id of ids) {
+        const hasMutations = containers[id]?.length > 0;
+        if ((!identifiers || identifiers.indexOf(id) > -1) && !hasMutations) {
+          continue search;
+        }
+        results.push(id);
+      }
+    }
+
+    return results;
+  }
+  /**
+   * Get the initial ID set to begin filtering. If we've specified an ID or
+   * Entity, we can use those smaller lists instead of the big one.
+   */
   protected getInitialIDs(step: QueryState): string[] {
     if (step.type === QueryType.ID) {
       this.canCache = false;
@@ -237,8 +272,6 @@ export class QueryManager {
     return this.ids;
   }
 
-  protected canCache = true;
-
   protected getCacheKey(
     type: QueryType,
     tag: QueryTag,
@@ -250,36 +283,94 @@ export class QueryManager {
   }
 
   /**
+   * We'd like to take advantage of caching where possible, but odds are we're
+   * going to be treading into uncached waters pretty quickly. So we'll stop
+   * adding to the cache once we've hit that point, but if there's anything to
+   * be gained by fetching cached results, we want to take advcantage of it.
+   */
+  protected filterCachedResult(ids: string[], cached?: string[]): string[] {
+    if (cached?.length && ids.length > cached.length) {
+      const results = [];
+      for (const item of cached) {
+        if (ids.indexOf(item) > -1) {
+          results.push(item);
+        }
+      }
+      return results;
+    }
+    return ids;
+  }
+
+  /**
+   * If possible,read/write a new value. Otherwise, attempt to use the cache for
+   * reads, but don't write.
+   */
+  protected withCached(key: string | null, fn: () => string[]): string[] {
+    return key
+      ? this.canCache
+        ? (this.cache[key] ??= fn())
+        : this.filterCachedResult(fn(), this.cache[key])
+      : fn();
+  }
+
+  /**
    * It's important to shift steps into an efficient order before starting. We
    * want to filter out as many items as we can, as quickly as we can. The
    * QueryType enum is roughly sorted in this order.
    */
   protected sortSteps(steps: QueryState[]): QueryState[] {
-    return steps.sort((a, b) => (a.type ?? 0) - (b.type ?? 0));
+    return (
+      steps
+        .filter(s => s.type)
+        // sort in QueryType order
+        .sort((a, b) => a.type! - b.type!)
+        // sort mutations earlier
+        .sort((a, b) => (a.mutation ? -1 : 0) + (b.mutation ? 1 : 0))
+    );
   }
 
+  /**
+   *
+   * @param steps
+   * @privateRemarks
+   * "The fastest code is the code that never runs."
+   */
   public *execute(steps: QueryState[]): IterableIterator<Container> {
     this.ids = Object.keys(this.manager.containers);
     this.canCache = true;
 
     let ids: string[] = [];
+    let step = 0;
 
-    for (const { type, tag, items, mutation } of this.sortSteps(steps)) {
+    steps: for (const { type, tag, items, mutation } of this.sortSteps(steps)) {
       // "some" is purely for type-hinting
       if (tag === QueryTag.SOME || !type) {
         continue;
       }
 
-      ids = ids.length
-        ? ids
-        : this.getInitialIDs({ type, tag, items, mutation });
-
+      // if possible, cache the step
       const cacheKey = this.canCache
         ? this.getCacheKey(type, tag, items)
         : null;
 
+      ids = step ? ids : this.getInitialIDs({ type, tag, items, mutation });
       if (type === QueryType.TAG) {
         ids = this.withCached(cacheKey, () => this.filterTags(ids, tag, items));
+      }
+
+      if (mutation) {
+        this.canCache = false;
+        if (type === QueryType.CONTAINED) {
+          ids = this.filterContainedMutations(ids, mutation, tag, items);
+        } else {
+          ids = this.filterIDMutations(
+            ids,
+            mutation,
+            tag,
+            type === QueryType.CONTAINER ? null : items
+          );
+        }
+        continue steps;
       }
 
       if (type === QueryType.CONTAINED) {
@@ -288,11 +379,7 @@ export class QueryManager {
         );
       }
 
-      if (mutation) {
-        // cannot cache mutations
-        this.canCache = false;
-        ids = this.filterMutations(ids, mutation, tag, items);
-      }
+      step++;
     }
 
     for (const id of ids) {
@@ -300,10 +387,6 @@ export class QueryManager {
         yield this.manager.containers[id];
       }
     }
-  }
-
-  protected withCached(key: string | null, fn: () => string[]): string[] {
-    return this.canCache && key ? (this.cache[key] ??= fn()) : fn();
   }
 
   public constructor(manager: ContainerManager) {

@@ -19,9 +19,14 @@ interface QueryBase<
   ): Query<{}, InstanceType<A>>;
   tags(...tags: string[]): QueryBase<T, C>;
 
+  created: QueryBase<T, C>;
+  changed: QueryBase<T, C>;
+  removed: QueryBase<T, C>;
+
   all: QueryAll<T, C>;
   any: QueryAny<T, C>;
   some: QueryAny<T, C>;
+
   get(): C[];
   first(): C | null;
 }
@@ -33,9 +38,6 @@ interface QueryAll<
   components<A extends ContainedClass[]>(
     ...components: A
   ): Query<U.Merge<T & KeyedByType<A>>>;
-  created: QueryAll<T, C>;
-  changed: QueryAll<T, C>;
-  removed: QueryAll<T, C>;
 }
 
 interface QueryNone<
@@ -70,6 +72,8 @@ export class Query<
 
   protected reset(): this {
     if (this.state) {
+      // sort items by alpha so we don't have to worry about type order for query caching
+      this.state.items = this.state.items.sort((a, b) => a.localeCompare(b));
       this.criteria.push(this.state);
     }
     this.state = {

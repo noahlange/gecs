@@ -111,7 +111,7 @@ describe('mutations', () => {
   test('.created should return newly-created entities', () => {
     const em = new Manager();
     const entity1 = em.create(WithAB);
-    const res = em.query.created.components(A, B).first();
+    const res = em.query.any.created.components(A, B).first();
     expect(res).toEqual(entity1);
   });
 
@@ -123,14 +123,14 @@ describe('mutations', () => {
 
     a.$$.a.value = '123';
 
-    expect(em.query.changed.components(A, B).first()).toBeNull();
-    expect(em.query.changed.components(A).first()).toBe(a);
+    expect(em.query.changed.all.components(A, B).first()).toBeNull();
+    expect(em.query.changed.all.components(A).first()).toBe(a);
   });
 
   test('.changed should also return newly-created entries', () => {
     const em = new Manager();
     const entity1 = em.create(WithAB);
-    const res = em.query.changed.components(A, B).first();
+    const res = em.query.any.changed.components(A, B).first();
     expect(res).toEqual(entity1);
   });
 
@@ -138,8 +138,8 @@ describe('mutations', () => {
     const em = new Manager();
     em.create(WithAB);
 
-    const qCreate = em.query.created.components(A, B);
-    const qChange = em.query.created.components(A, B);
+    const qCreate = em.query.any.created.components(A, B);
+    const qChange = em.query.any.changed.components(A, B);
 
     expect(qChange.get()).toHaveLength(1);
     expect(qCreate.get()).toHaveLength(1);
