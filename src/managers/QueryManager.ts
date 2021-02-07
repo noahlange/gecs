@@ -4,8 +4,8 @@ import type { Mutation } from './ContainerManager';
 
 export enum QueryType {
   ID = 1,
-  CONTAINED = 2,
-  CONTAINER = 3,
+  CONTAINER = 2,
+  CONTAINED = 3,
   TAG = 4
 }
 
@@ -41,6 +41,7 @@ export interface QueryOptions {
 export class QueryManager {
   protected cache: Record<string, string[]> = {};
   protected manager: ContainerManager;
+  protected ids: string[] = [];
 
   // really heavy-handed
   public invalidateTypes(types: string[]): void {
@@ -221,13 +222,10 @@ export class QueryManager {
     if (step.type === QueryType.ID) {
       this.canCache = false;
       if (step.tag === QueryTag.NONE) {
-        return Object.keys(this.manager.containers).filter(
-          i => step.items.indexOf(i) === -1
-        );
-      } else {
-        return step.items;
-      }
+        return this.ids.filter(i => step.items.indexOf(i) === -1);
+      } else return step.items;
     }
+
     if (step.type === QueryType.CONTAINER) {
       this.canCache = false;
       return step.items.reduce(
@@ -235,12 +233,13 @@ export class QueryManager {
         []
       );
     }
-    return Object.keys(this.manager.containers);
+
+    return this.ids;
   }
 
   protected canCache = true;
 
-  public getCacheKey(
+  protected getCacheKey(
     type: QueryType,
     tag: QueryTag,
     items: string[]
@@ -250,11 +249,22 @@ export class QueryManager {
       : null;
   }
 
+  /**
+   * It's important to shift steps into an efficient order before starting. We
+   * want to filter out as many items as we can, as quickly as we can. The
+   * QueryType enum is roughly sorted in this order.
+   */
+  protected sortSteps(steps: QueryState[]): QueryState[] {
+    return steps.sort((a, b) => (a.type ?? 0) - (b.type ?? 0));
+  }
+
   public *execute(steps: QueryState[]): IterableIterator<Container> {
+    this.ids = Object.keys(this.manager.containers);
     this.canCache = true;
+
     let ids: string[] = [];
 
-    for (const { type, tag, items, mutation } of steps) {
+    for (const { type, tag, items, mutation } of this.sortSteps(steps)) {
       // "some" is purely for type-hinting
       if (tag === QueryTag.SOME || !type) {
         continue;
