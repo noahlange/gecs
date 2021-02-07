@@ -2,11 +2,11 @@ import type { BaseType, KeyedByType, PartialBaseType } from '../../types';
 import type { System, SystemClass } from '../contained/System';
 import type { Component } from '../contained/Component';
 import type { EntityClass } from './Entity';
+import type { Query as Query } from '../../lib/Query';
 
 import { useWith } from '../../utils';
 import { Container } from '../../lib/Container';
 import { ContainerManager } from '../../managers/ContainerManager';
-import type { Query } from '../../lib/Query';
 
 export interface WorldClass<T extends BaseType<System>> {
   id: string;

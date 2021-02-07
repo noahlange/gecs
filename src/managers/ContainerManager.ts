@@ -4,13 +4,15 @@ import type { ContainerClass } from '../lib/Container';
 import type { Container } from '../lib/Container';
 
 import { QueryManager } from './QueryManager';
-import { Query } from '../ecs';
+import { Query } from '../lib/Query';
 
-export interface Mutations {
-  changed: Record<string, string[]>;
-  created: Record<string, string[]>;
-  removed: Record<string, string[]>;
+export enum Mutation {
+  CHANGED = 'changed',
+  CREATED = 'created',
+  REMOVED = 'removed'
 }
+
+export type Mutations = Record<Mutation, Record<string, string[]>>;
 
 interface ContainerManagerStore {
   mutations: Mutations;
@@ -183,15 +185,12 @@ export class ContainerManager {
     const bindings: Record<string, string> = {};
     const containeds: Contained[] = [];
     const id = container.id;
+    const d = Object.assign(ContainerCtor.data ?? {}, data);
 
     for (const Ctor of container.items) {
       // create a new class instance.
       // classes with defined properties overwrite assigned data.
-      const res = Object.assign(
-        new Ctor(container, {}),
-        ContainerCtor.data ?? {},
-        data[Ctor.type] ?? {}
-      );
+      const res = Object.assign(new Ctor(container, {}), d[Ctor.type] ?? {});
       // set the corresponding property on the container bindings.
       bindings[Ctor.type] = res.id;
       containeds.push(res);
@@ -220,15 +219,17 @@ export class ContainerManager {
     this.store.mutations.changed[id] = ids;
     this.store.mutations.created[id] = ids;
     // flush invalidated queries
-    this.queries.invalidateTypes(container.items.map(i => i.type));
+    // this.queries.invalidateTypes(container.items.map(i => i.type));
 
     if ('id' in ContainerCtor) {
       (this.indices.byContainerType[ContainerCtor.id] ??= []).push(
         container.id
       );
     }
+
     // @ts-ignore
     container.manager = this;
+    // Object.defineProperty(container, 'manager', { get: () => this });
     return container;
   }
 
@@ -277,8 +278,8 @@ export class ContainerManager {
     return Object.values(this.store.containers);
   }
 
-  public get query(): Query<{}> {
-    return new Query<{}>(this.queries);
+  public get query(): Query {
+    return new Query(this.queries);
   }
 
   public constructor() {

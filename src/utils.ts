@@ -19,23 +19,3 @@ export function useWith<T extends BaseType, A extends ContainedClass[] = []>(
     }
   } as unknown) as ContainerClass<T & KeyedByType<A>>;
 }
-
-export function intersection<T>(a: T[], b: T[]): T[] {
-  const res = [];
-  for (const item of a) {
-    if (b.indexOf(item) > -1) {
-      res.push(item);
-    }
-  }
-  return res;
-}
-
-export function difference<T>(a: T[], b: T[]): T[] {
-  const res = [];
-  for (const item of a) {
-    if (b.indexOf(item) === -1) {
-      res.push(item);
-    }
-  }
-  return res;
-}
