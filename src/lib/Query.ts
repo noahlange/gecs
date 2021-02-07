@@ -21,6 +21,7 @@ interface QueryBase<
 
   all: QueryAll<T, C>;
   any: QueryAny<T, C>;
+  some: QueryAny<T, C>;
   get(): C[];
   first(): C | null;
 }
@@ -35,6 +36,16 @@ interface QueryAll<
   created: QueryAll<T, C>;
   changed: QueryAll<T, C>;
   removed: QueryAll<T, C>;
+}
+
+interface QueryNone<
+  T extends BaseType<Contained> = {},
+  C extends Container<T> = Container<T>
+> extends QueryBase<T, C> {
+  components<A extends ContainedClass[]>(...components: A): Query<T>;
+  created: QueryNone<T, C>;
+  changed: QueryNone<T, C>;
+  removed: QueryNone<T, C>;
 }
 
 interface QueryAny<
@@ -62,10 +73,10 @@ export class Query<
       this.criteria.push(this.state);
     }
     this.state = {
-      type: null,
-      mutation: null,
       // default to an "all" query
       tag: QueryTag.ALL,
+      type: null,
+      mutation: null,
       items: []
     };
     return this;
@@ -83,10 +94,14 @@ export class Query<
     return (this as unknown) as QueryAny<T, C>;
   }
 
-  // doesn't need to be typed if it isn't there.
-  public get none(): this {
+  public get some(): QueryAny<T, C> {
+    this.state.tag = QueryTag.SOME;
+    return (this as unknown) as QueryAny<T, C>;
+  }
+
+  public get none(): QueryNone<T, C> {
     this.state.tag = QueryTag.NONE;
-    return this;
+    return (this as unknown) as QueryNone<T, C>;
   }
 
   public get changed(): this {

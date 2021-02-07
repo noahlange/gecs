@@ -10,9 +10,10 @@ export enum QueryType {
 }
 
 export enum QueryTag {
-  ALL = 'all',
-  ANY = 'any',
-  NONE = 'none'
+  ALL = 1,
+  ANY = 2,
+  SOME = 3,
+  NONE = 4
 }
 
 export interface QueryState {
@@ -21,6 +22,7 @@ export interface QueryState {
   tag: QueryTag;
   mutation: Mutation | null;
 }
+
 export interface QueryOptions {
   typeID: string | null;
   ids: string[];
@@ -243,45 +245,50 @@ export class QueryManager {
     tag: QueryTag,
     items: string[]
   ): string | null {
-    return items.length ? JSON.stringify([type, tag, items]) : null;
+    return items.length
+      ? JSON.stringify([type, tag, items.sort((a, b) => a.localeCompare(b))])
+      : null;
   }
 
-  public *execute(criteria: QueryState[]): IterableIterator<Container> {
+  public *execute(steps: QueryState[]): IterableIterator<Container> {
     this.canCache = true;
     let ids: string[] = [];
 
-    for (const step of criteria) {
-      if (!step.type) {
+    for (const { type, tag, items, mutation } of steps) {
+      // "some" is purely for type-hinting
+      if (tag === QueryTag.SOME || !type) {
         continue;
       }
 
-      ids = this.getInitialIDs(step);
+      ids = ids.length
+        ? ids
+        : this.getInitialIDs({ type, tag, items, mutation });
 
       const cacheKey = this.canCache
-        ? this.getCacheKey(step.type, step.tag, step.items)
+        ? this.getCacheKey(type, tag, items)
         : null;
 
-      if (step.type === QueryType.TAG) {
+      if (type === QueryType.TAG) {
+        ids = this.withCached(cacheKey, () => this.filterTags(ids, tag, items));
+      }
+
+      if (type === QueryType.CONTAINED) {
         ids = this.withCached(cacheKey, () =>
-          this.filterTags(ids, step.tag, step.items)
+          this.filterContaineds(ids, tag, items)
         );
       }
 
-      if (step.type === QueryType.CONTAINED) {
-        ids = this.withCached(cacheKey, () =>
-          this.filterContaineds(ids, step.tag, step.items)
-        );
-      }
-
-      if (step.mutation) {
+      if (mutation) {
         // cannot cache mutations
         this.canCache = false;
-        ids = this.filterMutations(ids, step.mutation, step.tag, step.items);
+        ids = this.filterMutations(ids, mutation, tag, items);
       }
     }
 
     for (const id of ids) {
-      yield this.manager.containers[id];
+      if (id in this.manager.containers) {
+        yield this.manager.containers[id];
+      }
     }
   }
 

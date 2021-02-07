@@ -105,8 +105,11 @@ class Renderer extends System {
   protected sprites: Record<string, PIXI.Sprite> = {};
 
   public tick(delta: number, time?: number): void {
-    // find all updated entities with Sprite and Position components
-    const query = this.world.query.changed(Position, Sprite);
+    // find all entities with changed Position and/or Sprite components
+    const query = this.world.query
+      .components(Position, Sprite)
+      .some.changed(Position, Sprite);
+
     for (const { $ } of query) {
       const child = this.sprites[$.sprite.id];
       if (child) {
@@ -121,7 +124,8 @@ class Renderer extends System {
   public async init(): Promise<void> {
     this.app = new PIXI.Application();
     // create all sprites and add to the stage
-    for (const { $ } of this.world.query.with(Sprite)) {
+    const query = this.world.query.all.components(Sprite);
+    for (const { $ } of query) {
       const child = PIXI.Sprite.from($.sprite.path);
       child.anchor = $.sprite.anchor;
       this.sprites[$.sprite.id] = child;
@@ -159,15 +163,52 @@ When the world's `start()` method is invoked, each of the world's systems is boo
 Each time `tick()` is called, the world invokes the `tick()` method of each of
 its systems (again, in order).
 
-## Queries
-
 The entity manger handles all the relationships between entities and their components. When you access `$` on an entity, variable access is being proxied through the manager—every component is stored in the same place.
 
-Queries return collections of entities based on a user's requirements. The results of queries are typed exactly like the ordinary entity's `$` property, so you'll have access to each of the components you've requested in your query—and nothing more.
+## Queries
 
-They're pretty minimal and naïve, otherwise. Access the world's `.query` getter to get a new Query, and call `with()` or `without()` as needed to pare down the component selection. Adding the same component using both `with()` and `without()` will return nothing without warning.
+Queries return collections of entities based on a user's request. The results of queries are typed exactly like the ordinary entity's `$` property, so you'll have access to each of the components you've requested in your query—and nothing more.
 
-`changed()` adds the additional restriction of an entity having been created or modified during the current tick.
+Queries consist of one or more "steps," each corresponding to a different type of search—by components, tags, IDs or entities.
+
+```typescript
+const q1 = world.query.components(A, B);
+const q4 = world.query.tags('one', 'two', 'three');
+const q3 = world.query.ids(1, 2, 3);
+const q2 = world.query.entities(WithA);
+```
+
+Steps are executed sequentially. The result set is the intersection of all steps.
+
+```typescript
+const step1 = world.query.some.components(A, B);
+const step2 = step1.all.tags('one', 'two');
+const results = step2.get(); // (A | B) & ('one' & 'two')
+```
+
+Query steps can be modified with `.all`, `.any`, `.some` and `.none` to perform basic boolean operations.
+
+```typescript
+const q1 = world.query.all.components(A, B); // A & B
+const q2 = world.query.some.components(A, B); // A | B
+const q3 = world.query.some.components(A, B); // A? | B?
+const q4 = world.query.none.components(A, B); // !(A | B)
+```
+
+Query steps can also filter to include only components mutated within the last tick.
+
+```typescript
+const q1 = world.query.created.components(A, B);
+const q2 = world.query.changed.components(A, B);
+const q3 = world.query.removed.components(A, B);
+```
+
+Of course, mutation queries can use the aforementioned modifiers.
+
+```typescript
+const q1 = world.query.all.changed.components(A, B); // ΔA & ΔB
+const q2 = world.query.some.removed.components(A, B); // ΔA | ΔB
+```
 
 ---
 

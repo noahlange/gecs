@@ -185,15 +185,12 @@ export class ContainerManager {
     const bindings: Record<string, string> = {};
     const containeds: Contained[] = [];
     const id = container.id;
+    const d = Object.assign(ContainerCtor.data ?? {}, data);
 
     for (const Ctor of container.items) {
       // create a new class instance.
       // classes with defined properties overwrite assigned data.
-      const res = Object.assign(
-        new Ctor(container, {}),
-        ContainerCtor.data ?? {},
-        data[Ctor.type] ?? {}
-      );
+      const res = Object.assign(new Ctor(container, {}), d[Ctor.type] ?? {});
       // set the corresponding property on the container bindings.
       bindings[Ctor.type] = res.id;
       containeds.push(res);

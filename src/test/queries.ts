@@ -108,14 +108,14 @@ describe('first()', () => {
 });
 
 describe('mutations', () => {
-  test('created() should return newly-created entities', () => {
+  test('.created should return newly-created entities', () => {
     const em = new Manager();
     const entity1 = em.create(WithAB);
-    const res = em.query.components(A, B).first();
+    const res = em.query.created.components(A, B).first();
     expect(res).toEqual(entity1);
   });
 
-  test('changed() should return modified entities', () => {
+  test('.changed should return modified entities', () => {
     const em = new Manager();
     const a = em.create(WithA);
 
@@ -127,7 +127,14 @@ describe('mutations', () => {
     expect(em.query.changed.components(A).first()).toBe(a);
   });
 
-  test('mutation sets are cleared on cleanup()', () => {
+  test('.changed should also return newly-created entries', () => {
+    const em = new Manager();
+    const entity1 = em.create(WithAB);
+    const res = em.query.changed.components(A, B).first();
+    expect(res).toEqual(entity1);
+  });
+
+  test('clear mutation sets on cleanup', () => {
     const em = new Manager();
     em.create(WithAB);
 
