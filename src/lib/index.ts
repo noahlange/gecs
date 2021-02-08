@@ -3,4 +3,4 @@ export type { ContainerClass } from './Container';
 
 export { Contained } from './Contained';
 export { Container } from './Container';
-export { Query as Query } from './Query';
+export { Query } from './Query';

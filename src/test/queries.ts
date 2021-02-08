@@ -40,7 +40,7 @@ describe('basic query modifiers', () => {
     const hasAB = em.query.all.components(A, B).get();
 
     expect(hasA).toHaveLength(count * 3);
-    expect(hasAB).toHaveLength(count * 2);
+    expect(hasAB).toHaveLength(count * 1);
   });
 
   test('return .any components', () => {
@@ -49,7 +49,7 @@ describe('basic query modifiers', () => {
     const hasC = em.query.any.components(C).get();
 
     expect(hasABC).toHaveLength(count * 4);
-    expect(hasC).toHaveLength(count);
+    expect(hasC).toHaveLength(count * 2);
   });
 
   test('return .none components', () => {
@@ -79,23 +79,24 @@ describe('tag queries', () => {
 describe('container queries', () => {
   const count = 5;
 
-  test('return with() specified containeds', () => {
+  test('return with specified containeds', () => {
     const { em } = setup();
-    const hasA = em.query.components(A).get();
-    const hasB = em.query.components(B).get();
+    const hasA = em.query.any.components(A).get();
+    const hasB = em.query.any.components(B).get();
     expect(hasA).toHaveLength(count * 3);
-    expect(hasB).toHaveLength(count * 3);
+    expect(hasB).toHaveLength(count * 2);
   });
 
-  test('return without() specified containers', () => {
+  test('return without specified containeds', () => {
     const { em } = setup();
     expect(em.query.none.components(A).get()).toHaveLength(count);
     expect(em.query.none.components(A, B).get()).toHaveLength(0);
   });
 
-  test('return with()/without() specified containers', () => {
+  test('chained queries', () => {
     const { em } = setup();
-    expect(em.query.components(A).none.components(B).get()).toHaveLength(count);
+    const q = em.query.components(A).none.components(B);
+    expect(q.get()).toHaveLength(count * 2);
   });
 });
 
@@ -111,26 +112,35 @@ describe('mutations', () => {
   test('.created should return newly-created entities', () => {
     const em = new Manager();
     const entity1 = em.create(WithAB);
-    const res = em.query.any.created.components(A, B).first();
+    const res = em.query.created.any.components(A, B).first();
     expect(res).toEqual(entity1);
   });
 
   test('.changed should return modified entities', () => {
     const em = new Manager();
-    const a = em.create(WithA);
+    const a = em.create(WithAB);
 
     em.cleanup();
 
     a.$$.a.value = '123';
+    const q1 = em.query.changed.all.components(A, B).get();
+    const q2 = em.query.changed.all.components(A).get();
 
-    expect(em.query.changed.all.components(A, B).first()).toBeNull();
-    expect(em.query.changed.all.components(A).first()).toBe(a);
+    expect(q1).toHaveLength(0);
+    expect(q2).toHaveLength(1);
+  });
+
+  test('.changed.any adds an implicit .all constraint to component queries', () => {
+    const em = new Manager();
+    em.create(WithAB);
+
+    expect(em.query.changed.any.components(A, B).get()).toHaveLength(1);
   });
 
   test('.changed should also return newly-created entries', () => {
     const em = new Manager();
     const entity1 = em.create(WithAB);
-    const res = em.query.any.changed.components(A, B).first();
+    const res = em.query.changed.any.components(A, B).first();
     expect(res).toEqual(entity1);
   });
 
@@ -138,8 +148,8 @@ describe('mutations', () => {
     const em = new Manager();
     em.create(WithAB);
 
-    const qCreate = em.query.any.created.components(A, B);
-    const qChange = em.query.any.changed.components(A, B);
+    const qCreate = em.query.created.any.components(A, B);
+    const qChange = em.query.changed.any.components(A, B);
 
     expect(qChange.get()).toHaveLength(1);
     expect(qCreate.get()).toHaveLength(1);
