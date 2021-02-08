@@ -12,7 +12,7 @@ export enum Mutation {
   REMOVED = 'removed'
 }
 
-export type Mutations = Record<Mutation, Record<string, string[]>>;
+export type Mutations = Record<Mutation, string[]>;
 
 interface ContainerManagerStore {
   mutations: Mutations;
@@ -25,6 +25,8 @@ interface ContainerManagerStore {
 interface ContainerManagerIndices {
   byTag: Record<string, string[]>;
   byContainerType: Record<string, string[]>;
+  byComponent: Record<string, string[]>;
+  byMutatedComponent: Record<Mutation, Record<string, string[]>>;
 }
 
 export class ContainerManager {
@@ -36,7 +38,7 @@ export class ContainerManager {
   protected queries: QueryManager;
 
   protected store: ContainerManagerStore = {
-    mutations: { changed: {}, created: {}, removed: {} },
+    mutations: { changed: [], created: [], removed: [] },
     containers: {},
     containeds: {},
     bindings: {},
@@ -44,8 +46,10 @@ export class ContainerManager {
   };
 
   protected indices: ContainerManagerIndices = {
-    byTag: {},
-    byContainerType: {}
+    byMutatedComponent: { changed: {}, created: {}, removed: {} },
+    byContainerType: {},
+    byComponent: {},
+    byTag: {}
   };
 
   protected cleanupEntities(): void {
@@ -68,9 +72,8 @@ export class ContainerManager {
   }
 
   protected cleanupMutations(): void {
-    this.mutations.changed = {};
-    this.mutations.created = {};
-    this.mutations.removed = {};
+    this.store.mutations = { changed: [], created: [], removed: [] };
+    this.indices.byMutatedComponent = { changed: {}, created: {}, removed: {} };
   }
 
   protected createBindings(id: string, mutable: boolean = false): any {
@@ -80,19 +83,18 @@ export class ContainerManager {
 
     if (mutable) {
       for (const type in bindings) {
-        const contained = containeds[bindings[type]];
-        const changed = (this.store.mutations.changed[id] ??= []);
         Object.defineProperty(res, type, {
           enumerable: true,
           configurable: false,
-          value: new Proxy(contained, {
+          value: new Proxy(containeds[bindings[type]], {
             set: <K extends keyof Contained>(
               target: Contained,
               key: K,
               value: Contained[K]
             ) => {
+              this.store.mutations.changed.push(target.id);
+              (this.indices.byMutatedComponent.changed[type] ??= []).push(id);
               target[key] = value;
-              changed.push(target.id);
               return true;
             }
           })
@@ -161,9 +163,9 @@ export class ContainerManager {
    */
   public destroy(id: string): void {
     delete this.$[id];
-    const bindings = this.bindings[id];
-    this.mutations.removed[id] = Object.keys(bindings).map(
-      type => bindings[type]
+    const bindings = this.store.bindings[id];
+    this.store.mutations.removed.push(
+      ...Object.keys(bindings).map(type => bindings[type])
     );
     this.toDestroy.push(id);
   }
@@ -182,25 +184,29 @@ export class ContainerManager {
     tags?: string[]
   ): Container<T> {
     const ContainerCtor = container.constructor as ContainerClass;
-    const bindings: Record<string, string> = {};
-    const containeds: Contained[] = [];
     const id = container.id;
+    const containeds: Contained[] = [];
     const d = Object.assign(ContainerCtor.data ?? {}, data);
+    const bindings: Record<string, string> = {};
 
     for (const Ctor of container.items) {
+      const type = Ctor.type;
+      // update indices
+      (this.indices.byComponent[type] ??= []).push(id);
+      (this.indices.byMutatedComponent.created[type] ??= []).push(id);
       // create a new class instance.
       // classes with defined properties overwrite assigned data.
-      const res = Object.assign(new Ctor(container, {}), d[Ctor.type] ?? {});
+      const res = Object.assign(new Ctor(container, {}), d[type] ?? {});
       // set the corresponding property on the container bindings.
-      bindings[Ctor.type] = res.id;
+      bindings[type] = res.id;
       containeds.push(res);
     }
 
     // add tags
     if (tags?.length) {
-      this.tags[id] = tags;
+      this.store.tags[id] = tags;
       for (const t of tags) {
-        (this.byTag[t] ??= []).push(id);
+        (this.indices.byTag[t] ??= []).push(id);
       }
     }
 
@@ -216,12 +222,11 @@ export class ContainerManager {
     }
 
     // mutations
-    this.store.mutations.changed[id] = ids;
-    this.store.mutations.created[id] = ids;
-    // flush invalidated queries
+    this.store.mutations.created.push(...ids);
+    // nuke invalidated queries
     this.queries.invalidateTypes(container.items.map(i => i.type));
 
-    if ('id' in ContainerCtor) {
+    if (ContainerCtor.id) {
       (this.indices.byContainerType[ContainerCtor.id] ??= []).push(
         container.id
       );
@@ -243,23 +248,9 @@ export class ContainerManager {
     }
   }
 
-  public get mutations(): Mutations {
-    return this.store.mutations;
-  }
-
   // ContainerID => Container
   public get containers(): Record<string, Container> {
     return this.store.containers;
-  }
-
-  // ContainedID =>  Contained
-  public get containeds(): Record<string, Contained> {
-    return this.store.containeds;
-  }
-
-  // ContainerID => ContainedType => ContainedID
-  public get bindings(): Record<string, Record<string, string>> {
-    return this.store.bindings;
   }
 
   // ContainerID => Tag[]
@@ -277,8 +268,13 @@ export class ContainerManager {
     return this.indices.byContainerType;
   }
 
-  public get items(): Container[] {
-    return Object.values(this.store.containers);
+  // ContainerType => ContainerID[]
+  public get byComponent(): Record<string, string[]> {
+    return this.indices.byComponent;
+  }
+
+  public get byMutatedComponent(): Record<string, Record<string, string[]>> {
+    return this.indices.byMutatedComponent;
   }
 
   public get query(): Query {
