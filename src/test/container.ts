@@ -50,7 +50,7 @@ describe('tagging containers', () => {
 
 describe('accessing components', () => {
   const em = new Manager();
-  const { $, $$ } = em.create(WithABC);
+  const { $ } = em.create(WithABC);
 
   test('`$` returns all components', () => {
     const keys = Object.keys($);
@@ -59,8 +59,8 @@ describe('accessing components', () => {
     expect(keys).toContain(C.type);
   });
 
-  test('`$$` returns all components', () => {
-    const keys = Object.keys($$);
+  test('`$` returns all components', () => {
+    const keys = Object.keys($);
     expect(keys).toContain(A.type);
     expect(keys).toContain(B.type);
     expect(keys).toContain(C.type);
@@ -70,21 +70,5 @@ describe('accessing components', () => {
     expect($[A.type]).toBeInstanceOf(A);
     expect($[B.type]).toBeInstanceOf(B);
     expect($[C.type]).toBeInstanceOf(C);
-  });
-
-  test('`$$[type]` returns a component instance of that type', () => {
-    expect($$[A.type]).toBeInstanceOf(A);
-    expect($$[B.type]).toBeInstanceOf(B);
-    expect($$[C.type]).toBeInstanceOf(C);
-  });
-
-  test('components returned with `$` are immutable', () => {
-    // @ts-expect-error
-    expect(() => (item.$[A.type].value = 'a')).toThrow();
-  });
-
-  test('components returned with `$$` are mutable', () => {
-    expect(() => ($$[A.type].value = 'a')).not.toThrow();
-    expect($$[A.type].value).toEqual('a');
   });
 });

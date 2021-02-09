@@ -122,7 +122,7 @@ describe('mutations', () => {
 
     em.cleanup();
 
-    a.$$.a.value = '123';
+    a.$.a.value = '123';
     const q1 = em.query.changed.all.components(A, B).get();
     const q2 = em.query.changed.all.components(A).get();
 

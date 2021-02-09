@@ -1,6 +1,6 @@
 import type { Container } from '../lib/Container';
 import type { ContainerManager } from './ContainerManager';
-import { Mutation } from './ContainerManager';
+import { Mutation } from '../types';
 
 import intersection from 'fast_array_intersect';
 import { difference, union } from '../utils';
@@ -19,8 +19,15 @@ export enum QueryTag {
   NONE = 4
 }
 
+const joiner = {
+  [QueryTag.ALL]: '&',
+  [QueryTag.ANY]: '|',
+  [QueryTag.SOME]: '?',
+  [QueryTag.NONE]: '!'
+};
+
 export interface QueryState {
-  type: QueryType | null;
+  type: QueryType;
   tag: QueryTag;
   items: string[];
   mutation: Mutation | null;
@@ -47,19 +54,43 @@ export class QueryManager {
   protected manager: ContainerManager;
   protected ids: string[] = [];
   protected canCache = true;
+  protected invalidTypes: string[] = [];
+
+  public clearCache(): void {
+    const caches = [];
+    for (const type of this.invalidTypes) {
+      caches.push(...(this.typeCache[type] ?? []));
+      this.typeCache[type] = [];
+    }
+    for (const key of caches) {
+      delete this.cache[key];
+    }
+    this.invalidTypes = [];
+  }
 
   public invalidateTypes(types: string[]): void {
-    for (const type of types) {
-      for (const key of this.typeCache[type] ?? []) {
-        delete this.cache[key];
-      }
-    }
+    this.invalidTypes.push(...types);
   }
 
   public invalidateEntity(id: string): void {
     for (const key in this.cache) {
       this.cache[key] = this.cache[key].filter(i => i !== id);
     }
+  }
+
+  public cacheSetOp(step: QueryState, results?: () => string[]): string[] {
+    const key = this.getCacheKey(step, joiner[step.tag]);
+    if (key && !step.mutation) {
+      if (this.cache[key]) {
+        return this.cache[key]!;
+      } else if (results) {
+        for (const item of step.items) {
+          (this.typeCache[item] ??= []).push(key);
+        }
+        return (this.cache[key] = results());
+      }
+    }
+    return results?.() ?? [];
   }
 
   protected sortSteps(steps: QueryState[]): QueryState[] {
@@ -69,13 +100,9 @@ export class QueryManager {
       .sort((a, b) => ((a.mutation ?? 0) && 1) + ((b.mutation ?? 0) && -1));
   }
 
-  protected getCacheKey(
-    type: QueryType,
-    tag: QueryTag,
-    items: string[]
-  ): string | null {
-    return this.canCache && items.length
-      ? type + ':' + tag + ':' + items.join(',')
+  protected getCacheKey(step: QueryState, joiner: string = ','): string | null {
+    return this.canCache && step.items.length
+      ? step.type + ':' + step.tag + ':' + step.items.join(joiner)
       : null;
   }
 
@@ -120,72 +147,89 @@ export class QueryManager {
    * @privateRemarks
    * Credit and gratitude to [ape-ecs](https://github.com/fritzy/ape-ecs) for the inspiration.
    */
-  public *execute(steps: QueryState[]): IterableIterator<Container> {
+  public execute(steps: QueryState[]): Container[] {
+    if (this.invalidTypes.length) {
+      this.clearCache();
+    }
+
     this.canCache = true;
-    this.ids = Object.keys(this.manager.containers);
     let firstStep = true;
     let results: string[] = [];
 
-    for (const { mutation, tag, type, items } of this.sortSteps(steps)) {
-      if (type === QueryType.ID) {
-        results = firstStep ? items : intersection([results, items]);
+    for (const step of this.sortSteps(steps)) {
+      const tag = step.tag ?? QueryTag.ALL;
+
+      if (step.type === QueryType.ID) {
+        results = firstStep ? step.items : intersection([results, step.items]);
         this.canCache = false;
         continue;
       }
 
-      if (mutation) {
-        this.canCache = false;
-      }
+      const key = this.getCacheKey(step);
+      const data = this.getSearchData(step.mutation, step.type);
 
-      const key = this.getCacheKey(type!, tag, items);
-      if (key && key in this.cache) {
-        results = this.cache[key].slice();
+      if (key && this.cache[key]) {
+        results = this.cache[key]?.slice() ?? [];
         firstStep = false;
         continue;
       }
 
-      const data = this.getSearchData(mutation, type!);
+      if (step.mutation) {
+        // Record<ContainerType, ContainedID[]>
+        const data = this.getSearchData(null, step.type);
+        // ensure that we've constrained
+        results = this.cacheSetOp({ ...step, tag: QueryTag.ALL }, () =>
+          intersection(step.items.map(item => data[item] ?? []))
+        );
+        this.canCache = false;
+      }
 
       if (tag !== QueryTag.NONE) {
-        const ids = items.map(item => data[item] ?? []);
-        const next = tag === QueryTag.ALL ? intersection(ids) : union(...ids);
-        results = results.length ? intersection([results, next]) : next;
+        const next = this.cacheSetOp(step, (): string[] => {
+          const ids = step.items.map(item => data[item] ?? []);
+          return ids.length > 1 && tag === QueryTag.ALL
+            ? intersection(ids)
+            : union(...ids);
+        });
+
+        results =
+          firstStep && !results.length ? next : intersection([results, next]);
       } else {
-        if (firstStep) {
-          results = this.ids;
+        if (firstStep && !results.length) {
+          results = this.manager.containers.ids();
         }
+
         const whitelist: string[][] = [];
         const blacklist: string[][] = [];
+
         for (const key in data) {
-          if (!items.includes(key)) {
+          // this is hideously, mind-bogglingly inefficient
+          if (step.items.indexOf(key) === -1) {
             whitelist.push(data[key]);
           } else {
             blacklist.push(data[key]);
           }
         }
 
-        results = intersection([
-          results,
+        const res = this.cacheSetOp(step, () =>
           difference(union(...whitelist), union(...blacklist))
-        ]);
+        );
+
+        results = intersection([results, res]);
       }
 
-      if (key) {
-        for (const type of items) {
+      if (this.canCache && key) {
+        for (const type of step.items) {
           (this.typeCache[type] ??= []).push(key);
         }
-        this.cache[key] = results.slice();
+        this.cache[key] = results;
       }
 
       this.canCache = false;
       firstStep = false;
     }
 
-    for (const id of results) {
-      if (id in this.manager.containers) {
-        yield this.manager.containers[id];
-      }
-    }
+    return results.map(id => this.manager.containers.get(id)).filter(f => !!f);
   }
 
   public constructor(manager: ContainerManager) {

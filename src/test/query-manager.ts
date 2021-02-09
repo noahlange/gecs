@@ -19,3 +19,17 @@ describe('caching', () => {
     expect(b.length).toBeGreaterThan(a.length);
   });
 });
+
+describe('caching', () => {
+  test('should clear caches appropriately', () => {
+    const em = new Manager();
+    em.create(WithA);
+    const q1 = em.query.all.components(A).get();
+
+    em.create(WithAB);
+    const q2 = em.query.all.components(A).get();
+
+    expect(q1).toHaveLength(1);
+    expect(q2).toHaveLength(2);
+  });
+});

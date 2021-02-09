@@ -10,37 +10,39 @@ for (const count of [1, 10, 50, 100]) {
     for (let i = 0; i < count * 1000; i++) {
       entities.push(em.create(TestEntity));
     }
-    em.cleanup();
-    return entities;
+    return { em, entities };
   }
 
   bench(`Modify ${count}k entities (1 component)`, b => {
-    const entities = setup();
+    const { entities, em } = setup();
     b.start();
-    for (const { $$ } of entities) {
-      $$.test1.a = 3;
+    for (const { $ } of entities) {
+      $.test1.a = 3;
     }
     b.end();
+    em.cleanup();
   });
 
   bench(`Modify ${count}k entities (2 components)`, b => {
-    const entities = setup();
+    const { entities, em } = setup();
     b.start();
-    for (const { $$ } of entities) {
-      $$.test1.a = 3;
-      $$.test2.c = 2;
+    for (const { $ } of entities) {
+      $.test1.a = 3;
+      $.test2.c = 2;
     }
     b.end();
+    em.cleanup();
   });
 
   bench(`Modify ${count}k entities (3 components)`, b => {
-    const entities = setup();
+    const { entities, em } = setup();
     b.start();
-    for (const { $$ } of entities) {
-      $$.test1.a = 3;
-      $$.test2.c = 2;
-      $$.test3.e = 1;
+    for (const { $ } of entities) {
+      $.test1.a = 3;
+      $.test2.c = 2;
+      $.test3.e = 1;
     }
     b.end();
+    em.cleanup();
   });
 }

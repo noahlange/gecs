@@ -8,7 +8,7 @@ describe('world initialization', () => {
     const WorldB = World.with(SystemB);
     const world = new WorldB();
     await expect(world.start()).resolves.not.toThrow();
-    expect(world.$$.b.booted).toBeTruthy();
+    expect(world.$.b.booted).toBeTruthy();
   });
 
   test('`world.init()` should instantiate systems in order of registration', async () => {

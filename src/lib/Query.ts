@@ -4,9 +4,10 @@ import type { QueryManager, QueryState } from '../managers/QueryManager';
 import { QueryTag, QueryType } from '../managers/QueryManager';
 import type { Contained, Container } from '..';
 import type { ContainerClass } from './Container';
-import { Mutation } from '../managers/ContainerManager';
+
 import type { BaseType, KeyedByType, PartialByType } from '../types';
 import type { U } from 'ts-toolbelt';
+import { Mutation } from '../types';
 
 interface BaseQuery<
   T extends BaseType = {},
@@ -94,6 +95,7 @@ export class Query<
         tag:
           this.state.tag ?? (this.state.mutation ? QueryTag.ANY : QueryTag.ALL),
         // sort items now so we don't have to worry about string order for caching later
+        type: this.state.type ?? QueryType.CONTAINED,
         items: this.state.items.sort((a, b) => a.localeCompare(b))
       });
     }

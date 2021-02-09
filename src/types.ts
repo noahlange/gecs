@@ -36,10 +36,12 @@ export type PartialBaseType<T extends BaseType> = {
   [K in keyof T]?: PartialContained<T[K]>;
 };
 
-export type Frozen<T extends BaseType> = {
-  readonly [K in keyof T]: Readonly<T[K]>;
-};
-
 export type DataType<T> = T extends EntityClass<infer D>
   ? PartialBaseType<D>
   : never;
+
+export enum Mutation {
+  CHANGED = 'changed',
+  CREATED = 'created',
+  REMOVED = 'removed'
+}

@@ -25,13 +25,13 @@ function setupChanged(create, components) {
 
   const entities = em.query.get();
   for (let i = 0; i < entities.length; i++) {
-    const { $$ } = entities[i];
-    $$.test1.a = i;
+    const { $ } = entities[i];
+    $.test1.a = i;
     if (components > 1) {
-      $$.test2.c = i;
+      $.test2.c = i;
     }
     if (components > 2) {
-      $$.test3.e = i;
+      $.test3.e = i;
     }
   }
   em.cleanup();

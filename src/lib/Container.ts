@@ -2,7 +2,6 @@ import type {
   BaseType,
   KeyedByType,
   WithStaticType,
-  Frozen,
   PartialBaseType
 } from '../types';
 import type { ContainerManager } from '../managers/ContainerManager';
@@ -76,15 +75,8 @@ export class Container<T extends BaseType = {}> {
   /**
    * Return an object of immutable components.
    */
-  public get $(): Frozen<T> {
-    return this.manager.getBindings(this, false) as Frozen<T>;
-  }
-
-  /**
-   * Return an object of mutable components.
-   */
-  public get $$(): T {
-    return this.manager.getBindings(this, true);
+  public get $(): T {
+    return this.manager.getBindings(this);
   }
 
   /**
@@ -94,6 +86,6 @@ export class Container<T extends BaseType = {}> {
   public init?(): void;
 
   public destroy(): void {
-    this.manager.destroy(this.id);
+    this.manager.destroy(this);
   }
 }

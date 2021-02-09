@@ -50,7 +50,7 @@ export class Sprite extends Component {
 
 By passing a series of component classes to the entity's static `with()` method, you can declaratively define the structure of your entity.
 
-An entity's component instances can be accessed using the `$` or `$$` properties—returning immutable and mutable instances of the component, respectively. The static `type` property of each component class serves as the key by which the component can be accessed from its containing entity.
+An entity's component instances can be accessed via the `$` property. The static `type` property of each component class serves as the key by which the component can be accessed from its containing entity.
 
 ```js
 import { Component, Entity } from 'tecs';
@@ -69,9 +69,8 @@ export class Bar extends Component {
 
 class MyEntity extends Entity.with(Foo, Bar) {
   public myMethod() {
-    // components accessed by key defined in `type`
-    this.$.foobly.value = '???' // cannot assign to read-only property
-    this.$$.woobly.value = 2; // component marked as changed
+    this.$.foobly.value = '???'
+    this.$.woobly.value = 2;
   }
 }
 ```
@@ -215,12 +214,7 @@ const q2 = world.query.removed.any.components(A, B); // ΔA | ΔB
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: Honestly, not great. It's a work in progress.
-
-|                | ecsy | ape-ecs | tecs  |
-| :------------- | :--: | :-----: | :---: |
-| Create 50k, 2x | 80ms |  300ms  | 350ms |
-| Modify 50k, 2x | 6ms  |   7ms   | 150ms |
+**A/R**: Some where between "bad" and "terrible". I'd had rough comparisons to ape-ecs / ecsy listed here, but after running it through https://github.com/ddmills/js-ecs-benchmarks I realized the numbers I'd provided are wildly misleading.
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
 **A/R**: Also yes. But again, this is all about ergonomics and my feelings.
