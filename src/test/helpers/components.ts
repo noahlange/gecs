@@ -1,4 +1,5 @@
 /* eslint-disable max-classes-per-file */
+
 import { Component } from '../../ecs';
 
 export class A extends Component {

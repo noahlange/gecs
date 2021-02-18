@@ -16,7 +16,6 @@ function setup(create, components) {
     }
     em.create(E, data);
   }
-  em.cleanup();
   return em;
 }
 
@@ -34,7 +33,6 @@ function setupChanged(create, components) {
       $.test3.e = i;
     }
   }
-  em.cleanup();
   return em;
 }
 
@@ -47,7 +45,6 @@ function setupTags(create, tags) {
   for (let i = 0; i < create * 1000; i++) {
     em.create(E1, { test1: { a: 4, b: 5 } }, tagList);
   }
-  em.cleanup();
   return em;
 }
 

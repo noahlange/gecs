@@ -1,9 +1,9 @@
-export type { ComponentClass } from './contained/Component';
-export type { SystemClass } from './contained/System';
+export { Component } from './Component';
+export { Entity } from './Entity';
+export { System } from './System';
+export { World } from './World';
 
-export { Component } from './contained/Component';
-
-export { Entity } from './container/Entity';
-export { System } from './contained/System';
-export { World } from './container/World';
-export { Query as Query } from '../lib/Query';
+export type { ComponentClass } from './Component';
+export type { EntityClass } from './Entity';
+export type { SystemClass } from './System';
+export type { WorldClass } from './World';

@@ -20,7 +20,6 @@ for (const count of [1, 10, 50, 100]) {
       $.test1.a = 3;
     }
     b.end();
-    em.cleanup();
   });
 
   bench(`Modify ${count}k entities (2 components)`, b => {
@@ -31,7 +30,6 @@ for (const count of [1, 10, 50, 100]) {
       $.test2.c = 2;
     }
     b.end();
-    em.cleanup();
   });
 
   bench(`Modify ${count}k entities (3 components)`, b => {
@@ -43,6 +41,5 @@ for (const count of [1, 10, 50, 100]) {
       $.test3.e = 1;
     }
     b.end();
-    em.cleanup();
   });
 }
