@@ -84,6 +84,12 @@ const MyEntity1 = Entity.with(Position, Sprite);
 class MyEntity2 extends Entity.with(Position, Sprite) {}
 ```
 
+Sometimes you'll need the entity's instance type—even if you don't have a concrete object on hand.
+
+```typescript
+export type MyEntityInstance = EntityType<[typeof Position, typeof Sprite]>;
+```
+
 ## Worlds & Systems
 
 The relationship between the `World` and its `Systems` parallels that of an `Entity` and its `Components`. A `World` serves as a container for an arbitrary number of `Systems`, each of which performs a single, well-defined task that operates across numerous entities.
@@ -168,7 +174,7 @@ The entity manger handles all the relationships between entities and their compo
 
 Queries return collections of entities based on a user's request. The results of queries are typed exactly like the ordinary entity's `$` property, so you'll have access to each of the components you've requested in your query—and nothing more.
 
-Queries consist of one or more "steps," each corresponding to a different type of search—by components, tags, IDs or entities.
+Queries consist of one or more "steps," each corresponding to a different type of query— components, tags, IDs or entities.
 
 ```typescript
 const q1 = world.query.components(A, B);
@@ -185,27 +191,29 @@ const step2 = step1.all.tags('one', 'two');
 const results = step2.get(); // (A | B) & ('one' & 'two')
 ```
 
-Query steps can be modified with `.all`, `.any`, `.some` and `.none` to perform basic boolean operations.
+Query steps can be modified with `.all`, `.any` and `.none` to perform basic boolean operations. `.some` expands the query result's type signature, but has no effect on the contents of the query.
 
 ```typescript
-const q1 = world.query.all.components(A, B); // A & B
+// the "all" is implicit for tags/components
+const q1a = world.query.all.components(A, B); // A & B
+const q1b = world.query.components(A, B); // A & B
+
 const q2 = world.query.any.components(A, B); // A | B
 const q3 = world.query.some.components(A, B); // A? | B?
 const q4 = world.query.none.components(A, B); // !(A | B)
 ```
 
-Query steps can also filter to include only components mutated within the last tick.
+By default, queries aren't refreshed until the end of the tick. If you'd like to access components created/removed during the current tick, you can use the `created` and `removed` modifiers.
 
 ```typescript
 const q1 = world.query.created.components(A, B);
-const q2 = world.query.changed.components(A, B);
-const q3 = world.query.removed.components(A, B);
+const q2 = world.query.removed.components(A, B);
 ```
 
 Of course, mutation queries can use the aforementioned modifiers.
 
 ```typescript
-const q1 = world.query.changed.all.components(A, B); // ΔA & ΔB
+const q1 = world.query.created.all.components(A, B); // ΔA & ΔB
 const q2 = world.query.removed.any.components(A, B); // ΔA | ΔB
 ```
 
@@ -214,7 +222,7 @@ const q2 = world.query.removed.any.components(A, B); // ΔA | ΔB
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: Some where between "bad" and "terrible". I'd had rough comparisons to ape-ecs / ecsy listed here, but after running it through https://github.com/ddmills/js-ecs-benchmarks I realized the numbers I'd provided are wildly misleading.
+**A/R**: Somewhere between "bad" and "terrible". Typically ranks in the last 3 on most test cases in [ecs-benchmark](https://github.com/noctjs/ecs-benchmark) and ddmills' [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks). _That being said_, it's more than capable of 60 FPS.
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
 **A/R**: Also yes. But again, this is all about ergonomics and my feelings.

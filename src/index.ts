@@ -1,17 +1,5 @@
-import { Contained, Container } from './lib';
-import { Component, Entity, System, World, Query } from './ecs';
+export { Entity, Component, System, World } from './ecs';
+export { EntityManager as Manager } from './lib';
 
-import { ContainerManager as Manager } from './managers';
-
-export type { KeyedByType, DataType } from './types';
-
-export {
-  Container,
-  Contained,
-  Component,
-  Entity,
-  System,
-  World,
-  Query,
-  Manager
-};
+export type { EntityClass, ComponentClass, SystemClass } from './ecs';
+export type { EntityType } from './types';

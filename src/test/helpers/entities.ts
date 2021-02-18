@@ -3,9 +3,7 @@ import { Entity } from '../../ecs';
 import { A, B, C } from './components';
 
 // object entities
-class WithA extends Entity.with(A) {
-  public text: string = '1';
-}
+class WithA extends Entity.with(A) {}
 class WithB extends Entity.with(B) {}
 class WithC extends Entity.with(C) {}
 class WithAB extends Entity.with(A, B) {}
