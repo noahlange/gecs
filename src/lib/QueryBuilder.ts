@@ -1,9 +1,15 @@
 import type { Component, ComponentClass, Entity, EntityClass } from '../ecs';
-import type { BaseType, KeyedByType, PartialByType, QueryStep } from '../types';
+import type {
+  BaseType,
+  KeyedByType,
+  OfOrArrayOf,
+  PartialByType,
+  QueryStep
+} from '../types';
 import type { QueryManager, EntityManager } from '../managers';
 import type { U } from 'ts-toolbelt';
 
-import { QueryTag, QueryType } from '../types';
+import { QueryTag } from '../types';
 import type { Query } from './Query';
 
 interface BaseQueryBuilder<
@@ -18,7 +24,7 @@ interface BaseQueryBuilder<
   any: QueryBuilderAny<T, C>;
   some: QueryBuilderAny<T, C>;
   none: QueryBuilderNone<T, C>;
-  created: MutationQueryBuilder<T, C>;
+  added: MutationQueryBuilder<T, C>;
   removed: MutationQueryBuilder<T, C>;
 }
 
@@ -38,7 +44,9 @@ interface QueryBuilderNone<
   C extends Entity<T> = Entity<T>
 > {
   // no entities; not sure how best to handle this
-  components<A extends ComponentClass[]>(...components: A): QueryBuilder<T>;
+  components<A extends OfOrArrayOf<ComponentClass>[]>(
+    ...components: A
+  ): QueryBuilder<T>;
   tags(...tags: string[]): BaseQueryBuilder<T, C>;
 }
 
@@ -46,7 +54,7 @@ interface QueryBuilderAll<
   T extends BaseType<Component> = {},
   C extends Entity<T> = Entity<T>
 > {
-  components<A extends ComponentClass[]>(
+  components<A extends OfOrArrayOf<ComponentClass>[]>(
     ...components: A
   ): BaseQueryBuilder<U.Merge<T & KeyedByType<A>>>;
   tags(...tags: string[]): BaseQueryBuilder<T, C>;
@@ -59,16 +67,15 @@ interface QueryBuilderAny<
   entities<A extends EntityClass>(
     EntityConstructor: A
   ): BaseQueryBuilder<{}, InstanceType<A>>;
-  components<A extends ComponentClass[]>(
+  components<A extends OfOrArrayOf<ComponentClass>[]>(
     ...components: A
   ): QueryBuilder<U.Merge<T & PartialByType<A>>>;
   tags(...tags: string[]): BaseQueryBuilder<T, C>;
 }
 
 export interface TempQueryBuilderState {
-  type: QueryType | null;
   tag: QueryTag | null;
-  items: (number | string)[];
+  ids: (number | string)[];
 }
 
 export class QueryBuilder<
@@ -82,22 +89,20 @@ export class QueryBuilder<
 
   protected reset(): this {
     if (this.state) {
-      const type = this.state.type ?? QueryType.CMP;
       const step = {
         ...this.state,
         // default to an OR for mutations, an ALL for the rest
         tag: this.state.tag ?? QueryTag.ALL,
         // sort items now so we don't have to worry about string order for caching later
-        type,
-        items: this.state.items.map(item => item.toString())
+        ids: this.state.ids.map(item => item.toString())
       };
       this.criteria.push({
         ...step,
-        key: `${step.type}:${step.tag}:${step.items.join(',')}`
+        key: `${step.tag}:${step.ids.join(',')}`
       });
     }
 
-    this.state = { tag: null, type: null, items: [] };
+    this.state = { tag: null, ids: [] };
     return this;
   }
 
@@ -140,7 +145,7 @@ export class QueryBuilder<
   /**
    * Filter to values created within the current tick.
    */
-  public get created(): MutationQueryBuilder<T, C> {
+  public get added(): MutationQueryBuilder<T, C> {
     // this.state.mutation = Mutation.CREATED;
     return (this as unknown) as MutationQueryBuilder<T, C>;
   }
@@ -157,8 +162,8 @@ export class QueryBuilder<
    * Create a new step with one or more tag requirements.
    */
   public tags<A extends string[]>(...tags: A): BaseQueryBuilder<T, C> {
-    this.state.type = QueryType.TAG;
-    this.state.items.push(...tags);
+    const mapped = tags.map(t => this.entityManager.tags[t]).filter(f => !!f);
+    this.state.ids.push(...mapped);
     return this.reset();
   }
 
@@ -168,19 +173,19 @@ export class QueryBuilder<
   public entities<C extends EntityClass>(
     EntityConstructor: C
   ): BaseQueryBuilder<{}, InstanceType<C>> {
-    this.state.type = QueryType.ENT;
-    this.state.items.push(EntityConstructor.id);
+    this.state.ids.push(EntityConstructor.id);
     return (this.reset() as unknown) as QueryBuilder<{}, InstanceType<C>>;
   }
 
   /**
    * Constrain results to those with given components.
    */
-  public components<A extends ComponentClass[]>(
+  public components<A extends OfOrArrayOf<ComponentClass>[]>(
     ...components: A
   ): BaseQueryBuilder<U.Merge<T & KeyedByType<A>>> {
-    this.state.type = QueryType.CMP;
-    this.state.items.push(...components.map(c => c.type));
+    this.state.ids.push(
+      ...components.map(c => (Array.isArray(c) ? `${c[0].type}[]` : c.type))
+    );
     return (this.reset() as unknown) as QueryBuilder<
       U.Merge<T & KeyedByType<A>>
     >;

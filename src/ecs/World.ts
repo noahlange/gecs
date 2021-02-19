@@ -1,7 +1,7 @@
 import type { BaseType, KeyedByType, PartialBaseType } from '../types';
 import type { System, SystemClass } from './System';
 import type { Entity, EntityClass } from './Entity';
-import type { Component } from './Component';
+import type { Component, ComponentClass } from './Component';
 
 import { useWithSystem } from '../utils';
 import { EntityManager } from '../managers';
@@ -41,16 +41,21 @@ export class World<T extends BaseType<System> = {}> {
     this.manager.cleanup();
   }
 
+  public register(...items: (ComponentClass | EntityClass)[]): void {
+    this.manager.register(...items);
+  }
+
   /**
    * Kickstart the world and its systems.
    */
   public async start(): Promise<void> {
-    await this.init?.();
+    this.init?.();
     for (const System of this.items) {
       this.systems.push(new System(this));
     }
     for (const system of this.systems) {
       await system.init?.();
+      this.manager.queries.update();
     }
   }
 
@@ -71,7 +76,11 @@ export class World<T extends BaseType<System> = {}> {
   public constructor() {
     this.$ = {} as T;
     for (const System of this.items) {
-      this.$[System.type as keyof T] = new System(this) as T[keyof T];
+      if (System.type) {
+        this.$[System.type as keyof T] = new System(this) as T[keyof T];
+      } else {
+        console.warn(`Attempted to register unnamed system "${System.name}."`);
+      }
     }
   }
 }

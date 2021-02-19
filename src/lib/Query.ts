@@ -1,14 +1,17 @@
 import type { Entity } from '../ecs';
-import type { QueryStep, BaseType, QueryType } from '../types';
+import type { QueryStep, BaseType } from '../types';
 import type { EntityManager } from '../managers/EntityManager';
 
 import { QueryTag } from '../types';
 
 import { match, union } from '../utils';
 import { nanoid } from 'nanoid/non-secure';
+import type { QueryManager } from '../managers';
 
 type TagsExceptSome = Exclude<QueryTag, QueryTag.SOME>;
-type Targets = { [key in QueryType]?: bigint };
+type Targets = { [key in TagsExceptSome]: bigint | null };
+
+const arrayOf = /\[\]$/gim;
 
 const fns = {
   [QueryTag.NONE]: match.none,
@@ -16,38 +19,60 @@ const fns = {
   [QueryTag.ANY]: match.any
 };
 
-function reducer(entities: EntityManager) {
-  return (a: Targets, b: QueryStep): Targets => {
-    const ids = b.items
-      .map(i => entities.getID(b.type, i) ?? null)
-      .filter(i => i !== null) as bigint[];
-    a[b.type] = a[b.type] ? union(a[b.type]!, ...ids) : union(...ids);
-    return a;
-  };
+enum QueryStatus {
+  PENDING = 0,
+  RESOLVED = 1,
+  FAILED = 2
 }
 
 export class Query<T extends BaseType = BaseType> {
-  protected id = nanoid(8);
+  protected id = nanoid(6);
+
   protected steps: QueryStep[];
   protected results: Set<Entity> = new Set();
-  protected entities: EntityManager;
-
-  /**
-   * These are populated during init()—if some tag or type doesn't make an
-   * appearance in the query steps, we don't to spend time looping around for it.
-   */
-  protected types: Set<QueryType> = new Set();
+  protected arrays: Set<string> = new Set();
   protected tags: Set<TagsExceptSome> = new Set();
+  /**
+   * Unidentified query items (i.e., without a bitmask).
+   */
+  protected unresolved: Set<string> = new Set();
 
-  // QueryTag -> QueryType -> bigint
-  protected targets: Record<TagsExceptSome, Targets> = {
-    [QueryTag.ANY]: {},
-    [QueryTag.ALL]: {},
-    [QueryTag.NONE]: {}
+  protected queryManager: QueryManager;
+  protected entityManager: EntityManager;
+  protected attempts: number = 0;
+  protected status: QueryStatus = QueryStatus.PENDING;
+
+  protected reducer = (targets: Targets, step: QueryStep): Targets => {
+    if (step.tag === QueryTag.SOME) {
+      return targets;
+    }
+
+    const ids = step.ids
+      .map(i => {
+        // strip trailing brackets (foo[] -> foo)
+        const res = this.entityManager.getID(i.replace(arrayOf, '')) ?? null;
+        // if we aren't able to find a reference in the registry, mark it unresovled
+        res === null ? this.unresolved.add(i) : this.unresolved.delete(i);
+        return res;
+      })
+      // filter out unresolved items
+      .filter(i => i !== null) as bigint[];
+
+    targets[step.tag] = targets[step.tag]
+      ? union(targets[step.tag]!, ...ids)
+      : union(...ids);
+
+    return targets;
+  };
+
+  protected targets: Record<TagsExceptSome, bigint | null> = {
+    [QueryTag.ANY]: null,
+    [QueryTag.ALL]: null,
+    [QueryTag.NONE]: null
   };
 
   /**
-   * Some code only needs to be run once (on instantiation)—this generates the
+   * Some code only needs to run once (on instantiation)—this generates the
    * bigints used for entity matching during the filtering process.
    */
   protected init(): void {
@@ -62,75 +87,119 @@ export class Query<T extends BaseType = BaseType> {
         this.tags.add(step.tag);
         targets[step.tag].push(step);
       }
-      this.types.add(step.type);
+      // add array item keys to the set
+      for (const item of step.ids) {
+        const trimmed = item.replace(arrayOf, '');
+        if (trimmed !== item) {
+          this.arrays.add(trimmed);
+        }
+      }
     }
 
-    const reduce = reducer(this.entities);
     for (const tag of this.tags) {
-      this.targets[tag] = targets[tag].reduce(reduce, {});
+      this.targets = targets[tag].reduce(this.reducer, this.targets);
     }
   }
 
   /**
    * Filter an arbitrary set of entities by the query's constraints.
    */
-  protected filter(entities: Set<Entity>): Set<Entity> {
-    const { types, tags, targets } = this;
-    search: for (const entity of entities) {
-      // all/any/none
+  protected filter(masks: bigint[]): Set<Entity> {
+    const { tags, targets } = this;
+    const keys: bigint[] = [];
+    search: for (const mask of masks) {
       for (const tag of tags) {
-        // components/entity/tags
-        for (const type of types) {
-          const target = targets[tag][type];
-          const value = entity.ids[type];
-          if (target && value) {
-            // use the appropriate match fn (based on our tag) vs. our target
-            if (!fns[tag](target, value)) {
-              // bail early, if possible
-              entities.delete(entity);
-              continue search;
-            }
-          }
+        const target = targets[tag];
+        if (!target || !fns[tag](target, mask)) {
+          continue search;
+        }
+      }
+      keys.push(mask);
+    }
+
+    const res = new Set(this.queryManager.index.get(keys));
+
+    const checkArray = !!this.arrays.size;
+    filter: for (const entity of res) {
+      const hasArray = entity.arrayItems.length > 0;
+      if (checkArray !== hasArray) {
+        res.delete(entity);
+        continue filter;
+      }
+      for (const Item of entity.arrayItems) {
+        if (!this.arrays.has(Item.type)) {
+          res.delete(entity);
+          continue filter;
         }
       }
     }
-    return entities;
+
+    return res;
   }
 
-  public unload(entities: Set<Entity> = new Set()): void {
-    for (const e of entities) {
-      this.results.delete(e);
-    }
+  public refresh(): void {
+    const keys = this.queryManager.index.keys();
+    this.results = this.filter(keys);
   }
 
-  public refresh(entities?: Set<Entity>): void {
-    if (entities) {
-      for (const e of this.filter(entities)) {
-        this.results.add(e);
-      }
+  protected resolve(): void {
+    if (this.attempts >= 10) {
+      this.status = QueryStatus.FAILED;
+      const items = Array.from(this.unresolved).join('", "');
+      console.warn(
+        `Failed to resolve "${items}" after 10 attempts. Pre-register or manually invoke \`.refresh()\` to reload.`
+      );
     } else {
+      this.attempts++;
       this.init();
-      const data = new Set(this.entities.entities.values());
-      this.results = this.filter(data);
+      if (this.unresolved.size === 0) {
+        this.status = QueryStatus.RESOLVED;
+        this.refresh();
+      }
     }
   }
 
-  public get(): Entity<T>[] {
-    return Array.from(this.results) as Entity<T>[];
+  public update(): void {
+    switch (this.status) {
+      case QueryStatus.PENDING: {
+        // this.added.push(...added.values());
+        // this.removed.push(...removed.values());
+        break;
+      }
+      case QueryStatus.RESOLVED: {
+        const addKeys = Array.from(this.queryManager.added.keys());
+        for (const e of this.filter(addKeys)) {
+          this.results.add(e);
+        }
+        for (const entities of this.queryManager.removed.values()) {
+          for (const entity of entities) {
+            this.results.delete(entity);
+          }
+        }
+        break;
+      }
+    }
   }
 
   /**
    * Iterate through search results.
    */
   public *[Symbol.iterator](): Iterator<Entity<T>> {
+    if (this.status === QueryStatus.PENDING) {
+      this.resolve();
+    }
     for (const item of this.results) {
       yield item as Entity<T>;
     }
   }
 
+  public get(): Entity<T>[] {
+    return Array.from(this) as Entity<T>[];
+  }
+
   public constructor(entities: EntityManager, steps: QueryStep[]) {
-    this.steps = steps;
-    this.entities = entities;
-    this.init();
+    this.entityManager = entities;
+    this.queryManager = entities.queries;
+    this.steps = steps.filter(step => step.tag !== QueryTag.SOME);
   }
 }
