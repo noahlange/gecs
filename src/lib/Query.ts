@@ -18,15 +18,10 @@ const fns = {
   [QueryTag.ANY]: match.any
 };
 
-function reducer(entities: EntityManager) {
-  return (a: Targets, b: QueryStep): Targets => {
-    const ids = b.items
-      // strip trailing brackets
-      .map(i => entities.getID(b.type, i.replace(arrayOf, '')) ?? null)
-      .filter(i => i !== null) as bigint[];
-    a[b.type] = a[b.type] ? union(a[b.type]!, ...ids) : union(...ids);
-    return a;
-  };
+enum QueryStatus {
+  PENDING = 0,
+  RESOLVED = 1,
+  FAILED = 2
 }
 
 export class Query<T extends BaseType = BaseType> {
@@ -35,6 +30,12 @@ export class Query<T extends BaseType = BaseType> {
   protected results: Set<Entity> = new Set();
   protected entities: EntityManager;
   protected arrays: Set<string> = new Set();
+  protected unresolved: Set<string> = new Set();
+
+  protected added: Entity[] = [];
+  protected removed: Entity[] = [];
+  protected status: QueryStatus = QueryStatus.PENDING;
+  protected attempts: number = 0;
 
   /**
    * These are populated during init()—if some tag or type doesn't make an
@@ -42,6 +43,20 @@ export class Query<T extends BaseType = BaseType> {
    */
   protected types: Set<QueryType> = new Set();
   protected tags: Set<TagsExceptSome> = new Set();
+
+  protected reducer = (a: Targets, step: QueryStep): Targets => {
+    const ids = step.items
+      // strip trailing brackets
+      .map(i => {
+        const res =
+          this.entities.getID(step.type, i.replace(arrayOf, '')) ?? null;
+        res === null ? this.unresolved.add(i) : this.unresolved.delete(i);
+        return res;
+      })
+      .filter(i => i !== null) as bigint[];
+    a[step.type] = a[step.type] ? union(a[step.type]!, ...ids) : union(...ids);
+    return a;
+  };
 
   // QueryTag -> QueryType -> bigint
   protected targets: Record<TagsExceptSome, Targets> = {
@@ -76,9 +91,11 @@ export class Query<T extends BaseType = BaseType> {
       this.types.add(step.type);
     }
 
-    const reduce = reducer(this.entities);
     for (const tag of this.tags) {
-      this.targets[tag] = targets[tag].reduce(reduce, {});
+      this.targets[tag] = targets[tag].reduce(
+        this.reducer,
+        this.targets[tag] ?? {}
+      );
     }
   }
 
@@ -127,40 +144,66 @@ export class Query<T extends BaseType = BaseType> {
     return entities;
   }
 
-  public unload(entities: Set<Entity> = new Set()): void {
-    for (const e of entities) {
-      this.results.delete(e);
-    }
+  public refresh(): void {
+    const data = new Set(this.entities.entities.values());
+    this.results = this.filter(data);
   }
 
-  public refresh(entities?: Set<Entity>): void {
-    if (entities) {
-      for (const e of this.filter(entities)) {
-        this.results.add(e);
-      }
+  protected resolve(): void {
+    if (this.attempts >= 10) {
+      this.status = QueryStatus.FAILED;
+      const items = Array.from(this.unresolved).join('", "');
+      console.warn(
+        `Failed to resolve "${items}" after 10 attempts. Pre-register or manually invoke \`.refresh()\` to reload.`
+      );
     } else {
+      this.attempts++;
       this.init();
-      const data = new Set(this.entities.entities.values());
-      this.results = this.filter(data);
+      if (this.unresolved.size === 0) {
+        this.status = QueryStatus.RESOLVED;
+        this.refresh();
+      }
     }
   }
 
-  public get(): Entity<T>[] {
-    return Array.from(this.results) as Entity<T>[];
+  public update(): void {
+    const { added, removed } = this.entities.queries;
+    switch (this.status) {
+      case QueryStatus.PENDING: {
+        this.added = Array.from(new Set(this.added.concat(...added)));
+        this.removed = Array.from(new Set(this.removed.concat(...removed)));
+        break;
+      }
+      case QueryStatus.RESOLVED: {
+        for (const e of this.filter(added)) {
+          this.results.add(e);
+        }
+        for (const e of removed) {
+          this.results.delete(e);
+        }
+        break;
+      }
+    }
   }
 
   /**
    * Iterate through search results.
    */
   public *[Symbol.iterator](): Iterator<Entity<T>> {
+    if (this.status === QueryStatus.PENDING) {
+      this.resolve();
+    }
     for (const item of this.results) {
       yield item as Entity<T>;
     }
   }
 
+  public get(): Entity<T>[] {
+    return Array.from(this) as Entity<T>[];
+  }
+
   public constructor(entities: EntityManager, steps: QueryStep[]) {
-    this.steps = steps;
+    this.steps = steps.filter(step => step.tag !== QueryTag.SOME);
     this.entities = entities;
-    this.init();
   }
 }

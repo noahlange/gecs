@@ -2,28 +2,33 @@ import type { QueryType } from '../types';
 import { id, union } from '../utils';
 
 /**
- * Map human-readable identifiers (nanoid, .type, etc) to bigints for bitmask
- * searches. Each major query type has its own registry to avoid overflowing
- * the ID generator.
+ * Map human-readable identifiers (nanoid, .type, etc) to bigints for faster,
+ * bitmask-based searches. Each major query type has its own registry to avoid
+ * overflowing the ID generator, which I have done.
  */
 export class Registry {
   protected id = id();
-  protected registry: Map<string, bigint> = new Map();
+  protected registry: Record<string, bigint> = {};
   protected type: QueryType;
   protected pass: boolean = false;
 
-  public register(keys: string[]): bigint {
+  public register(key: string): void {
+    this.registry[key] = this.id();
+  }
+
+  public add(keys: string[]): bigint {
     const res: bigint[] = [];
     for (const key of keys) {
-      const id = this.registry.get(key) ?? this.id();
-      this.registry.set(key, id);
-      res.push(id);
+      if (!(key in this.registry)) {
+        this.register(key);
+      }
+      res.push(this.registry[key]);
     }
     return union(...res);
   }
 
   public getID(key: string): bigint | null {
-    return this.registry.get(key) ?? null;
+    return this.registry[key] ?? null;
   }
 
   public constructor(type: QueryType) {

@@ -24,7 +24,7 @@ interface BaseQueryBuilder<
   any: QueryBuilderAny<T, C>;
   some: QueryBuilderAny<T, C>;
   none: QueryBuilderNone<T, C>;
-  created: MutationQueryBuilder<T, C>;
+  added: MutationQueryBuilder<T, C>;
   removed: MutationQueryBuilder<T, C>;
 }
 
@@ -148,7 +148,7 @@ export class QueryBuilder<
   /**
    * Filter to values created within the current tick.
    */
-  public get created(): MutationQueryBuilder<T, C> {
+  public get added(): MutationQueryBuilder<T, C> {
     // this.state.mutation = Mutation.CREATED;
     return (this as unknown) as MutationQueryBuilder<T, C>;
   }

@@ -201,17 +201,17 @@ const q3 = world.query.some.components(A, B); // A? | B?
 const q4 = world.query.none.components(A, B); // !(A | B)
 ```
 
-By default, queries aren't refreshed until the end of the tick. If you'd like to access components created/removed during the current tick, you can use the `created` and `removed` modifiers.
+By default, queries aren't refreshed until the end of the tick. If you'd like to access entities added/removed during the current tick, you can use the `created` and `removed` modifiers.
 
 ```typescript
-const q1 = world.query.created.components(A, B);
+const q1 = world.query.added.components(A, B);
 const q2 = world.query.removed.components(A, B);
 ```
 
 Of course, mutation queries can use the aforementioned modifiers.
 
 ```typescript
-const q1 = world.query.created.all.components(A, B); // ΔA & ΔB
+const q1 = world.query.added.all.components(A, B); // ΔA & ΔB
 const q2 = world.query.removed.any.components(A, B); // ΔA | ΔB
 ```
 
@@ -220,10 +220,10 @@ const q2 = world.query.removed.any.components(A, B); // ΔA | ΔB
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: Somewhere between "bad" and "terrible." So long as it remains capable of 60 FPS+, it's not a huge priority at the moment.
+**A/R**: Somewhere between "not great" and "bad" but it was never one of the primary design goals. So long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance fixes.
 
 **Q/S**: But _how_ bad, exactly?
-**A/R**: Typically ranks in the last 3 on most test cases in [ecs-benchmark](https://github.com/noctjs/ecs-benchmark) and ddmills' [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks).
+**A/R**: Hovers around the bottom third of [ecs-benchmark](https://github.com/noctjs/ecs-benchmark) and ddmills' [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks).
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
 **A/R**: Also yes. But again, this is all about ergonomics and my feelings.

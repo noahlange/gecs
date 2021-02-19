@@ -1,4 +1,4 @@
-import type { Entity, EntityClass } from '../ecs';
+import type { ComponentClass, Entity, EntityClass } from '../ecs';
 import type { BaseType, PartialBaseType } from '../types';
 
 import { QueryType } from '../types';
@@ -6,6 +6,9 @@ import { QueryType } from '../types';
 import { QueryBuilder, Registry } from '../lib';
 import { QueryManager } from './QueryManager';
 
+const isEntityClass = (e: ComponentClass | EntityClass): e is EntityClass => {
+  return !('type' in e);
+};
 export class EntityManager {
   public registries = {
     [QueryType.CMP]: new Registry(QueryType.CMP),
@@ -22,18 +25,25 @@ export class EntityManager {
     return new QueryBuilder(this, this.queries);
   }
 
+  public register(...items: (ComponentClass | EntityClass)[]): void {
+    for (const item of items) {
+      isEntityClass(item)
+        ? this.registries[QueryType.ENT].register(item.id)
+        : this.registries[QueryType.CMP].register(item.type);
+    }
+  }
+
   public index(entity: Entity): void {
-    this.queries.index(entity);
+    this.queries.added.add(entity);
   }
 
   public unindex(entity: Entity): void {
-    this.queries.unindex(entity);
+    this.queries.removed.add(entity);
   }
 
   public cleanup(): void {
     for (const entity of this.toDestroy) {
       this.entities.delete(entity.id);
-      this.queries.unindex(entity);
     }
     this.toDestroy.clear();
     this.queries.cleanup();
@@ -45,6 +55,7 @@ export class EntityManager {
 
   public destroy(entity: Entity): void {
     this.toDestroy.add(entity);
+    this.queries.removed.add(entity);
   }
 
   public create<T extends BaseType>(
@@ -59,19 +70,19 @@ export class EntityManager {
     );
 
     const isArray = entity.items.some(i => Array.isArray(i));
-    const cmp = this.registries[QueryType.CMP].register(
+    const cmp = this.registries[QueryType.CMP].add(
       entity.items.map(e => (Array.isArray(e) ? e[0].type : e.type))
     );
 
     entity.ids = {
       // we're tagging all entities with any array component so we can quickly filter in array/non-array queries
       [QueryType.CMP]: isArray ? [cmp] : cmp,
-      [QueryType.ENT]: this.registries[QueryType.ENT].register([Entity.id]),
-      [QueryType.TAG]: this.registries[QueryType.TAG].register(tags)
+      [QueryType.ENT]: this.registries[QueryType.ENT].add([Entity.id]),
+      [QueryType.TAG]: this.registries[QueryType.TAG].add(tags)
     };
 
     this.entities.set(entity.id, entity);
-    this.queries.index(entity);
+    this.queries.added.add(entity);
 
     return entity;
   }

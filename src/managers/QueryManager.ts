@@ -21,31 +21,25 @@ export class QueryManager {
       .sort((a, b) => a.type - b.type);
   }
 
-  protected added: Set<Entity> = new Set();
-  protected removed: Set<Entity> = new Set();
+  public added: Set<Entity> = new Set();
+  public removed: Set<Entity> = new Set();
 
-  public index(entity: Entity): void {
-    this.added.add(entity);
-  }
-
-  public unindex(entity: Entity): void {
-    this.removed.add(entity);
+  public updateQueries(): void {
+    for (const key in this.queries) {
+      this.queries[key].update();
+    }
   }
 
   public cleanup(): void {
-    // this can be optimized
-    for (const q in this.queries) {
-      const value = this.queries[q];
-      value.refresh(this.added);
-      value.unload(this.removed);
-    }
+    this.updateQueries();
+    this.added.clear();
+    this.removed.clear();
   }
 
   public getQuery(steps: QueryStep[]): Query {
     const key = steps.map(k => k.key).join('::');
     if (!this.queries[key]) {
-      const q = (this.queries[key] = new Query(this.entities, steps));
-      q.refresh();
+      this.queries[key] = new Query(this.entities, steps);
     }
     return this.queries[key];
   }
