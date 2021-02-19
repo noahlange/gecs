@@ -60,16 +60,9 @@ export enum QueryTag {
 }
 
 export interface QueryStep {
-  type: QueryType;
+  ids: string[];
   tag: QueryTag;
-  items: string[];
   key: string;
-}
-
-export enum QueryType {
-  CMP = 1,
-  ENT = 2,
-  TAG = 3
 }
 
 export type EntityType<A extends ComponentClass[]> = Entity<KeyedByType<A>>;

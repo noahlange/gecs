@@ -8,14 +8,7 @@ import type { EntityManager } from '../managers';
 import type { Component, ComponentClass } from './Component';
 
 import { useWithComponent } from '../utils';
-import { QueryType } from '../types';
 import { nanoid } from 'nanoid/non-secure';
-
-export interface EntityIDs {
-  [QueryType.ENT]: bigint | null;
-  [QueryType.TAG]: bigint | null;
-  [QueryType.CMP]: OfOrArrayOf<bigint> | null;
-}
 
 export interface EntityTags {
   all: () => readonly string[];
@@ -47,7 +40,7 @@ export interface EntityClass<T extends BaseType = {}> {
 }
 
 export class Entity<T extends BaseType = {}> {
-  public static id: string = nanoid(8);
+  public static id: string = nanoid(6);
 
   public static with<T, A extends OfOrArrayOf<ComponentClass>[]>(
     ...components: A
@@ -55,7 +48,7 @@ export class Entity<T extends BaseType = {}> {
     return useWithComponent<T & KeyedByType<A>, A>(this, ...components);
   }
 
-  protected _tags: Set<string>;
+  protected entityTags: Set<string>;
 
   public get components(): EntityComponents {
     const entity = this;
@@ -105,11 +98,11 @@ export class Entity<T extends BaseType = {}> {
 
     return {
       all(): string[] {
-        return Array.from(entity._tags);
+        return Array.from(entity.entityTags);
       },
       has(...tags: string[]): boolean {
         for (const t of tags) {
-          if (!entity._tags.has(t)) {
+          if (!entity.entityTags.has(t)) {
             return false;
           }
         }
@@ -117,18 +110,18 @@ export class Entity<T extends BaseType = {}> {
       },
       add(...tags: string[]): void {
         for (const tag of tags) {
-          entity._tags.add(tag);
+          entity.entityTags.add(tag);
         }
         entity.manager.index(entity);
       },
       remove(...tags: string[]): void {
         for (const tag of tags) {
-          entity._tags.delete(tag);
+          entity.entityTags.delete(tag);
         }
         entity.manager.unindex(entity);
       },
       *[Symbol.iterator](): Iterator<string> {
-        for (const tag of entity._tags) {
+        for (const tag of entity.entityTags) {
           yield tag;
         }
       }
@@ -139,14 +132,13 @@ export class Entity<T extends BaseType = {}> {
     return [];
   }
 
+  public arrayItems: ComponentClass[] = [];
+
   public readonly $: T;
-  public readonly id: string = nanoid(8);
+  public readonly id: string = nanoid(6);
   public readonly manager: EntityManager;
-  public ids: EntityIDs = {
-    [QueryType.ENT]: null,
-    [QueryType.TAG]: null,
-    [QueryType.CMP]: null
-  };
+
+  public key: bigint = 0n;
 
   public destroy(): void {
     this.manager.destroy(this);
@@ -157,8 +149,9 @@ export class Entity<T extends BaseType = {}> {
     for (const Item of this.items) {
       if (Array.isArray(Item)) {
         const [Constructor] = Item;
+        this.arrayItems.push(Constructor);
         const type = Constructor.type as keyof T;
-        // create POJOs to populate components with data
+        // create empty POJOs to populate components with data
         const items = (data[type]
           ? // it may be an array, in which case we'll just use the array to populate new items...
             Array.isArray(data[type])
@@ -186,7 +179,7 @@ export class Entity<T extends BaseType = {}> {
     tags: string[] = []
   ) {
     this.manager = manager;
-    this._tags = new Set(tags);
+    this.entityTags = new Set(tags);
     this.$ = this.getBindings(data);
   }
 }

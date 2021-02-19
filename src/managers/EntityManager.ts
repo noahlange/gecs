@@ -1,26 +1,21 @@
 import type { ComponentClass, Entity, EntityClass } from '../ecs';
 import type { BaseType, PartialBaseType } from '../types';
 
-import { QueryType } from '../types';
-
 import { QueryBuilder, Registry } from '../lib';
 import { QueryManager } from './QueryManager';
+import { nanoid } from 'nanoid/non-secure';
 
 const isEntityClass = (e: ComponentClass | EntityClass): e is EntityClass => {
   return !('type' in e);
 };
 export class EntityManager {
-  public registries = {
-    [QueryType.CMP]: new Registry(QueryType.CMP),
-    [QueryType.TAG]: new Registry(QueryType.TAG),
-    [QueryType.ENT]: new Registry(QueryType.ENT)
-  };
+  public registry = new Registry();
 
   public entities: Map<string, Entity> = new Map();
   public queries = new QueryManager(this);
   public toDestroy: Set<Entity> = new Set();
+  public tags: Record<string, string> = {};
 
-  protected eids: Record<string, string[]> = {};
   public get query(): QueryBuilder {
     return new QueryBuilder(this, this.queries);
   }
@@ -28,17 +23,35 @@ export class EntityManager {
   public register(...items: (ComponentClass | EntityClass)[]): void {
     for (const item of items) {
       isEntityClass(item)
-        ? this.registries[QueryType.ENT].register(item.id)
-        : this.registries[QueryType.CMP].register(item.type);
+        ? this.registry.register(item.id)
+        : this.registry.register(item.type);
     }
   }
 
+  protected getEntitySum(entity: Entity): bigint {
+    return this.registry.add([
+      (entity.constructor as EntityClass).id,
+      ...entity.tags.all().map(t => (this.tags[t] ??= nanoid(6))),
+      ...entity.items.map(e => (Array.isArray(e) ? e[0].type : e.type))
+    ]);
+  }
+
   public index(entity: Entity): void {
-    this.queries.added.add(entity);
+    // if it's already indexed, we need to unlink the old key
+    if (entity.key) {
+      this.unindex(entity);
+    }
+    // assign a new key
+    entity.key = this.getEntitySum(entity);
+    // push to "added"
+    const value = this.queries.added.get(entity.key) ?? new Set();
+    this.queries.added.set(entity.key, value.add(entity));
   }
 
   public unindex(entity: Entity): void {
-    this.queries.removed.add(entity);
+    const next = this.getEntitySum(entity);
+    const value = this.queries.removed.get(next) ?? new Set();
+    this.queries.removed.set(entity.key, value.add(entity));
   }
 
   public cleanup(): void {
@@ -49,13 +62,13 @@ export class EntityManager {
     this.queries.cleanup();
   }
 
-  public getID(key: QueryType, name: string): bigint | null {
-    return this.registries[key].getID(name);
+  public getID(name: string): bigint | null {
+    return this.registry.getID(name);
   }
 
   public destroy(entity: Entity): void {
     this.toDestroy.add(entity);
-    this.queries.removed.add(entity);
+    this.unindex(entity);
   }
 
   public create<T extends BaseType>(
@@ -69,20 +82,8 @@ export class EntityManager {
       tags
     );
 
-    const isArray = entity.items.some(i => Array.isArray(i));
-    const cmp = this.registries[QueryType.CMP].add(
-      entity.items.map(e => (Array.isArray(e) ? e[0].type : e.type))
-    );
-
-    entity.ids = {
-      // we're tagging all entities with any array component so we can quickly filter in array/non-array queries
-      [QueryType.CMP]: isArray ? [cmp] : cmp,
-      [QueryType.ENT]: this.registries[QueryType.ENT].add([Entity.id]),
-      [QueryType.TAG]: this.registries[QueryType.TAG].add(tags)
-    };
-
     this.entities.set(entity.id, entity);
-    this.queries.added.add(entity);
+    this.index(entity);
 
     return entity;
   }

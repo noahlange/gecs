@@ -32,7 +32,7 @@ export function useWithComponent<
 >(Constructor: EntityClass<T>, ...items: A): EntityClass<T & KeyedByType<A>> {
   // type system abuse
   return (class extends Constructor {
-    public static id = nanoid(8);
+    public static id = nanoid(6);
     public get items(): A {
       return items;
     }

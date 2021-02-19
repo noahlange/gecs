@@ -2,8 +2,8 @@ import type { QueryStep } from '../types';
 import type { EntityManager } from './EntityManager';
 import type { Entity } from '../ecs';
 
-import { QueryTag } from '../types';
 import { Query } from '../lib';
+import { EntityIndex } from '../lib/EntityIndex';
 
 /**
  * Responsible for resolving each query into a series of IDs.
@@ -12,31 +12,48 @@ export class QueryManager {
   protected entities: EntityManager;
   protected queries: Record<string, Query> = {};
 
+  public added: Map<bigint, Set<Entity>> = new Map();
+  public removed: Map<bigint, Set<Entity>> = new Map();
+  public index = new EntityIndex();
+
   /**
-   * Also strips keys from later steps.
+   * Add new entries to and remove old entries from the index.
    */
-  protected sortSteps(steps: QueryStep[]): QueryStep[] {
-    return steps
-      .filter(step => step.tag !== QueryTag.SOME)
-      .sort((a, b) => a.type - b.type);
+  protected reindex(): void {
+    for (const [key, values] of this.added.entries()) {
+      this.index.append(key, Array.from(values));
+    }
+    for (const [key, values] of this.removed.entries()) {
+      this.index.remove(key, Array.from(values));
+    }
   }
 
-  public added: Set<Entity> = new Set();
-  public removed: Set<Entity> = new Set();
-
-  public updateQueries(): void {
+  /**
+   * Update result sets per index changes.
+   */
+  protected updateQueries(): void {
     for (const key in this.queries) {
       this.queries[key].update();
     }
   }
 
   public cleanup(): void {
-    this.updateQueries();
+    this.update();
     this.added.clear();
     this.removed.clear();
   }
 
+  /**
+   * Update indices and queries without modifying adds/removes.
+   * Primarily used to
+   */
+  public update(): void {
+    this.reindex();
+    this.updateQueries();
+  }
+
   public getQuery(steps: QueryStep[]): Query {
+    this.reindex();
     const key = steps.map(k => k.key).join('::');
     if (!this.queries[key]) {
       this.queries[key] = new Query(this.entities, steps);

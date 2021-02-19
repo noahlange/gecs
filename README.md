@@ -67,10 +67,10 @@ export class Bar extends Component {
   public value: number = 1
 }
 
-class MyEntity extends Entity.with(Foo, Bar) {
+class MyEntity extends Entity.with(Foo, [Bar]) {
   public myMethod() {
     this.$.foobly.value = '???'
-    this.$.woobly.value = 2;
+    this.$.woobly = [ { value: 2 } ]
   }
 }
 ```

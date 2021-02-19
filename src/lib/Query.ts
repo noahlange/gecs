@@ -2,13 +2,14 @@ import type { Entity } from '../ecs';
 import type { QueryStep, BaseType } from '../types';
 import type { EntityManager } from '../managers/EntityManager';
 
-import { QueryTag, QueryType } from '../types';
+import { QueryTag } from '../types';
 
 import { match, union } from '../utils';
 import { nanoid } from 'nanoid/non-secure';
+import type { QueryManager } from '../managers';
 
 type TagsExceptSome = Exclude<QueryTag, QueryTag.SOME>;
-type Targets = { [key in QueryType]?: bigint };
+type Targets = { [key in TagsExceptSome]: bigint | null };
 
 const arrayOf = /\[\]$/gim;
 
@@ -25,48 +26,53 @@ enum QueryStatus {
 }
 
 export class Query<T extends BaseType = BaseType> {
-  protected id = nanoid(8);
+  protected id = nanoid(6);
+
   protected steps: QueryStep[];
   protected results: Set<Entity> = new Set();
-  protected entities: EntityManager;
   protected arrays: Set<string> = new Set();
+  protected tags: Set<TagsExceptSome> = new Set();
+  /**
+   * Unidentified query items (i.e., without a bitmask).
+   */
   protected unresolved: Set<string> = new Set();
 
-  protected added: Entity[] = [];
-  protected removed: Entity[] = [];
-  protected status: QueryStatus = QueryStatus.PENDING;
+  protected queryManager: QueryManager;
+  protected entityManager: EntityManager;
   protected attempts: number = 0;
+  protected status: QueryStatus = QueryStatus.PENDING;
 
-  /**
-   * These are populated during init()—if some tag or type doesn't make an
-   * appearance in the query steps, we don't to spend time looping around for it.
-   */
-  protected types: Set<QueryType> = new Set();
-  protected tags: Set<TagsExceptSome> = new Set();
+  protected reducer = (targets: Targets, step: QueryStep): Targets => {
+    if (step.tag === QueryTag.SOME) {
+      return targets;
+    }
 
-  protected reducer = (a: Targets, step: QueryStep): Targets => {
-    const ids = step.items
-      // strip trailing brackets
+    const ids = step.ids
       .map(i => {
-        const res =
-          this.entities.getID(step.type, i.replace(arrayOf, '')) ?? null;
+        // strip trailing brackets (foo[] -> foo)
+        const res = this.entityManager.getID(i.replace(arrayOf, '')) ?? null;
+        // if we aren't able to find a reference in the registry, mark it unresovled
         res === null ? this.unresolved.add(i) : this.unresolved.delete(i);
         return res;
       })
+      // filter out unresolved items
       .filter(i => i !== null) as bigint[];
-    a[step.type] = a[step.type] ? union(a[step.type]!, ...ids) : union(...ids);
-    return a;
+
+    targets[step.tag] = targets[step.tag]
+      ? union(targets[step.tag]!, ...ids)
+      : union(...ids);
+
+    return targets;
   };
 
-  // QueryTag -> QueryType -> bigint
-  protected targets: Record<TagsExceptSome, Targets> = {
-    [QueryTag.ANY]: {},
-    [QueryTag.ALL]: {},
-    [QueryTag.NONE]: {}
+  protected targets: Record<TagsExceptSome, bigint | null> = {
+    [QueryTag.ANY]: null,
+    [QueryTag.ALL]: null,
+    [QueryTag.NONE]: null
   };
 
   /**
-   * Some code only needs to be run once (on instantiation)—this generates the
+   * Some code only needs to run once (on instantiation)—this generates the
    * bigints used for entity matching during the filtering process.
    */
   protected init(): void {
@@ -81,72 +87,59 @@ export class Query<T extends BaseType = BaseType> {
         this.tags.add(step.tag);
         targets[step.tag].push(step);
       }
-      if (step.type === QueryType.CMP) {
-        for (const item of step.items) {
-          if (arrayOf.test(item)) {
-            this.arrays.add(item.replace(arrayOf, ''));
-          }
+      // add array item keys to the set
+      for (const item of step.ids) {
+        const trimmed = item.replace(arrayOf, '');
+        if (trimmed !== item) {
+          this.arrays.add(trimmed);
         }
       }
-      this.types.add(step.type);
     }
 
     for (const tag of this.tags) {
-      this.targets[tag] = targets[tag].reduce(
-        this.reducer,
-        this.targets[tag] ?? {}
-      );
+      this.targets = targets[tag].reduce(this.reducer, this.targets);
     }
   }
 
   /**
    * Filter an arbitrary set of entities by the query's constraints.
    */
-  protected filter(entities: Set<Entity>): Set<Entity> {
-    const { types, tags, targets } = this;
-    const hasArrays = this.arrays.size > 0;
-    search: for (const entity of entities) {
-      // all/any/none
+  protected filter(masks: bigint[]): Set<Entity> {
+    const { tags, targets } = this;
+    const keys: bigint[] = [];
+    search: for (const mask of masks) {
       for (const tag of tags) {
-        // components/entity/tags
-        for (const type of types) {
-          if (targets[tag][type]) {
-            let value = entity.ids[type];
-            if (value) {
-              if (Array.isArray(value)) {
-                if (!hasArrays) {
-                  entities.delete(entity);
-                  continue search;
-                }
-                value = value[0];
-              }
-              if (!fns[tag](targets[tag][type]!, value)) {
-                entities.delete(entity);
-                continue search;
-              }
-            } else {
-              entities.delete(entity);
-              continue search;
-            }
-          }
+        const target = targets[tag];
+        if (!target || !fns[tag](target, mask)) {
+          continue search;
         }
       }
-      // check arrays vs. POJOs (e.g., foo[] vs foo)
-      if (hasArrays) {
-        for (const key in entity.$) {
-          if (Array.isArray((entity.$ as any)[key]) !== this.arrays.has(key)) {
-            entities.delete(entity);
-            continue search;
-          }
+      keys.push(mask);
+    }
+
+    const res = new Set(this.queryManager.index.get(keys));
+
+    const checkArray = !!this.arrays.size;
+    filter: for (const entity of res) {
+      const hasArray = entity.arrayItems.length > 0;
+      if (checkArray !== hasArray) {
+        res.delete(entity);
+        continue filter;
+      }
+      for (const Item of entity.arrayItems) {
+        if (!this.arrays.has(Item.type)) {
+          res.delete(entity);
+          continue filter;
         }
       }
     }
-    return entities;
+
+    return res;
   }
 
   public refresh(): void {
-    const data = new Set(this.entities.entities.values());
-    this.results = this.filter(data);
+    const keys = this.queryManager.index.keys();
+    this.results = this.filter(keys);
   }
 
   protected resolve(): void {
@@ -167,19 +160,21 @@ export class Query<T extends BaseType = BaseType> {
   }
 
   public update(): void {
-    const { added, removed } = this.entities.queries;
     switch (this.status) {
       case QueryStatus.PENDING: {
-        this.added = Array.from(new Set(this.added.concat(...added)));
-        this.removed = Array.from(new Set(this.removed.concat(...removed)));
+        // this.added.push(...added.values());
+        // this.removed.push(...removed.values());
         break;
       }
       case QueryStatus.RESOLVED: {
-        for (const e of this.filter(added)) {
+        const addKeys = Array.from(this.queryManager.added.keys());
+        for (const e of this.filter(addKeys)) {
           this.results.add(e);
         }
-        for (const e of removed) {
-          this.results.delete(e);
+        for (const entities of this.queryManager.removed.values()) {
+          for (const entity of entities) {
+            this.results.delete(entity);
+          }
         }
         break;
       }
@@ -203,7 +198,8 @@ export class Query<T extends BaseType = BaseType> {
   }
 
   public constructor(entities: EntityManager, steps: QueryStep[]) {
+    this.entityManager = entities;
+    this.queryManager = entities.queries;
     this.steps = steps.filter(step => step.tag !== QueryTag.SOME);
-    this.entities = entities;
   }
 }

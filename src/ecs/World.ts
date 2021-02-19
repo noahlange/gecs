@@ -55,8 +55,7 @@ export class World<T extends BaseType<System> = {}> {
     }
     for (const system of this.systems) {
       await system.init?.();
-      // We want to reload query data after every init() call.
-      this.manager.queries.updateQueries();
+      this.manager.queries.update();
     }
   }
 
