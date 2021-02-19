@@ -7,7 +7,19 @@ import type {
   SystemClass,
   WorldClass
 } from './ecs';
-import { nanoid } from 'nanoid';
+import { nanoid } from 'nanoid/non-secure';
+
+export function* idGenerator(): IterableIterator<bigint> {
+  let id = 1n;
+  do {
+    yield 1n << id++;
+  } while (true);
+}
+
+export const id = (): (() => bigint) => {
+  const gen = idGenerator();
+  return (): bigint => gen.next().value;
+};
 
 /**
  * Helper function to create new container class constructors with typed `$`s.
@@ -39,37 +51,22 @@ export function useWithSystem<
   } as unknown) as WorldClass<T & KeyedByType<A>>;
 }
 
-export function difference<T>(...sets: T[][]): T[] {
-  const results = new Set(sets.shift());
-  for (const result of results) {
-    for (const set of sets) {
-      if (set.includes(result)) {
-        results.delete(result);
-        break;
-      }
-    }
-  }
-  return Array.from(results);
+export function union(...values: bigint[]): bigint {
+  return values.reduce((a, b) => a | b, 0n);
 }
 
-export function union<T>(...sets: T[][]): T[] {
-  const results = [];
-  for (const set of sets) {
-    results.push(...set);
-  }
-  return Array.from(new Set(results));
+export function intersect(...values: bigint[]): bigint {
+  return values.reduce((a, b) => a & b, 0n);
 }
 
-export function intersection<T>(...arrays: T[][]): T[] {
-  const results = arrays.shift() ?? [];
-  const out = [];
-  loop: for (const result of results) {
-    for (const array of arrays) {
-      if (array.indexOf(result) === -1) {
-        continue loop;
-      }
-    }
-    out.push(result);
+export const match = {
+  any(target: bigint, toMatch: bigint): boolean {
+    return !target || (target & toMatch) > 0n;
+  },
+  all(target: bigint, toMatch: bigint): boolean {
+    return (target & toMatch) === target;
+  },
+  none(target: bigint, toMatch: bigint): boolean {
+    return !(toMatch & target);
   }
-  return out;
-}
+};

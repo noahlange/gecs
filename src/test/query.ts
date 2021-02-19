@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { EntityManager } from '../lib/EntityManager';
+import { EntityManager } from '../managers/EntityManager';
 import { setup } from './helpers/setup';
 import { A, B, C } from './helpers/components';
 import { WithA, WithAB } from './helpers/entities';
@@ -13,12 +13,6 @@ describe('basic query types', () => {
     expect(hasA).toHaveLength(count * 3);
   });
 
-  test('select by id', () => {
-    const { em, ids } = setup();
-    const hasIDs = em.query.any.ids(...ids.slice(0, 5)).get();
-    expect(hasIDs).toHaveLength(5);
-  });
-
   test('select by tag', () => {
     const { em } = setup();
     const withABTags = em.query.tags('a', 'b').get();
@@ -28,7 +22,9 @@ describe('basic query types', () => {
   test('select by entity', () => {
     const { em } = setup();
     const withAs = em.query.any.entities(WithA).get();
-    expect(withAs).toHaveLength(count);
+    for (const item of withAs) {
+      expect(item).toBeInstanceOf(WithA);
+    }
   });
 });
 

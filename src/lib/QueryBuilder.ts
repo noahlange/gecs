@@ -1,10 +1,10 @@
 import type { Component, ComponentClass, Entity, EntityClass } from '../ecs';
 import type { BaseType, KeyedByType, PartialByType, QueryStep } from '../types';
-import type { QueryManager } from './QueryManager';
+import type { QueryManager, EntityManager } from '../managers';
 import type { U } from 'ts-toolbelt';
 
 import { QueryTag, QueryType } from '../types';
-import type { EntityManager } from '.';
+import type { Query } from './Query';
 
 interface BaseQueryBuilder<
   T extends BaseType = {},
@@ -12,6 +12,7 @@ interface BaseQueryBuilder<
 > {
   get(): C[];
   first(): C | null;
+  persist(): Query<T>;
   [Symbol.iterator](): Iterator<C>;
   all: QueryBuilderAll<T, C>;
   any: QueryBuilderAny<T, C>;
@@ -39,15 +40,12 @@ interface QueryBuilderNone<
   // no entities; not sure how best to handle this
   components<A extends ComponentClass[]>(...components: A): QueryBuilder<T>;
   tags(...tags: string[]): BaseQueryBuilder<T, C>;
-  ids(...ids: string[]): BaseQueryBuilder<T, C>;
 }
 
 interface QueryBuilderAll<
   T extends BaseType<Component> = {},
   C extends Entity<T> = Entity<T>
 > {
-  // no ids; an entity cannot have multiple IDs
-  // no entities; an entity cannot be an instance of multiple entity classes
   components<A extends ComponentClass[]>(
     ...components: A
   ): BaseQueryBuilder<U.Merge<T & KeyedByType<A>>>;
@@ -65,7 +63,6 @@ interface QueryBuilderAny<
     ...components: A
   ): QueryBuilder<U.Merge<T & PartialByType<A>>>;
   tags(...tags: string[]): BaseQueryBuilder<T, C>;
-  ids(...ids: string[]): BaseQueryBuilder<T, C>;
 }
 
 export interface TempQueryBuilderState {
@@ -85,7 +82,7 @@ export class QueryBuilder<
 
   protected reset(): this {
     if (this.state) {
-      const type = this.state.type ?? QueryType.COMPONENT;
+      const type = this.state.type ?? QueryType.CMP;
       const step = {
         ...this.state,
         // default to an OR for mutations, an ALL for the rest
@@ -157,15 +154,6 @@ export class QueryBuilder<
   }
 
   /**
-   * Filter to a static list of IDs.
-   */
-  public ids(...ids: string[]): BaseQueryBuilder<T, C> {
-    this.state.type = QueryType.ID;
-    this.state.items.push(...ids);
-    return this.reset();
-  }
-
-  /**
    * Create a new step with one or more tag requirements.
    */
   public tags<A extends string[]>(...tags: A): BaseQueryBuilder<T, C> {
@@ -175,23 +163,23 @@ export class QueryBuilder<
   }
 
   /**
-   * Create a new step with a container class requirement.
+   * Constrain results to instances of an entity.
    */
   public entities<C extends EntityClass>(
     EntityConstructor: C
   ): BaseQueryBuilder<{}, InstanceType<C>> {
-    this.state.type = QueryType.ENTITY;
+    this.state.type = QueryType.ENT;
     this.state.items.push(EntityConstructor.id);
     return (this.reset() as unknown) as QueryBuilder<{}, InstanceType<C>>;
   }
 
   /**
-   * Create a new step with one or more container requirements.
+   * Constrain results to those with given components.
    */
   public components<A extends ComponentClass[]>(
     ...components: A
   ): BaseQueryBuilder<U.Merge<T & KeyedByType<A>>> {
-    this.state.type = QueryType.COMPONENT;
+    this.state.type = QueryType.CMP;
     this.state.items.push(...components.map(c => c.type));
     return (this.reset() as unknown) as QueryBuilder<
       U.Merge<T & KeyedByType<A>>
@@ -213,6 +201,13 @@ export class QueryBuilder<
       return item as C;
     }
     return null;
+  }
+
+  /**
+   * Returns a handle on the query object to avoid query rebuilds.
+   */
+  public persist(): Query<T> {
+    return this.queryManager.getQuery(this.criteria) as Query<T>;
   }
 
   /**

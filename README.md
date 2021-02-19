@@ -109,13 +109,12 @@ class Renderer extends System {
 
   protected sprites: Record<string, PIXI.Sprite> = {};
 
-  public tick(delta: number, time?: number): void {
-    // find all entities with changed Position and/or Sprite components
-    const query = this.world.query
-      .components(Position, Sprite)
-      .some.changed(Position, Sprite);
+  protected displayables = this.world.query
+    .components(Position, Sprite)
+    .persist();
 
-    for (const { $ } of query) {
+  public tick(delta: number, time?: number): void {
+    for (const { $ } of this.displayables) {
       const child = this.sprites[$.sprite.id];
       if (child) {
         // update position and rotation
@@ -174,13 +173,12 @@ The entity manger handles all the relationships between entities and their compo
 
 Queries return collections of entities based on a user's request. The results of queries are typed exactly like the ordinary entity's `$` property, so you'll have access to each of the components you've requested in your query—and nothing more.
 
-Queries consist of one or more "steps," each corresponding to a different type of query— components, tags, IDs or entities.
+Queries consist of one or more "steps," each corresponding to a different type of query— components, tags or entities.
 
 ```typescript
 const q1 = world.query.components(A, B);
 const q4 = world.query.tags('one', 'two', 'three');
-const q3 = world.query.ids(1, 2, 3);
-const q2 = world.query.entities(WithA);
+const q2 = world.query.entities(MyEntity);
 ```
 
 Steps are executed sequentially. The result set is the intersection of all steps.
@@ -222,7 +220,10 @@ const q2 = world.query.removed.any.components(A, B); // ΔA | ΔB
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: Somewhere between "bad" and "terrible". Typically ranks in the last 3 on most test cases in [ecs-benchmark](https://github.com/noctjs/ecs-benchmark) and ddmills' [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks). _That being said_, it's more than capable of 60 FPS.
+**A/R**: Somewhere between "bad" and "terrible." So long as it remains capable of 60 FPS+, it's not a huge priority at the moment.
+
+**Q/S**: But _how_ bad, exactly?
+**A/R**: Typically ranks in the last 3 on most test cases in [ecs-benchmark](https://github.com/noctjs/ecs-benchmark) and ddmills' [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks).
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
 **A/R**: Also yes. But again, this is all about ergonomics and my feelings.

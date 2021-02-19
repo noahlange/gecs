@@ -57,9 +57,8 @@ export interface QueryStep {
 }
 
 export enum QueryType {
-  ID = 0,
-  COMPONENT = 1,
-  ENTITY = 2,
+  CMP = 1,
+  ENT = 2,
   TAG = 3
 }
 

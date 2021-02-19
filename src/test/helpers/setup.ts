@@ -1,4 +1,4 @@
-import { EntityManager } from '../../lib';
+import { EntityManager } from '../../managers';
 
 import { WithA, WithAC, WithABC, WithB } from './entities';
 

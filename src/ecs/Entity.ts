@@ -1,10 +1,16 @@
 import type { BaseType, KeyedByType, PartialBaseType } from '../types';
-import type { EntityManager } from '../lib';
+import type { EntityManager } from '../managers';
 import type { Component, ComponentClass } from './Component';
 
 import { useWithComponent } from '../utils';
 import { QueryType } from '../types';
 import { nanoid } from 'nanoid/non-secure';
+
+export interface EntityIDs {
+  [QueryType.ENT]: bigint | null;
+  [QueryType.TAG]: bigint | null;
+  [QueryType.CMP]: bigint | null;
+}
 
 export interface EntityTags {
   all: () => readonly string[];
@@ -68,20 +74,14 @@ export class Entity<T extends BaseType = {}> {
           components: ComponentConstructor,
           entity
         });
-        entity.manager.index(entity, QueryType.COMPONENT, [
-          ComponentConstructor.type
-        ]);
+        entity.manager.index(entity);
       },
       remove(...components: ComponentClass[]): void {
         for (const C of components) {
           events.emit('component:removed', { component: C, entity });
           delete entity.$[C.type];
         }
-        entity.manager.index(
-          entity,
-          QueryType.COMPONENT,
-          components.map(c => c.type)
-        );
+        entity.manager.unindex(entity);
       },
       *[Symbol.iterator](): Iterator<Component> {
         for (const component of Object.values(entity.$)) {
@@ -111,14 +111,14 @@ export class Entity<T extends BaseType = {}> {
           events.emit('tag:added', { tag, entity });
           entity._tags.add(tag);
         }
-        entity.manager.index(entity, QueryType.TAG, tags);
+        entity.manager.index(entity);
       },
       remove(...tags: string[]): void {
         for (const tag of tags) {
           events.emit('tag:removed', { tag });
           entity._tags.delete(tag);
         }
-        entity.manager.index(entity, QueryType.TAG, tags);
+        entity.manager.unindex(entity);
       },
       *[Symbol.iterator](): Iterator<string> {
         for (const tag of entity._tags) {
@@ -135,7 +135,11 @@ export class Entity<T extends BaseType = {}> {
   public readonly $: T;
   public readonly id: string = nanoid(8);
   public readonly manager: EntityManager;
-  public ids: string[] = [];
+  public ids: EntityIDs = {
+    [QueryType.ENT]: null,
+    [QueryType.TAG]: null,
+    [QueryType.CMP]: null
+  };
 
   public destroy(): void {
     this.manager.destroy(this);

@@ -4,7 +4,8 @@ import type { Entity, EntityClass } from './Entity';
 import type { Component } from './Component';
 
 import { useWithSystem } from '../utils';
-import { QueryBuilder, EntityManager } from '../lib';
+import { EntityManager } from '../managers';
+import { QueryBuilder } from '../lib';
 
 export interface WorldClass<T extends BaseType<System> = {}> {
   data?: PartialBaseType<T>;
@@ -14,7 +15,7 @@ export interface WorldClass<T extends BaseType<System> = {}> {
   new (): World;
 }
 
-export class World {
+export class World<T extends BaseType<System> = {}> {
   public static with<T, A extends SystemClass[]>(
     ...systems: A
   ): WorldClass<T & KeyedByType<A>> {
@@ -63,5 +64,14 @@ export class World {
 
   public get query(): QueryBuilder {
     return new QueryBuilder(this.manager, this.manager.queries);
+  }
+
+  public $: T;
+
+  public constructor() {
+    this.$ = {} as T;
+    for (const System of this.items) {
+      this.$[System.type as keyof T] = new System(this) as T[keyof T];
+    }
   }
 }

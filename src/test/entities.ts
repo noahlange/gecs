@@ -1,5 +1,5 @@
 import { test, describe, expect } from '@jest/globals';
-import { EntityManager as Manager } from '../lib';
+import { EntityManager as Manager } from '../managers';
 
 import { WithABC } from './helpers/entities';
 import { A, B, C } from './helpers/components';

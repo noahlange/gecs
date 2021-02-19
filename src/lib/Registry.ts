@@ -1,28 +1,32 @@
-import { nanoid } from 'nanoid/non-secure';
 import type { QueryType } from '../types';
+import { id, union } from '../utils';
 
+/**
+ * Map human-readable identifiers (nanoid, .type, etc) to bigints for bitmask
+ * searches. Each major query type has its own registry to avoid overflowing
+ * the ID generator.
+ */
 export class Registry {
-  protected registry: Record<string, string> = {};
+  protected id = id();
+  protected registry: Map<string, bigint> = new Map();
   protected type: QueryType;
   protected pass: boolean = false;
 
-  public register(keys: string[]): string[] {
-    const res: string[] = [];
+  public register(keys: string[]): bigint {
+    const res: bigint[] = [];
     for (const key of keys) {
-      if (!(key in this.registry)) {
-        this.registry[key] = this.pass ? key : nanoid(8);
-      }
-      res.push(this.registry[key]);
+      const id = this.registry.get(key) ?? this.id();
+      this.registry.set(key, id);
+      res.push(id);
     }
-    return res;
+    return union(...res);
   }
 
-  public getID(key: string): string {
-    return this.registry[key];
+  public getID(key: string): bigint | null {
+    return this.registry.get(key) ?? null;
   }
 
-  public constructor(type: QueryType, pass: boolean = false) {
+  public constructor(type: QueryType) {
     this.type = type;
-    this.pass = pass;
   }
 }

@@ -19,19 +19,20 @@ function setup(create, components) {
   return em;
 }
 
-function setupChanged(create, components) {
-  const em = setup(create, components);
+function setupComplex(create, components) {
+  const E = entities[components - 1];
 
-  const entities = em.query.get();
-  for (let i = 0; i < entities.length; i++) {
-    const { $ } = entities[i];
-    $.test1.a = i;
-    if (components > 1) {
-      $.test2.c = i;
-    }
-    if (components > 2) {
-      $.test3.e = i;
-    }
+  const em = new Manager();
+  for (let i = 0; i < create * 1000; i++) {
+    em.create(
+      E,
+      {
+        test1: { a: 4, b: 5 },
+        test2: { c: 6, d: 7 },
+        test3: { e: 8, f: 9 }
+      },
+      ['one', 'two', 'three']
+    );
   }
   return em;
 }
@@ -50,6 +51,6 @@ function setupTags(create, tags) {
 
 module.exports = {
   setup,
-  setupChanged,
+  setupComplex,
   setupTags
 };
