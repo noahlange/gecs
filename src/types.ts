@@ -1,18 +1,28 @@
 import type { U } from 'ts-toolbelt';
 import type { Component, ComponentClass, Entity, EntityClass } from './ecs';
 
-export type KeyedByType<A extends WithStaticType[]> = U.Merge<
-  A extends (infer R)[]
-    ? R extends WithStaticType
-      ? { [key in R['type']]: InstanceType<R> }
+export type OfOrArrayOf<T> = T | T[];
+
+export type KeyedByType<A extends OfOrArrayOf<WithStaticType>[]> = U.Merge<
+  A extends (infer B)[]
+    ? B extends WithStaticType
+      ? { [key in B['type']]: InstanceType<B> }
+      : B extends (infer C)[]
+      ? C extends WithStaticType
+        ? { [key in C['type']]: InstanceType<C>[] }
+        : never
       : never
     : never
 >;
 
-export type PartialByType<A extends WithStaticType[]> = U.Merge<
-  A extends (infer R)[]
-    ? R extends WithStaticType
-      ? { [key in R['type']]?: InstanceType<R> }
+export type PartialByType<A extends OfOrArrayOf<WithStaticType>[]> = U.Merge<
+  A extends (infer B)[]
+    ? B extends WithStaticType
+      ? { [key in B['type']]?: InstanceType<B> }
+      : B extends (infer C)[]
+      ? C extends WithStaticType
+        ? { [key in C['type']]?: InstanceType<C>[] }
+        : never
       : never
     : never
 >;

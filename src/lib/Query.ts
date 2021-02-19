@@ -1,14 +1,16 @@
 import type { Entity } from '../ecs';
-import type { QueryStep, BaseType, QueryType } from '../types';
+import type { QueryStep, BaseType } from '../types';
 import type { EntityManager } from '../managers/EntityManager';
 
-import { QueryTag } from '../types';
+import { QueryTag, QueryType } from '../types';
 
 import { match, union } from '../utils';
 import { nanoid } from 'nanoid/non-secure';
 
 type TagsExceptSome = Exclude<QueryTag, QueryTag.SOME>;
 type Targets = { [key in QueryType]?: bigint };
+
+const arrayOf = /\[\]$/gim;
 
 const fns = {
   [QueryTag.NONE]: match.none,
@@ -19,7 +21,8 @@ const fns = {
 function reducer(entities: EntityManager) {
   return (a: Targets, b: QueryStep): Targets => {
     const ids = b.items
-      .map(i => entities.getID(b.type, i) ?? null)
+      // strip trailing brackets
+      .map(i => entities.getID(b.type, i.replace(arrayOf, '')) ?? null)
       .filter(i => i !== null) as bigint[];
     a[b.type] = a[b.type] ? union(a[b.type]!, ...ids) : union(...ids);
     return a;
@@ -31,6 +34,7 @@ export class Query<T extends BaseType = BaseType> {
   protected steps: QueryStep[];
   protected results: Set<Entity> = new Set();
   protected entities: EntityManager;
+  protected arrays: Set<string> = new Set();
 
   /**
    * These are populated during init()—if some tag or type doesn't make an
@@ -62,6 +66,13 @@ export class Query<T extends BaseType = BaseType> {
         this.tags.add(step.tag);
         targets[step.tag].push(step);
       }
+      if (step.type === QueryType.CMP) {
+        for (const item of step.items) {
+          if (arrayOf.test(item)) {
+            this.arrays.add(item.replace(arrayOf, ''));
+          }
+        }
+      }
       this.types.add(step.type);
     }
 
@@ -76,20 +87,39 @@ export class Query<T extends BaseType = BaseType> {
    */
   protected filter(entities: Set<Entity>): Set<Entity> {
     const { types, tags, targets } = this;
+    const hasArrays = this.arrays.size > 0;
     search: for (const entity of entities) {
       // all/any/none
       for (const tag of tags) {
         // components/entity/tags
         for (const type of types) {
-          const target = targets[tag][type];
-          const value = entity.ids[type];
-          if (target && value) {
-            // use the appropriate match fn (based on our tag) vs. our target
-            if (!fns[tag](target, value)) {
-              // bail early, if possible
+          if (targets[tag][type]) {
+            let value = entity.ids[type];
+            if (value) {
+              if (Array.isArray(value)) {
+                if (!hasArrays) {
+                  entities.delete(entity);
+                  continue search;
+                }
+                value = value[0];
+              }
+              if (!fns[tag](targets[tag][type]!, value)) {
+                entities.delete(entity);
+                continue search;
+              }
+            } else {
               entities.delete(entity);
               continue search;
             }
+          }
+        }
+      }
+      // check arrays vs. POJOs (e.g., foo[] vs foo)
+      if (hasArrays) {
+        for (const key in entity.$) {
+          if (Array.isArray((entity.$ as any)[key]) !== this.arrays.has(key)) {
+            entities.delete(entity);
+            continue search;
           }
         }
       }

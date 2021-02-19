@@ -1,8 +1,6 @@
 import type { Entity, EntityClass } from '../ecs';
 import type { BaseType, PartialBaseType } from '../types';
 
-import emitter from 'namespace-emitter';
-
 import { QueryType } from '../types';
 
 import { QueryBuilder, Registry } from '../lib';
@@ -17,7 +15,6 @@ export class EntityManager {
 
   public entities: Map<string, Entity> = new Map();
   public queries = new QueryManager(this);
-  public events = emitter();
   public toDestroy: Set<Entity> = new Set();
 
   protected eids: Record<string, string[]> = {};
@@ -61,10 +58,14 @@ export class EntityManager {
       tags
     );
 
+    const isArray = entity.items.some(i => Array.isArray(i));
+    const cmp = this.registries[QueryType.CMP].register(
+      entity.items.map(e => (Array.isArray(e) ? e[0].type : e.type))
+    );
+
     entity.ids = {
-      [QueryType.CMP]: this.registries[QueryType.CMP].register(
-        entity.items.map(e => e.type)
-      ),
+      // we're tagging all entities with any array component so we can quickly filter in array/non-array queries
+      [QueryType.CMP]: isArray ? [cmp] : cmp,
       [QueryType.ENT]: this.registries[QueryType.ENT].register([Entity.id]),
       [QueryType.TAG]: this.registries[QueryType.TAG].register(tags)
     };

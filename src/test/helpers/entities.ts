@@ -15,6 +15,9 @@ const cWithA = Entity.with(A);
 const cWithAB = Entity.with(A, B);
 const cWithABC = Entity.with(A, B, C);
 
+const aWithA = Entity.with([A]);
+const aWithAB = Entity.with([A], B);
+
 export {
   WithA,
   WithB,
@@ -24,5 +27,7 @@ export {
   WithABC,
   cWithA,
   cWithAB,
-  cWithABC
+  cWithABC,
+  aWithA,
+  aWithAB
 };

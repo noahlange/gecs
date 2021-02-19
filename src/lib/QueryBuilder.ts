@@ -1,5 +1,11 @@
 import type { Component, ComponentClass, Entity, EntityClass } from '../ecs';
-import type { BaseType, KeyedByType, PartialByType, QueryStep } from '../types';
+import type {
+  BaseType,
+  KeyedByType,
+  OfOrArrayOf,
+  PartialByType,
+  QueryStep
+} from '../types';
 import type { QueryManager, EntityManager } from '../managers';
 import type { U } from 'ts-toolbelt';
 
@@ -38,7 +44,9 @@ interface QueryBuilderNone<
   C extends Entity<T> = Entity<T>
 > {
   // no entities; not sure how best to handle this
-  components<A extends ComponentClass[]>(...components: A): QueryBuilder<T>;
+  components<A extends OfOrArrayOf<ComponentClass>[]>(
+    ...components: A
+  ): QueryBuilder<T>;
   tags(...tags: string[]): BaseQueryBuilder<T, C>;
 }
 
@@ -46,7 +54,7 @@ interface QueryBuilderAll<
   T extends BaseType<Component> = {},
   C extends Entity<T> = Entity<T>
 > {
-  components<A extends ComponentClass[]>(
+  components<A extends OfOrArrayOf<ComponentClass>[]>(
     ...components: A
   ): BaseQueryBuilder<U.Merge<T & KeyedByType<A>>>;
   tags(...tags: string[]): BaseQueryBuilder<T, C>;
@@ -59,7 +67,7 @@ interface QueryBuilderAny<
   entities<A extends EntityClass>(
     EntityConstructor: A
   ): BaseQueryBuilder<{}, InstanceType<A>>;
-  components<A extends ComponentClass[]>(
+  components<A extends OfOrArrayOf<ComponentClass>[]>(
     ...components: A
   ): QueryBuilder<U.Merge<T & PartialByType<A>>>;
   tags(...tags: string[]): BaseQueryBuilder<T, C>;
@@ -176,11 +184,13 @@ export class QueryBuilder<
   /**
    * Constrain results to those with given components.
    */
-  public components<A extends ComponentClass[]>(
+  public components<A extends OfOrArrayOf<ComponentClass>[]>(
     ...components: A
   ): BaseQueryBuilder<U.Merge<T & KeyedByType<A>>> {
     this.state.type = QueryType.CMP;
-    this.state.items.push(...components.map(c => c.type));
+    this.state.items.push(
+      ...components.map(c => (Array.isArray(c) ? `${c[0].type}[]` : c.type))
+    );
     return (this.reset() as unknown) as QueryBuilder<
       U.Merge<T & KeyedByType<A>>
     >;

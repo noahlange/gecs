@@ -2,7 +2,7 @@ import { describe, test, expect } from '@jest/globals';
 import { EntityManager } from '../managers/EntityManager';
 import { setup } from './helpers/setup';
 import { A, B, C } from './helpers/components';
-import { WithA, WithAB } from './helpers/entities';
+import { aWithA, WithA, WithAB } from './helpers/entities';
 
 describe('basic query types', () => {
   const count = 5;
@@ -11,6 +11,15 @@ describe('basic query types', () => {
     const { em } = setup();
     const hasA = em.query.all.components(A).get();
     expect(hasA).toHaveLength(count * 3);
+  });
+
+  test('select by array components', () => {
+    const em = new EntityManager();
+    em.create(WithA, { a: { value: '123' } });
+    em.create(aWithA, { a: [{ value: '123' }] });
+
+    expect(em.query.all.components([A]).get()).toHaveLength(1);
+    expect(em.query.all.components(A).get()).toHaveLength(1);
   });
 
   test('select by tag', () => {
@@ -110,13 +119,11 @@ describe('caching', () => {
     em.create(WithA, {}, ['a', 'b', 'c']);
     em.create(WithAB, {});
 
-    // smaller result set
-    const a = em.query.all.tags('a').all.components(A).get();
+    const a = em.query.tags('a').all.components(A).get();
+    const b = em.query.components(A).get();
 
-    // larger result set
-    const b = em.query.all.components(A).get();
-
-    expect(b.length).toBeGreaterThan(a.length);
+    expect(a.length).toBe(1);
+    expect(b.length).toBe(2);
   });
 
   test('should add new items to cached result sets', () => {
