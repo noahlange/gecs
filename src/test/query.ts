@@ -4,6 +4,25 @@ import { setup } from './helpers/setup';
 import { A, B, C } from './helpers/components';
 import { aWithA, WithA, WithAB } from './helpers/entities';
 
+import { Entity } from '../ecs';
+
+describe('array queries', () => {
+  test('select by array components', () => {
+    const em = new EntityManager();
+    em.create(aWithA, { a: [{ value: '123' }] });
+    em.create(WithA, { a: { value: '123' } });
+
+    expect(em.query.components([A]).get()).toHaveLength(1);
+    expect(em.query.components(A).get()).toHaveLength(1);
+  });
+
+  test("when querying entities with not-array components, don't filter out all entities with array components", () => {
+    const em = new EntityManager();
+    em.create(Entity.with(A, [B]));
+    expect(em.query.components(A).get()).toHaveLength(1);
+  });
+});
+
 describe('basic query types', () => {
   const count = 5;
 
@@ -11,15 +30,6 @@ describe('basic query types', () => {
     const { em } = setup();
     const hasA = em.query.all.components(A).get();
     expect(hasA).toHaveLength(count * 3);
-  });
-
-  test('select by array components', () => {
-    const em = new EntityManager();
-    em.create(WithA, { a: { value: '123' } });
-    em.create(aWithA, { a: [{ value: '123' }] });
-
-    expect(em.query.all.components([A]).get()).toHaveLength(1);
-    expect(em.query.all.components(A).get()).toHaveLength(1);
   });
 
   test('select by tag', () => {

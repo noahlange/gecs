@@ -11,7 +11,7 @@ import type { QueryManager } from '../managers';
 type TagsExceptSome = Exclude<QueryTag, QueryTag.SOME>;
 type Targets = { [key in TagsExceptSome]: bigint | null };
 
-const arrayOf = /\[\]$/gim;
+const arrayOf = /\[\]/gim;
 
 const fns = {
   [QueryTag.NONE]: match.none,
@@ -28,9 +28,11 @@ enum QueryStatus {
 export class Query<T extends BaseType = BaseType> {
   protected id = nanoid(6);
 
+  protected arrays: Set<string> = new Set();
+  protected singles: Set<string> = new Set();
+
   protected steps: QueryStep[];
   protected results: Set<Entity> = new Set();
-  protected arrays: Set<string> = new Set();
   protected tags: Set<TagsExceptSome> = new Set();
   /**
    * Unidentified query items (i.e., without a bitmask).
@@ -51,7 +53,7 @@ export class Query<T extends BaseType = BaseType> {
       .map(i => {
         // strip trailing brackets (foo[] -> foo)
         const res = this.entityManager.getID(i.replace(arrayOf, '')) ?? null;
-        // if we aren't able to find a reference in the registry, mark it unresovled
+        // if we aren't able to find a reference in the registry, mark it unresolved
         res === null ? this.unresolved.add(i) : this.unresolved.delete(i);
         return res;
       })
@@ -89,10 +91,9 @@ export class Query<T extends BaseType = BaseType> {
       }
       // add array item keys to the set
       for (const item of step.ids) {
-        const trimmed = item.replace(arrayOf, '');
-        if (trimmed !== item) {
-          this.arrays.add(trimmed);
-        }
+        arrayOf.test(item)
+          ? this.arrays.add(item.replace(arrayOf, ''))
+          : this.singles.add(item);
       }
     }
 
@@ -119,21 +120,32 @@ export class Query<T extends BaseType = BaseType> {
 
     const res = new Set(this.queryManager.index.get(keys));
 
-    const checkArray = !!this.arrays.size;
     filter: for (const entity of res) {
-      const hasArray = entity.arrayItems.length > 0;
-      if (checkArray !== hasArray) {
-        res.delete(entity);
-        continue filter;
-      }
-      for (const Item of entity.arrayItems) {
-        if (!this.arrays.has(Item.type)) {
+      const items = entity.arrayItems;
+      const names = items.map(i => i.type);
+      if (this.arrays.size > 0) {
+        // it has no array components, bail
+        if (!items.length) {
           res.delete(entity);
           continue filter;
         }
+        // verify that each of the query's arrays are represented
+        for (const type of this.arrays) {
+          if (!names.includes(type)) {
+            res.delete(entity);
+            continue filter;
+          }
+        }
+      } else {
+        // verify that each of the entity's arrays are *not* represented
+        for (const item of names) {
+          if (this.singles.has(item)) {
+            res.delete(entity);
+            continue filter;
+          }
+        }
       }
     }
-
     return res;
   }
 

@@ -147,6 +147,12 @@ export class Entity<T extends BaseType = {}> {
   protected getBindings(data: PartialBaseType<T>): T {
     const bindings = {} as T;
     for (const Item of this.items) {
+      if (!Item) {
+        console.warn(
+          `Attempted to add undefined component to entity "${this.constructor.name}".`
+        );
+        continue;
+      }
       if (Array.isArray(Item)) {
         const [Constructor] = Item;
         this.arrayItems.push(Constructor);

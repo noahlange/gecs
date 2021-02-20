@@ -32,7 +32,9 @@ export class EntityManager {
     return this.registry.add([
       (entity.constructor as EntityClass).id,
       ...entity.tags.all().map(t => (this.tags[t] ??= nanoid(6))),
-      ...entity.items.map(e => (Array.isArray(e) ? e[0].type : e.type))
+      ...entity.items
+        .filter(f => !!f)
+        .map(e => (Array.isArray(e) ? e[0].type : e.type))
     ]);
   }
 
