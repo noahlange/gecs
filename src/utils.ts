@@ -1,5 +1,5 @@
 /* eslint-disable max-classes-per-file */
-import type { BaseType, KeyedByType, OfOrArrayOf } from './types';
+import type { BaseType, KeyedByType } from './types';
 import type {
   ComponentClass,
   EntityClass,
@@ -28,7 +28,7 @@ export const id = (): (() => bigint) => {
  */
 export function useWithComponent<
   T extends BaseType,
-  A extends OfOrArrayOf<ComponentClass>[] = []
+  A extends ComponentClass[] = []
 >(Constructor: EntityClass<T>, ...items: A): EntityClass<T & KeyedByType<A>> {
   // type system abuse
   return (class extends Constructor {
@@ -67,6 +67,6 @@ export const match = {
     return (target & toMatch) === target;
   },
   none(target: bigint, toMatch: bigint): boolean {
-    return !(toMatch & target);
+    return !toMatch || !(toMatch & target);
   }
 };

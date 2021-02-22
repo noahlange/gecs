@@ -1,10 +1,9 @@
-import type { QueryStep } from '../types';
+import type { QueryStep, BaseType } from '../types';
 import type { EntityManager } from './EntityManager';
 import type { Entity } from '../ecs';
 
 import { Query } from '../lib';
 import { EntityIndex } from '../lib/EntityIndex';
-
 /**
  * Responsible for resolving each query into a series of IDs.
  */
@@ -28,17 +27,7 @@ export class QueryManager {
     }
   }
 
-  /**
-   * Update result sets per index changes.
-   */
-  protected updateQueries(): void {
-    for (const key in this.queries) {
-      this.queries[key].update();
-    }
-  }
-
   public cleanup(): void {
-    this.update();
     this.added.clear();
     this.removed.clear();
   }
@@ -49,20 +38,21 @@ export class QueryManager {
    */
   public update(): void {
     this.reindex();
-    this.updateQueries();
+    for (const key in this.queries) {
+      this.queries[key].update();
+    }
   }
 
-  public getQuery(steps: QueryStep[]): Query {
+  public getQuery<
+    T extends BaseType = BaseType,
+    E extends Entity<T> = Entity<T>
+  >(steps: QueryStep[]): Query<T, E> {
     this.reindex();
     const key = steps.map(k => k.key).join('::');
     if (!this.queries[key]) {
       this.queries[key] = new Query(this.entities, steps);
     }
-    return this.queries[key];
-  }
-
-  public execute(steps: QueryStep[]): Entity[] {
-    return this.getQuery(steps).get();
+    return this.queries[key] as Query<T, E>;
   }
 
   public constructor(manager: EntityManager) {

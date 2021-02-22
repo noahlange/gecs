@@ -2,26 +2,7 @@ import { describe, test, expect } from '@jest/globals';
 import { EntityManager } from '../managers/EntityManager';
 import { setup } from './helpers/setup';
 import { A, B, C } from './helpers/components';
-import { aWithA, WithA, WithAB } from './helpers/entities';
-
-import { Entity } from '../ecs';
-
-describe('array queries', () => {
-  test('select by array components', () => {
-    const em = new EntityManager();
-    em.create(aWithA, { a: [{ value: '123' }] });
-    em.create(WithA, { a: { value: '123' } });
-
-    expect(em.query.components([A]).get()).toHaveLength(1);
-    expect(em.query.components(A).get()).toHaveLength(1);
-  });
-
-  test("when querying entities with not-array components, don't filter out all entities with array components", () => {
-    const em = new EntityManager();
-    em.create(Entity.with(A, [B]));
-    expect(em.query.components(A).get()).toHaveLength(1);
-  });
-});
+import { WithA, WithAB } from './helpers/entities';
 
 describe('basic query types', () => {
   const count = 5;
@@ -90,6 +71,15 @@ describe('tag queries', () => {
   });
 });
 
+describe('complex queries', () => {
+  const count = 5;
+  test('components + tags', () => {
+    const { em } = setup();
+    const q = em.query.components(A).some.components(B).none.tags('c');
+    expect(q.get()).toHaveLength(count);
+  });
+});
+
 describe('entity queries', () => {
   const count = 5;
 
@@ -142,7 +132,7 @@ describe('caching', () => {
     const q1 = em.query.all.components(A).get();
 
     em.create(WithAB);
-    em.cleanup();
+    em.queries.update();
 
     const q2 = em.query.all.components(A).get();
 
@@ -156,7 +146,39 @@ describe('caching', () => {
     const q1 = em.query.all.components(A).get();
 
     ab.destroy();
-    em.cleanup();
+    em.queries.update();
+
+    const q2 = em.query.all.components(A).get();
+
+    expect(q1).toHaveLength(2);
+    expect(q2).toHaveLength(1);
+  });
+});
+
+describe('indexing', () => {
+  test('entities with added components should appear in new result sets', () => {
+    const em = new EntityManager();
+    const [a] = [em.create(WithA), em.create(WithAB)];
+
+    const q1 = em.query.all.components(B).get();
+
+    a.components.add(B);
+    em.queries.update();
+
+    const q2 = em.query.all.components(B).get();
+
+    expect(q1).toHaveLength(1);
+    expect(q2).toHaveLength(2);
+  });
+
+  test('entities with removed components should disappear from result sets', () => {
+    const em = new EntityManager();
+    const [, ab] = [em.create(WithA), em.create(WithAB)];
+
+    const q1 = em.query.all.components(A).get();
+
+    ab.components.remove(A);
+    em.queries.update();
 
     const q2 = em.query.all.components(A).get();
 

@@ -25,8 +25,10 @@ export class EntityIndex {
    * For a given key, index additional entities.
    */
   public append(key: bigint, entities: Entity[]): void {
-    const value = Array.from(this.map.get(key) ?? []);
-    value.push(...entities);
+    const value = this.map.get(key) ?? new Set();
+    for (const entity of entities) {
+      value.add(entity);
+    }
     this.map.set(key, new Set(value));
   }
 

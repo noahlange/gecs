@@ -1,11 +1,5 @@
 import type { Component, ComponentClass, Entity, EntityClass } from '../ecs';
-import type {
-  BaseType,
-  KeyedByType,
-  OfOrArrayOf,
-  PartialByType,
-  QueryStep
-} from '../types';
+import type { BaseType, KeyedByType, PartialByType, QueryStep } from '../types';
 import type { QueryManager, EntityManager } from '../managers';
 import type { U } from 'ts-toolbelt';
 
@@ -18,6 +12,7 @@ interface BaseQueryBuilder<
 > {
   get(): C[];
   first(): C | null;
+  find(): C;
   persist(): Query<T>;
   [Symbol.iterator](): Iterator<C>;
   all: QueryBuilderAll<T, C>;
@@ -44,9 +39,7 @@ interface QueryBuilderNone<
   C extends Entity<T> = Entity<T>
 > {
   // no entities; not sure how best to handle this
-  components<A extends OfOrArrayOf<ComponentClass>[]>(
-    ...components: A
-  ): QueryBuilder<T>;
+  components<A extends ComponentClass[]>(...components: A): QueryBuilder<T>;
   tags(...tags: string[]): BaseQueryBuilder<T, C>;
 }
 
@@ -54,7 +47,7 @@ interface QueryBuilderAll<
   T extends BaseType<Component> = {},
   C extends Entity<T> = Entity<T>
 > {
-  components<A extends OfOrArrayOf<ComponentClass>[]>(
+  components<A extends ComponentClass[]>(
     ...components: A
   ): BaseQueryBuilder<U.Merge<T & KeyedByType<A>>>;
   tags(...tags: string[]): BaseQueryBuilder<T, C>;
@@ -64,10 +57,10 @@ interface QueryBuilderAny<
   T extends BaseType<Component> = {},
   C extends Entity<T> = Entity<T>
 > {
-  entities<A extends EntityClass>(
-    EntityConstructor: A
-  ): BaseQueryBuilder<{}, InstanceType<A>>;
-  components<A extends OfOrArrayOf<ComponentClass>[]>(
+  entities<T extends BaseType, E extends Entity<T>>(
+    EntityConstructor: EntityClass<T>
+  ): BaseQueryBuilder<T, E>;
+  components<A extends ComponentClass[]>(
     ...components: A
   ): QueryBuilder<U.Merge<T & PartialByType<A>>>;
   tags(...tags: string[]): BaseQueryBuilder<T, C>;
@@ -170,22 +163,20 @@ export class QueryBuilder<
   /**
    * Constrain results to instances of an entity.
    */
-  public entities<C extends EntityClass>(
-    EntityConstructor: C
-  ): BaseQueryBuilder<{}, InstanceType<C>> {
+  public entities<T extends BaseType, E extends Entity<T>>(
+    EntityConstructor: EntityClass<T>
+  ): BaseQueryBuilder<T, E> {
     this.state.ids.push(EntityConstructor.id);
-    return (this.reset() as unknown) as QueryBuilder<{}, InstanceType<C>>;
+    return (this.reset() as unknown) as BaseQueryBuilder<T, E>;
   }
 
   /**
    * Constrain results to those with given components.
    */
-  public components<A extends OfOrArrayOf<ComponentClass>[]>(
+  public components<A extends ComponentClass[]>(
     ...components: A
   ): BaseQueryBuilder<U.Merge<T & KeyedByType<A>>> {
-    this.state.ids.push(
-      ...components.map(c => (Array.isArray(c) ? `${c[0].type}[]` : c.type))
-    );
+    this.state.ids.push(...components.map(c => c.type));
     return (this.reset() as unknown) as QueryBuilder<
       U.Merge<T & KeyedByType<A>>
     >;
@@ -195,33 +186,41 @@ export class QueryBuilder<
    * Return query results as an array.
    */
   public get(): C[] {
-    return this.queryManager.execute(this.criteria) as C[];
+    return this.query.get();
+  }
+
+  /**
+   * Return the first search result, throwing if no results are found.
+   */
+  public find(): C {
+    return this.query.find();
   }
 
   /**
    * Return the first search result.
    */
   public first(): C | null {
-    for (const item of this) {
-      return item as C;
-    }
-    return null;
+    return this.query.first();
   }
 
   /**
    * Returns a handle on the query object to avoid query rebuilds.
    */
   public persist(): Query<T> {
-    return this.queryManager.getQuery(this.criteria) as Query<T>;
+    return this.query;
   }
 
   /**
    * Iterate through search results.
    */
   public *[Symbol.iterator](): Iterator<C> {
-    for (const item of this.queryManager.execute(this.criteria)) {
+    for (const item of this.query) {
       yield item as C;
     }
+  }
+
+  public get query(): Query<T, C> {
+    return this.queryManager.getQuery<T, C>(this.criteria);
   }
 
   public constructor(entities: EntityManager, manager: QueryManager) {

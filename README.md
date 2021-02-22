@@ -67,10 +67,10 @@ export class Bar extends Component {
   public value: number = 1
 }
 
-class MyEntity extends Entity.with(Foo, [Bar]) {
+class MyEntity extends Entity.with(Foo, Bar) {
   public myMethod() {
     this.$.foobly.value = '???'
-    this.$.woobly = [ { value: 2 } ]
+    this.$.woobly = { value: 2 }
   }
 }
 ```
@@ -109,12 +109,11 @@ class Renderer extends System {
 
   protected sprites: Record<string, PIXI.Sprite> = {};
 
-  protected displayables = this.world.query
-    .components(Position, Sprite)
-    .persist();
+  // constructing an ad-hoc query takes time; a persisted query has less overhead when called repeatedly.
+  protected query = this.world.query.components(Position, Sprite).persist();
 
   public tick(delta: number, time?: number): void {
-    for (const { $ } of this.displayables) {
+    for (const { $ } of this.query) {
       const child = this.sprites[$.sprite.id];
       if (child) {
         // update position and rotation
@@ -124,11 +123,11 @@ class Renderer extends System {
     }
   }
 
-  // init functions can be async
+  // init() functions can be async
   public async init(): Promise<void> {
     this.app = new PIXI.Application();
-    // create all sprites and add to the stage
     const query = this.world.query.all.components(Sprite);
+    // create all sprites and add to the stage
     for (const { $ } of query) {
       const child = PIXI.Sprite.from($.sprite.path);
       child.anchor = $.sprite.anchor;
@@ -162,16 +161,11 @@ class MyWorld extends World.with(Renderer) {
 })();
 ```
 
-When the world's `start()` method is invoked, each of the world's systems is booted in the order it was passed to `with()`.
-
-Each time `tick()` is called, the world invokes the `tick()` method of each of
-its systems (again, in order).
-
-The entity manger handles all the relationships between entities and their components. When you access `$` on an entity, variable access is being proxied through the manager—every component is stored in the same place.
+When the world's (async) `start()` method is invoked, each of the world's systems is booted in the order it was passed to `with()`. Each time `tick()` is called, the world invokes the `tick()` method of each of its systems (again, in order).
 
 ## Queries
 
-Queries return collections of entities based on a user's request. The results of queries are typed exactly like the ordinary entity's `$` property, so you'll have access to each of the components you've requested in your query—and nothing more.
+Queries return collections of entities based on the user's criteria. Query results are typed exactly like an ordinary entity, so you'll have access to each of the components you've requested in your query—and nothing more.
 
 Queries consist of one or more "steps," each corresponding to a different type of query— components, tags or entities.
 
@@ -181,15 +175,15 @@ const q4 = world.query.tags('one', 'two', 'three');
 const q2 = world.query.entities(MyEntity);
 ```
 
-Steps are executed sequentially. The result set is the intersection of all steps.
+Steps are executed sequentially. The result of a query is the intersection of each step's results.
 
 ```typescript
-const step1 = world.query.some.components(A, B);
-const step2 = step1.all.tags('one', 'two');
-const results = step2.get(); // (A | B) & ('one' & 'two')
+world.query.some.components(A, B).all.tags('one', 'two');
+
+// (A | B) & ('one' & 'two')
 ```
 
-Query steps can be modified with `.all`, `.any` and `.none` to perform basic boolean operations. `.some` expands the query result's type signature, but has no effect on the contents of the query.
+Query steps can be modified with `.all`, `.any` and `.none` to perform basic boolean operations. `.some` expands the query result's type signature with additional (optional) properties, but has no effect on the contents of the query.
 
 ```typescript
 // the "all" is implicit for tags/components

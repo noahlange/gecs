@@ -28,13 +28,11 @@ export class EntityManager {
     }
   }
 
-  protected getEntitySum(entity: Entity): bigint {
+  protected getEntityKey(entity: Entity): bigint {
     return this.registry.add([
       (entity.constructor as EntityClass).id,
       ...entity.tags.all().map(t => (this.tags[t] ??= nanoid(6))),
-      ...entity.items
-        .filter(f => !!f)
-        .map(e => (Array.isArray(e) ? e[0].type : e.type))
+      ...entity.items.filter(f => !!f).map(e => e.type)
     ]);
   }
 
@@ -44,16 +42,21 @@ export class EntityManager {
       this.unindex(entity);
     }
     // assign a new key
-    entity.key = this.getEntitySum(entity);
+    entity.key = this.getEntityKey(entity);
     // push to "added"
     const value = this.queries.added.get(entity.key) ?? new Set();
     this.queries.added.set(entity.key, value.add(entity));
   }
 
   public unindex(entity: Entity): void {
-    const next = this.getEntitySum(entity);
-    const value = this.queries.removed.get(next) ?? new Set();
-    this.queries.removed.set(entity.key, value.add(entity));
+    // it's possible for an entity to be created and unindexed within the same tick; if it's still in the added set, we're going to remove it.
+    const added = this.queries.added.get(entity.key) ?? new Set();
+
+    added.delete(entity);
+    this.queries.added.set(entity.key, added);
+    // and then, as expected, we'll add it to the removed set.
+    const removed = this.queries.removed.get(entity.key) ?? new Set();
+    this.queries.removed.set(entity.key, removed.add(entity));
   }
 
   public cleanup(): void {

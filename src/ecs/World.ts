@@ -37,6 +37,7 @@ export class World<T extends BaseType<System> = {}> {
   public tick(delta: number, time: number): void {
     for (const system of this.systems) {
       system.tick?.(delta, time);
+      this.manager.queries.update();
     }
     this.manager.cleanup();
   }
@@ -57,6 +58,7 @@ export class World<T extends BaseType<System> = {}> {
       await system.init?.();
       this.manager.queries.update();
     }
+    this.tick(0, 0);
   }
 
   public create<C extends BaseType<Component>>(

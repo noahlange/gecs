@@ -7,7 +7,6 @@ import { id, union } from '../utils';
 export class Registry {
   protected id = id();
   protected registry: Record<string, bigint> = {};
-  protected pass: boolean = false;
 
   public register(key: string): void {
     this.registry[key] = this.id();
