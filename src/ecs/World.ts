@@ -4,7 +4,7 @@ import type { Entity, EntityClass } from './Entity';
 import type { Component, ComponentClass } from './Component';
 
 import { useWithSystem } from '../utils';
-import { EntityManager } from '../managers';
+import { EntityManager, QueryManager } from '../managers';
 import { QueryBuilder } from '../lib';
 
 export interface WorldClass<T extends BaseType<System> = {}> {
@@ -24,6 +24,7 @@ export class World<T extends BaseType<System> = {}> {
 
   protected systems: System[] = [];
   protected manager: EntityManager = new EntityManager();
+  protected queries: QueryManager = new QueryManager(this.manager);
 
   public get items(): SystemClass[] {
     return [];
@@ -37,9 +38,8 @@ export class World<T extends BaseType<System> = {}> {
   public tick(delta: number, time: number): void {
     for (const system of this.systems) {
       system.tick?.(delta, time);
-      this.manager.queries.update();
     }
-    this.manager.cleanup();
+    this.manager.tick();
   }
 
   public register(...items: (ComponentClass | EntityClass)[]): void {
@@ -50,13 +50,13 @@ export class World<T extends BaseType<System> = {}> {
    * Kickstart the world and its systems.
    */
   public async start(): Promise<void> {
-    this.init?.();
+    await this.init?.();
     for (const System of this.items) {
       this.systems.push(new System(this));
     }
     for (const system of this.systems) {
       await system.init?.();
-      this.manager.queries.update();
+      this.manager.tick();
     }
     this.tick(0, 0);
   }

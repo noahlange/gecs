@@ -16,6 +16,7 @@ function setup(create, components) {
     }
     em.create(E, data);
   }
+  em.tick();
   return em;
 }
 
@@ -34,6 +35,7 @@ function setupComplex(create, components) {
       ['one', 'two', 'three']
     );
   }
+  em.tick();
   return em;
 }
 
@@ -46,6 +48,7 @@ function setupTags(create, tags) {
   for (let i = 0; i < create * 1000; i++) {
     em.create(E1, { test1: { a: 4, b: 5 } }, tagList);
   }
+  em.tick();
   return em;
 }
 

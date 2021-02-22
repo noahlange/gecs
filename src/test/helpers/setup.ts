@@ -14,5 +14,7 @@ export function setup(): { em: EntityManager; ids: string[] } {
     const d = em.create(WithABC, {}, ['a', 'b', 'c']);
     ids.push(a.id, b.id, c.id, d.id);
   }
+
+  em.tick();
   return { em, ids };
 }

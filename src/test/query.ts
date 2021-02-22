@@ -108,6 +108,7 @@ describe('first()', () => {
   test('first() should return a single entity', () => {
     const em = new EntityManager();
     const a = em.create(WithA, {}, ['a']);
+    em.tick();
     expect(em.query.components(A).first()).toBe(a);
   });
 });
@@ -118,6 +119,7 @@ describe('caching', () => {
 
     em.create(WithA, {}, ['a', 'b', 'c']);
     em.create(WithAB, {});
+    em.tick();
 
     const a = em.query.tags('a').all.components(A).get();
     const b = em.query.components(A).get();
@@ -129,10 +131,12 @@ describe('caching', () => {
   test('should add new items to cached result sets', () => {
     const em = new EntityManager();
     em.create(WithA);
+    em.tick();
+
     const q1 = em.query.all.components(A).get();
 
     em.create(WithAB);
-    em.queries.update();
+    em.tick();
 
     const q2 = em.query.all.components(A).get();
 
@@ -143,10 +147,12 @@ describe('caching', () => {
   test('removed items should disappear from cached result sets', () => {
     const em = new EntityManager();
     const [, ab] = [em.create(WithA), em.create(WithAB)];
+    em.tick();
+
     const q1 = em.query.all.components(A).get();
 
     ab.destroy();
-    em.queries.update();
+    em.tick();
 
     const q2 = em.query.all.components(A).get();
 
@@ -159,11 +165,12 @@ describe('indexing', () => {
   test('entities with added components should appear in new result sets', () => {
     const em = new EntityManager();
     const [a] = [em.create(WithA), em.create(WithAB)];
+    em.tick();
 
     const q1 = em.query.all.components(B).get();
 
     a.components.add(B);
-    em.queries.update();
+    em.tick();
 
     const q2 = em.query.all.components(B).get();
 
@@ -174,11 +181,12 @@ describe('indexing', () => {
   test('entities with removed components should disappear from result sets', () => {
     const em = new EntityManager();
     const [, ab] = [em.create(WithA), em.create(WithAB)];
+    em.tick();
 
     const q1 = em.query.all.components(A).get();
 
     ab.components.remove(A);
-    em.queries.update();
+    em.tick();
 
     const q2 = em.query.all.components(A).get();
 

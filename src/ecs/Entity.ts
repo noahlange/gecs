@@ -44,7 +44,7 @@ export class Entity<T extends BaseType = {}> {
 
   protected entityTags: Set<string>;
 
-  public get components(): EntityComponents {
+  public components: EntityComponents = (() => {
     const entity = this;
     return {
       all() {
@@ -92,11 +92,10 @@ export class Entity<T extends BaseType = {}> {
         }
       }
     };
-  }
+  })();
 
-  public get tags(): EntityTags {
+  public tags: EntityTags = (() => {
     const entity = this;
-
     return {
       all(): string[] {
         return Array.from(entity.entityTags);
@@ -127,7 +126,7 @@ export class Entity<T extends BaseType = {}> {
         }
       }
     };
-  }
+  })();
 
   public get items(): ComponentClass[] {
     return [];

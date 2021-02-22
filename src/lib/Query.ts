@@ -7,6 +7,7 @@ import { QueryTag } from '../types';
 import { match, union } from '../utils';
 import { nanoid } from 'nanoid/non-secure';
 import type { QueryManager } from '../managers';
+import type { Unsubscribe } from 'nanoevents';
 
 type TagsExceptSome = Exclude<QueryTag, QueryTag.SOME>;
 type Targets = { [key in TagsExceptSome]: bigint | null };
@@ -20,8 +21,7 @@ const fns = {
 enum QueryStatus {
   PENDING = 0,
   RESOLVED = 1,
-  UPDATE = 2,
-  FAILED = 3
+  FAILED = 2
 }
 
 export class Query<
@@ -45,6 +45,11 @@ export class Query<
   protected entityManager: EntityManager;
   protected attempts: number = 0;
   protected status: QueryStatus = QueryStatus.PENDING;
+
+  protected unsubscribe: {
+    add: Unsubscribe | null;
+    remove: Unsubscribe | null;
+  } = { add: null, remove: null };
 
   protected reducer = (targets: Targets, step: QueryStep): Targets => {
     if (step.tag === QueryTag.SOME) {
@@ -101,7 +106,7 @@ export class Query<
   /**
    * Filter an arbitrary set of entities by the query's constraints.
    */
-  protected filter(masks: bigint[]): Set<E> {
+  protected filter(masks: bigint[]): bigint[] {
     const { tags, targets } = this;
     const keys: bigint[] = [];
     search: for (const mask of masks) {
@@ -113,12 +118,34 @@ export class Query<
       }
       keys.push(mask);
     }
-    return new Set(this.queryManager.index.get(keys)) as Set<E>;
+    return keys;
   }
 
   public refresh(): void {
     const keys = this.queryManager.index.keys();
-    this.results = this.filter(keys);
+    const matches = this.filter(keys);
+    this.results = new Set(this.queryManager.index.get(matches)) as Set<E>;
+  }
+
+  public destroy(): void {
+    this.unsubscribe.add?.();
+    this.unsubscribe.remove?.();
+  }
+
+  protected addEventListeners(): void {
+    this.unsubscribe.add = this.queryManager.on('added', additions => {
+      const matches = this.filter(additions.map(a => a.key));
+      for (const addition of additions) {
+        if (matches.includes(addition.key)) {
+          this.results.add(addition as E);
+        }
+      }
+    });
+    this.unsubscribe.remove = this.queryManager.on('removed', removals => {
+      for (const removal of removals) {
+        this.results.delete(removal as E);
+      }
+    });
   }
 
   protected resolve(): void {
@@ -133,44 +160,18 @@ export class Query<
       this.init();
       if (this.unresolved.size === 0) {
         this.status = QueryStatus.RESOLVED;
+        this.addEventListeners();
         this.refresh();
       }
     }
   }
-
-  protected updateQuery(): void {
-    switch (this.status) {
-      case QueryStatus.PENDING: {
-        this.resolve();
-        break;
-      }
-      case QueryStatus.UPDATE: {
-        for (const entities of this.queryManager.removed.values()) {
-          for (const entity of entities) {
-            this.results.delete(entity as E);
-          }
-        }
-        const addedKeys = Array.from(this.queryManager.added.keys());
-        const results = this.filter(addedKeys);
-        for (const e of results) {
-          this.results.add(e);
-        }
-        this.status = QueryStatus.RESOLVED;
-        break;
-      }
-    }
-  }
-
-  public update(): void {
-    this.status =
-      this.status === QueryStatus.RESOLVED ? QueryStatus.UPDATE : this.status;
-  }
-
   /**
    * Iterate through search results.
    */
   public *[Symbol.iterator](): Iterator<E> {
-    this.updateQuery();
+    if (this.status === QueryStatus.PENDING) {
+      this.resolve();
+    }
     for (const item of this.results) {
       yield item;
     }
@@ -203,9 +204,13 @@ export class Query<
     return null;
   }
 
-  public constructor(entities: EntityManager, steps: QueryStep[]) {
+  public constructor(
+    manager: QueryManager,
+    entities: EntityManager,
+    steps: QueryStep[]
+  ) {
+    this.queryManager = manager;
     this.entityManager = entities;
-    this.queryManager = entities.queries;
     this.steps = steps.filter(step => step.tag !== QueryTag.SOME);
   }
 }

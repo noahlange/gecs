@@ -8,13 +8,20 @@ import { nanoid } from 'nanoid/non-secure';
 const isEntityClass = (e: ComponentClass | EntityClass): e is EntityClass => {
   return !('type' in e);
 };
+
 export class EntityManager {
+  // map tags/components/entity types to bigints for bitmasking
   public registry = new Registry();
 
   public entities: Map<string, Entity> = new Map();
   public queries = new QueryManager(this);
-  public toDestroy: Set<Entity> = new Set();
   public tags: Record<string, string> = {};
+
+  protected toDestroy: Set<Entity> = new Set();
+
+  // entity updates we're saving up for the end of the tick.
+  protected adds: Set<Entity> = new Set();
+  protected removes: Set<Entity> = new Set();
 
   public get query(): QueryBuilder {
     return new QueryBuilder(this, this.queries);
@@ -41,30 +48,30 @@ export class EntityManager {
     if (entity.key) {
       this.unindex(entity);
     }
-    // assign a new key
-    entity.key = this.getEntityKey(entity);
-    // push to "added"
-    const value = this.queries.added.get(entity.key) ?? new Set();
-    this.queries.added.set(entity.key, value.add(entity));
+    this.adds.add(entity);
   }
 
   public unindex(entity: Entity): void {
-    // it's possible for an entity to be created and unindexed within the same tick; if it's still in the added set, we're going to remove it.
-    const added = this.queries.added.get(entity.key) ?? new Set();
-
-    added.delete(entity);
-    this.queries.added.set(entity.key, added);
-    // and then, as expected, we'll add it to the removed set.
-    const removed = this.queries.removed.get(entity.key) ?? new Set();
-    this.queries.removed.set(entity.key, removed.add(entity));
+    this.removes.add(entity);
   }
 
-  public cleanup(): void {
+  public tick(): void {
+    // make sure the old IDs are in place as we remove.
+    this.queries.remove(this.removes);
+    this.removes.clear();
+
+    // make sure the new IDs are in place when we add
+    for (const addition of this.adds) {
+      addition.key = this.getEntityKey(addition);
+    }
+
+    this.queries.add(this.adds);
+    this.adds.clear();
+
     for (const entity of this.toDestroy) {
       this.entities.delete(entity.id);
     }
     this.toDestroy.clear();
-    this.queries.cleanup();
   }
 
   public getID(name: string): bigint | null {
@@ -89,7 +96,10 @@ export class EntityManager {
 
     this.entities.set(entity.id, entity);
     this.index(entity);
-
     return entity;
+  }
+
+  public constructor() {
+    this.queries.init();
   }
 }

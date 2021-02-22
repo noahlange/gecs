@@ -4,56 +4,70 @@ import type { Entity } from '../ecs';
 
 import { Query } from '../lib';
 import { EntityIndex } from '../lib/EntityIndex';
+import type { Unsubscribe } from 'nanoevents';
+import { createNanoEvents } from 'nanoevents';
+
+interface QueryEvents {
+  added: (entity: Entity[]) => void;
+  removed: (entity: Entity[]) => void;
+}
+
 /**
  * Responsible for resolving each query into a series of IDs.
  */
 export class QueryManager {
   protected entities: EntityManager;
   protected queries: Record<string, Query> = {};
+  protected events = createNanoEvents<QueryEvents>();
 
-  public added: Map<bigint, Set<Entity>> = new Map();
-  public removed: Map<bigint, Set<Entity>> = new Map();
   public index = new EntityIndex();
 
-  /**
-   * Add new entries to and remove old entries from the index.
-   */
-  protected reindex(): void {
-    for (const [key, values] of this.added.entries()) {
-      this.index.append(key, Array.from(values));
-    }
-    for (const [key, values] of this.removed.entries()) {
-      this.index.remove(key, Array.from(values));
-    }
+  public on<K extends keyof QueryEvents>(
+    event: K,
+    callback: QueryEvents[K]
+  ): Unsubscribe {
+    return this.events.on(event, callback);
   }
 
-  public cleanup(): void {
-    this.added.clear();
-    this.removed.clear();
-  }
-
-  /**
-   * Update indices and queries without modifying adds/removes.
-   * Primarily used to
-   */
-  public update(): void {
-    this.reindex();
-    for (const key in this.queries) {
-      this.queries[key].update();
-    }
+  protected reduceUpdate(entities: Set<Entity>): Map<bigint, Entity[]> {
+    return Array.from(entities).reduce((a, b) => {
+      const arr = a.get(b.key) ?? [];
+      arr.push(b);
+      a.set(b.key, arr);
+      return a;
+    }, new Map<bigint, Entity[]>());
   }
 
   public getQuery<
     T extends BaseType = BaseType,
     E extends Entity<T> = Entity<T>
   >(steps: QueryStep[]): Query<T, E> {
-    this.reindex();
     const key = steps.map(k => k.key).join('::');
     if (!this.queries[key]) {
-      this.queries[key] = new Query(this.entities, steps);
+      this.queries[key] = new Query(this, this.entities, steps);
     }
     return this.queries[key] as Query<T, E>;
   }
+
+  public remove(entities: Set<Entity>): void {
+    const removals: Entity[] = [];
+    for (const [key, values] of this.reduceUpdate(entities).entries()) {
+      this.index.remove(key, values);
+      removals.push(...values);
+    }
+    this.events.emit('removed', removals);
+  }
+
+  public add(entities: Set<Entity>): void {
+    const additions: Entity[] = [];
+    for (const [key, values] of this.reduceUpdate(entities).entries()) {
+      this.index.append(key, values);
+      additions.push(...values);
+    }
+    this.events.emit('added', additions);
+  }
+
+  public init(): void {}
 
   public constructor(manager: EntityManager) {
     this.entities = manager;
