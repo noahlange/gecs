@@ -58,7 +58,7 @@ export class Query<
 
     const ids = step.ids
       .map(i => {
-        const res = this.entityManager.getID(i) ?? null;
+        const res = this.entityManager.getID(i);
         // if we aren't able to find a reference in the registry, mark it unresolved
         res === null ? this.unresolved.add(i) : this.unresolved.delete(i);
         return res;
@@ -208,6 +208,7 @@ export class Query<
     entities: EntityManager,
     steps: QueryStep[]
   ) {
+    console.log(steps);
     this.queryManager = manager;
     this.entityManager = entities;
     this.steps = steps.filter(step => step.tag !== QueryTag.SOME);

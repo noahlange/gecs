@@ -9,7 +9,9 @@ export class Registry {
   protected registry: Record<string, bigint> = {};
 
   public register(key: string): void {
-    this.registry[key] = this.id();
+    if (!(key in this.registry)) {
+      this.registry[key] = this.id();
+    }
   }
 
   public add(keys: string[]): bigint {

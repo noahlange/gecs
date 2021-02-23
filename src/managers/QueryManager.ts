@@ -22,13 +22,6 @@ export class QueryManager {
 
   public index = new EntityIndex();
 
-  public on<K extends keyof QueryEvents>(
-    event: K,
-    callback: QueryEvents[K]
-  ): Unsubscribe {
-    return this.events.on(event, callback);
-  }
-
   protected reduceUpdate(entities: Set<Entity>): Map<bigint, Entity[]> {
     return Array.from(entities).reduce((a, b) => {
       const arr = a.get(b.key) ?? [];
@@ -36,6 +29,13 @@ export class QueryManager {
       a.set(b.key, arr);
       return a;
     }, new Map<bigint, Entity[]>());
+  }
+
+  public on<K extends keyof QueryEvents>(
+    event: K,
+    callback: QueryEvents[K]
+  ): Unsubscribe {
+    return this.events.on(event, callback);
   }
 
   public getQuery<

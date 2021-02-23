@@ -44,8 +44,8 @@ export class EntityManager {
   protected getEntityKey(entity: Entity): bigint {
     return this.registry.add([
       (entity.constructor as EntityClass).id,
-      ...entity.tags.all().map(t => (this.tags[t] ??= nanoid(6))),
-      ...entity.items.filter(f => !!f).map(e => e.type)
+      ...entity.tags.all().map(t => this.getTagKey(t)),
+      ...entity.items.map(e => e.type)
     ]);
   }
 
@@ -77,6 +77,7 @@ export class EntityManager {
     for (const entity of this.toDestroy) {
       this.entities.delete(entity.id);
     }
+
     this.toDestroy.clear();
   }
 
