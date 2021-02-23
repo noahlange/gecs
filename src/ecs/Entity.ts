@@ -63,16 +63,7 @@ export class Entity<T extends BaseType = {}> {
         const instance = Object.assign(new ComponentConstructor(), data);
         // get the component in question
         if (type in entity.$) {
-          const value = entity.$[type];
-          if (Array.isArray(value)) {
-            // it's an array, so we'll push the new data
-            value.push(instance);
-            entity.$[type] = value;
-          } else {
-            // otherwise, we'll just stick it on there
-            // @todo - warn on dupes?
-            entity.$[type] = instance;
-          }
+          entity.$[type] = instance;
         } else {
           entity.$[type] = instance;
           entity.items.push(ComponentConstructor);

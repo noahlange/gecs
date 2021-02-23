@@ -58,7 +58,6 @@ export class Query<
 
     const ids = step.ids
       .map(i => {
-        // strip trailing brackets (foo[] -> foo)
         const res = this.entityManager.getID(i) ?? null;
         // if we aren't able to find a reference in the registry, mark it unresolved
         res === null ? this.unresolved.add(i) : this.unresolved.delete(i);

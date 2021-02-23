@@ -35,6 +35,12 @@ export class EntityManager {
     }
   }
 
+  public getTagKey(tag: string): string {
+    const key = (this.tags[tag] ??= nanoid(6));
+    this.registry.register(key);
+    return key;
+  }
+
   protected getEntityKey(entity: Entity): bigint {
     return this.registry.add([
       (entity.constructor as EntityClass).id,

@@ -155,7 +155,9 @@ export class QueryBuilder<
    * Create a new step with one or more tag requirements.
    */
   public tags<A extends string[]>(...tags: A): BaseQueryBuilder<T, C> {
-    const mapped = tags.map(t => this.entityManager.tags[t]).filter(f => !!f);
+    const mapped = tags
+      .map(t => this.entityManager.getTagKey(t))
+      .filter(f => !!f);
     this.state.ids.push(...mapped);
     return this.reset();
   }
