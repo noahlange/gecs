@@ -38,8 +38,8 @@ export class World<T extends BaseType<System> = {}> {
   public tick(delta: number, time: number): void {
     for (const system of this.systems) {
       system.tick?.(delta, time);
+      this.manager.tick();
     }
-    this.manager.tick();
   }
 
   public register(...items: (ComponentClass | EntityClass)[]): void {

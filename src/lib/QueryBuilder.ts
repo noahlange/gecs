@@ -2,9 +2,10 @@ import type { Component, ComponentClass, Entity, EntityClass } from '../ecs';
 import type { BaseType, KeyedByType, PartialByType, QueryStep } from '../types';
 import type { QueryManager, EntityManager } from '../managers';
 import type { U } from 'ts-toolbelt';
+import type { Query } from './Query';
 
 import { QueryTag } from '../types';
-import type { Query } from './Query';
+import { Mutation } from '../types';
 
 interface BaseQueryBuilder<
   T extends BaseType = {},
@@ -67,6 +68,7 @@ interface QueryBuilderAny<
 }
 
 export interface TempQueryBuilderState {
+  mutation: Mutation;
   tag: QueryTag | null;
   ids: (number | string)[];
 }
@@ -91,11 +93,11 @@ export class QueryBuilder<
       };
       this.criteria.push({
         ...step,
-        key: `${step.tag}:${step.ids.join(',')}`
+        key: `${step.tag}|${step.mutation}|${step.ids.join(',')}`
       });
     }
 
-    this.state = { tag: null, ids: [] };
+    this.state = { tag: null, ids: [], mutation: Mutation.NONE };
     return this;
   }
 
@@ -139,7 +141,7 @@ export class QueryBuilder<
    * Filter to values created within the current tick.
    */
   public get added(): MutationQueryBuilder<T, C> {
-    // this.state.mutation = Mutation.CREATED;
+    this.state.mutation = Mutation.ADDED;
     return (this as unknown) as MutationQueryBuilder<T, C>;
   }
 
@@ -147,7 +149,7 @@ export class QueryBuilder<
    * Filter to values removed within the current tick.
    */
   public get removed(): MutationQueryBuilder<T, C> {
-    // this.state.mutation = Mutation.REMOVED;
+    this.state.mutation = Mutation.REMOVED;
     return (this as unknown) as MutationQueryBuilder<T, C>;
   }
 

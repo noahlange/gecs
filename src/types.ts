@@ -45,6 +45,13 @@ export interface QueryStep {
   ids: string[];
   tag: QueryTag;
   key: string;
+  mutation: Mutation;
+}
+
+export enum Mutation {
+  NONE = 0,
+  ADDED = 1,
+  REMOVED = 2
 }
 
 export type EntityType<A extends ComponentClass[]> = Entity<KeyedByType<A>>;

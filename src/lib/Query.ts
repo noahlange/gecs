@@ -208,7 +208,6 @@ export class Query<
     entities: EntityManager,
     steps: QueryStep[]
   ) {
-    console.log(steps);
     this.queryManager = manager;
     this.entityManager = entities;
     this.steps = steps.filter(step => step.tag !== QueryTag.SOME);

@@ -7,7 +7,7 @@ import { nanoid } from 'nanoid/non-secure';
 
 export interface EntityTags {
   all: () => readonly string[];
-  has: (...tags: string[]) => void;
+  has: (...tags: string[]) => boolean;
   add: (...tags: string[]) => void;
   remove: (...tags: string[]) => void;
   [Symbol.iterator](): Iterator<string>;
@@ -15,7 +15,7 @@ export interface EntityTags {
 
 export interface EntityComponents {
   all: () => readonly Component[];
-  has: (...components: ComponentClass[]) => void;
+  has: (...components: ComponentClass[]) => boolean;
   add: (ComponentConstructor: ComponentClass, data?: any) => void;
   remove: (...components: ComponentClass[]) => void;
   [Symbol.iterator](): Iterator<Component>;
