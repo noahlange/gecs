@@ -1,6 +1,10 @@
 import type { U } from 'ts-toolbelt';
 import type { Component, ComponentClass, Entity, EntityClass } from './ecs';
 
+// I imagine there is a better way of handling this, but it appears to behave consistently enough.
+export const eid = '$id$';
+export const anonymous = '_a';
+
 export type KeyedByType<A extends WithStaticType[]> = U.Merge<
   A extends (infer B)[]
     ? B extends WithStaticType
@@ -34,11 +38,20 @@ export type PartialBaseType<T extends BaseType> = {
   [K in keyof T]?: PartialContained<T[K]>;
 };
 
+export type Primitive = string | number | boolean | null | bigint;
+export type OfOrArrayOf<T> = T | T[];
+export type Visiting = OfOrArrayOf<any>;
+export type Visited = OfOrArrayOf<Primitive | SomeHash> | undefined;
+
 export enum QueryTag {
   SOME = 0,
   ALL = 1,
   ANY = 2,
   NONE = 3
+}
+
+export interface SomeHash {
+  [key: string]: unknown;
 }
 
 export interface QueryStep {

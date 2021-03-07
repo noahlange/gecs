@@ -4,7 +4,7 @@
 
 ## Installation
 
-There isn't an NPM package because it's _way_ too soon for that. If you want to mess around with a small demo, there's an [example repository](https://github.com/noahlange/tecs-example).
+There isn't an NPM package because it's _way_ too soon for that. If you want to mess around with a demo, there's an [example repository](https://github.com/noahlange/tecs-example).
 
 If you'd like to fiddle with the library itself:
 
@@ -19,17 +19,11 @@ Then you can `npm link` to it from the example project and import.
 import { Entity, Component, System } from 'tecs';
 ```
 
-## Inspiration
-
-There are a lot of ECS frameworks written for various JS runtimes (particular shout-out goes to [ecsy](https://ecsy.io/), from which this takes quite a bit of inspiration), but the ones I read felt kinda clunky. Lots of tedious method chaining (`.addComponent(Foo).addComponent(Bar)`), while still requiring substantial programmer attention to the data structures being passed around.
-
-So how about something a little terser and more declarative, and with TypeScript integration? That idea seemed promising, so I sketched out the code I wanted to write and then tried to figure out how to make it work; this is the result.
-
 ## Entities & Components
 
 An Entity is a loose wrapper around an arbitrary collection of Components.
 
-Each component extends the `Component` class and must define a static `type` property. This property should also be readonly, or TS won't be able to resolve the name of the Component.
+Each component extends the `Component` class and must define a static `type` property. This property should be `readonly`, defined in an accessor or otherwise annotated `as const`, or TypeScript won't be able to resolve its name.
 
 ```typescript
 export class Position extends Component {
@@ -67,12 +61,6 @@ export class Bar extends Component {
   public value: number = 1
 }
 
-class MyEntity extends Entity.with(Foo, Bar) {
-  public myMethod() {
-    this.$.foobly.value = '???'
-    this.$.woobly = { value: 2 }
-  }
-}
 ```
 
 As above, you can `extend` the result of the `with()` call to create a custom entity class, or create new instances using the return value as-is.
@@ -88,13 +76,15 @@ Sometimes you'll need the entity's instance type—even if you don't have a conc
 
 ```typescript
 export type MyEntityInstance = EntityType<[typeof Position, typeof Sprite]>;
+
+const res: MyEntityInstance = world.query.components(Position, Sprite).find();
 ```
 
 ## Worlds & Systems
 
 The relationship between the `World` and its `Systems` parallels that of an `Entity` and its `Components`. A `World` serves as a container for an arbitrary number of `Systems`, each of which performs a single, well-defined task that operates across numerous entities.
 
-The key functionality of a System is executed within its `init()` and `tick()` methods. While both methods are technically optional, nearly every system will have at least one. Some run once or twice—map generation, for example—while others might run on every tick and have no initialization code to speak of.
+The key functionality of a System is executed within its `init()` and `tick()` methods. While both methods are technically optional, every system will have at least one. Some run once or twice—map generation, for example—while others might run on every tick and have no initialization code to speak of.
 
 An example implementation of a simple PIXI.js renderer:
 
@@ -109,7 +99,7 @@ class Renderer extends System {
 
   protected sprites: Record<string, PIXI.Sprite> = {};
 
-  // constructing an ad-hoc query takes time; a persisted query has less overhead when called repeatedly.
+  // constructing queries takes time; a persisted query has less overhead when called repeatedly.
   protected query = this.world.query.components(Position, Sprite).persist();
 
   public tick(delta: number, time?: number): void {
@@ -178,9 +168,7 @@ const q2 = world.query.entities(MyEntity);
 Steps are executed sequentially. The result of a query is the intersection of each step's results.
 
 ```typescript
-world.query.some.components(A, B).all.tags('one', 'two');
-
-// (A | B) & ('one' & 'two')
+world.query.some.components(A, B).all.tags('one', 'two'); // (A | B) & ('one' & 'two')
 ```
 
 Query steps can be modified with `.all`, `.any` and `.none` to perform basic boolean operations. `.some` expands the query result's type signature with additional (optional) properties, but has no effect on the contents of the query.
@@ -209,14 +197,44 @@ const q1 = world.query.added.all.components(A, B); // ΔA & ΔB
 const q2 = world.query.removed.any.components(A, B); // ΔA | ΔB
 ```
 
+## Serialization
+
+Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward:
+
+### Save
+
+```typescript
+// create and start the world
+const world = new World();
+await world.start();
+
+// dump to POJO, convert to string
+const toStringify = world.serialize();
+```
+
+### Load
+
+```typescript
+// instantiate new world and reload state
+const world = new World();
+world.deserialize(toStringify);
+// start world
+await world.start();
+```
+
+There are a couple caveats here:
+
+1. You'll need to manually register components (and any custom entities) before attempting to reload the game state.
+2. While your components' object properties will be instantiated normally, values nested deeper within the serialized state will be directly assigned. If you need to perform operations on these objects based on their initial values, you'll want to use setters/getters to do that.
+
 ---
 
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: Somewhere between "not great" and "bad" but it was never one of the primary design goals. So long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance fixes.
+**A/R**: Somewhere between "not great" and "bad" but it was never one of the primary design goals. So long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance boosts.
 
-**Q/S**: But _how_ bad, exactly?
+**Q/S**: But _how_ bad, exactly?  
 **A/R**: Hovers around the bottom third of [ecs-benchmark](https://github.com/noctjs/ecs-benchmark) and ddmills' [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks).
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  

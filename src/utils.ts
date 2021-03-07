@@ -9,6 +9,12 @@ import type {
 } from './ecs';
 import { nanoid } from 'nanoid/non-secure';
 
+export function isEntityClass(
+  e: ComponentClass | EntityClass
+): e is EntityClass {
+  return !('type' in e);
+}
+
 export function* idGenerator(): IterableIterator<bigint> {
   let id = 1n;
   do {
@@ -20,7 +26,6 @@ export const id = (): (() => bigint) => {
   const gen = idGenerator();
   return (): bigint => gen.next().value;
 };
-
 /**
  * Helper function to create new container class constructors with typed `$`s.
  * @param Constructor - Constructor to extend.
@@ -50,7 +55,6 @@ export function useWithSystem<
     }
   } as unknown) as WorldClass<T & KeyedByType<A>>;
 }
-
 export function union(...values: bigint[]): bigint {
   return values.reduce((a, b) => a | b, 0n);
 }

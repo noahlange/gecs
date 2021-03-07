@@ -4,10 +4,7 @@ import type { BaseType, PartialBaseType } from '../types';
 import { QueryBuilder, Registry } from '../lib';
 import { QueryManager } from './QueryManager';
 import { nanoid } from 'nanoid/non-secure';
-
-const isEntityClass = (e: ComponentClass | EntityClass): e is EntityClass => {
-  return !('type' in e);
-};
+import { isEntityClass } from '../utils';
 
 export class EntityManager {
   // map tags/components/entity types to bigints for bitmasking
