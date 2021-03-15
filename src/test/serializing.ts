@@ -15,7 +15,7 @@ function setup(): World {
   return world;
 }
 
-describe('serialize and deserialize', () => {
+describe('save and load', () => {
   test("basics: doesn't explode", () => {
     const world = setup();
     for (let i = 0; i < 5; i++) {
@@ -26,18 +26,18 @@ describe('serialize and deserialize', () => {
 
     let res: Compressed;
 
-    expect(() => (res = world.serialize())).not.toThrow();
-    expect(() => world.deserialize(res)).not.toThrow();
+    expect(() => (res = world.save())).not.toThrow();
+    expect(() => world.load(res)).not.toThrow();
   });
 
-  test('serializes anonymous entities', () => {
+  test('saves anonymous entities', () => {
     const [world1, world2] = [setup(), setup()];
     for (let i = 0; i < 5; i++) {
       world1.create(E.cWithAB);
     }
-    const saved = world1.serialize();
+    const saved = world1.save();
 
-    world2.deserialize(saved);
+    world2.load(saved);
     world2.tick(0, 0);
 
     expect(Array.from(world2.query.components(C.A, C.B))).toHaveLength(5);
@@ -52,9 +52,9 @@ describe('serialize and deserialize', () => {
       world1.create(E.cWithAB);
     }
 
-    const save1 = world1.serialize();
-    world2.deserialize(save1);
-    const save2 = world2.serialize();
+    const save1 = world1.save();
+    world2.load(save1);
+    const save2 = world2.save();
 
     expect(save1).toEqual(save2);
   });
@@ -66,9 +66,9 @@ describe('serialize and deserialize', () => {
       e.$.ref.value = e;
     }
 
-    const saved = world1.serialize();
+    const saved = world1.save();
 
-    world2.deserialize(saved);
+    world2.load(saved);
     world2.tick(0, 0);
 
     for (const entity of world2.query.components(C.Ref)) {

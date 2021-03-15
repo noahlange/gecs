@@ -58,12 +58,12 @@ export class World<T extends BaseType<System> = {}> {
     }
   }
 
-  public deserialize(save: Compressed): void {
+  public load(save: Compressed): void {
     const d = new Deserializer(this);
     d.deserialize(save);
   }
 
-  public serialize(): Compressed {
+  public save(): Compressed {
     const s = new Serializer(this.manager);
     return s.serialize();
   }

@@ -1,8 +1,9 @@
-import type { Manager } from '../';
 import type { Compressed } from 'compress-json';
+import type { Manager } from '../';
+import type { Visiting, Visited, SomeHash } from '../types';
+
 import { compress } from 'compress-json';
 import { eid, anonymous } from '../types';
-import type { Visiting, Visited, SomeHash } from '../types';
 import { Entity } from '../ecs';
 
 interface SerializedEntity {
@@ -46,8 +47,10 @@ export class Serializer {
                 : item
               : this.serializeValue(item)
           );
-        } else {
+        } else if (value) {
+          // `null` being a legal alternative here...
           if (value instanceof Entity) {
+            // create an entity reference so we can re-link it on load
             res = [eid, value.id].join('|');
           } else {
             for (const key of Object.getOwnPropertyNames(value)) {
@@ -61,7 +64,7 @@ export class Serializer {
         break;
       }
       case 'bigint':
-        res = value.toString();
+        res = `${value}n`;
         break;
       case 'number':
       case 'string':
@@ -79,6 +82,7 @@ export class Serializer {
    * Convert the world into a structure we can stringify and save to disk
    */
   public serialize(): Compressed {
+    this.stack = [];
     const save: Serialized = {
       entities: this.entities.map(entity => {
         const type =
@@ -100,6 +104,7 @@ export class Serializer {
       })
     };
 
+    this.stack = [];
     return compress(save);
   }
 

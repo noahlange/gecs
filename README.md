@@ -183,20 +183,6 @@ const q3 = world.query.some.components(A, B); // A? | B?
 const q4 = world.query.none.components(A, B); // !(A | B)
 ```
 
-By default, queries aren't refreshed until the end of the tick. If you'd like to access entities added/removed during the current tick, you can use the `created` and `removed` modifiers.
-
-```typescript
-const q1 = world.query.added.components(A, B);
-const q2 = world.query.removed.components(A, B);
-```
-
-Of course, mutation queries can use the aforementioned modifiers.
-
-```typescript
-const q1 = world.query.added.all.components(A, B); // ΔA & ΔB
-const q2 = world.query.removed.any.components(A, B); // ΔA | ΔB
-```
-
 ## Serialization
 
 Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward:
@@ -209,7 +195,7 @@ const world = new World();
 await world.start();
 
 // dump to POJO, convert to string
-const toStringify = world.serialize();
+const toStringify = world.save();
 ```
 
 ### Load
@@ -217,7 +203,7 @@ const toStringify = world.serialize();
 ```typescript
 // instantiate new world and reload state
 const world = new World();
-world.deserialize(toStringify);
+world.load(toStringify);
 // start world
 await world.start();
 ```
@@ -225,7 +211,7 @@ await world.start();
 There are a couple caveats here:
 
 1. You'll need to manually register components (and any custom entities) before attempting to reload the game state.
-2. While your components' object properties will be instantiated normally, values nested deeper within the serialized state will be directly assigned. If you need to perform operations on these objects based on their initial values, you'll want to use setters/getters to do that.
+2. While your components' object properties will be instantiated normally, these objects' values will be directly assigned. If you need to perform operations on these objects based on assigned values, you'll want to use setters/getters to do that.
 
 ---
 

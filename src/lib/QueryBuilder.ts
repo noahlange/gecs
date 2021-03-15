@@ -1,11 +1,10 @@
+import type { U } from 'ts-toolbelt';
 import type { Component, ComponentClass, Entity, EntityClass } from '../ecs';
 import type { BaseType, KeyedByType, PartialByType, QueryStep } from '../types';
 import type { QueryManager, EntityManager } from '../managers';
-import type { U } from 'ts-toolbelt';
 import type { Query } from './Query';
 
 import { QueryTag } from '../types';
-import { Mutation } from '../types';
 
 interface BaseQueryBuilder<
   T extends BaseType = {},
@@ -20,19 +19,6 @@ interface BaseQueryBuilder<
   any: QueryBuilderAny<T, C>;
   some: QueryBuilderAny<T, C>;
   none: QueryBuilderNone<T, C>;
-  added: MutationQueryBuilder<T, C>;
-  removed: MutationQueryBuilder<T, C>;
-}
-
-interface MutationQueryBuilder<
-  T extends BaseType = {},
-  C extends Entity<T> = Entity<T>
-> extends QueryBuilderAll<T, C> {
-  // modifiers
-  all: QueryBuilderAll<T, C>;
-  any: QueryBuilderAll<T, C>;
-  none: QueryBuilderAll<T, C>;
-  some: QueryBuilderAll<T, C>;
 }
 
 interface QueryBuilderNone<
@@ -68,7 +54,6 @@ interface QueryBuilderAny<
 }
 
 export interface TempQueryBuilderState {
-  mutation: Mutation;
   tag: QueryTag | null;
   ids: (number | string)[];
 }
@@ -91,13 +76,10 @@ export class QueryBuilder<
         // sort items now so we don't have to worry about string order for caching later
         ids: this.state.ids.map(item => item.toString())
       };
-      this.criteria.push({
-        ...step,
-        key: `${step.tag}|${step.mutation}|${step.ids.join(',')}`
-      });
+      this.criteria.push({ ...step, key: `${step.tag}|${step.ids.join(',')}` });
     }
 
-    this.state = { tag: null, ids: [], mutation: Mutation.NONE };
+    this.state = { tag: null, ids: [] };
     return this;
   }
 
@@ -135,22 +117,6 @@ export class QueryBuilder<
   public get none(): QueryBuilderNone<T, C> {
     this.state.tag = QueryTag.NONE;
     return (this as unknown) as QueryBuilderNone<T, C>;
-  }
-
-  /**
-   * Filter to values created within the current tick.
-   */
-  public get added(): MutationQueryBuilder<T, C> {
-    this.state.mutation = Mutation.ADDED;
-    return (this as unknown) as MutationQueryBuilder<T, C>;
-  }
-
-  /**
-   * Filter to values removed within the current tick.
-   */
-  public get removed(): MutationQueryBuilder<T, C> {
-    this.state.mutation = Mutation.REMOVED;
-    return (this as unknown) as MutationQueryBuilder<T, C>;
   }
 
   /**
