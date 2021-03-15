@@ -1,11 +1,16 @@
+import type { Compressed } from 'compress-json';
+
 import type { BaseType, KeyedByType, PartialBaseType } from '../types';
 import type { System, SystemClass } from './System';
 import type { Entity, EntityClass } from './Entity';
 import type { Component, ComponentClass } from './Component';
 
-import { useWithSystem } from '../utils';
 import { EntityManager, QueryManager } from '../managers';
 import { QueryBuilder } from '../lib';
+import { useWithSystem, isEntityClass } from '../utils';
+import { anonymous } from '../types';
+import { Deserializer } from '../lib/Deserializer';
+import { Serializer } from '../lib/Serializer';
 
 export interface WorldClass<T extends BaseType<System> = {}> {
   data?: PartialBaseType<T>;
@@ -13,6 +18,11 @@ export interface WorldClass<T extends BaseType<System> = {}> {
     ...items: A
   ): WorldClass<T & KeyedByType<A>>;
   new (): World;
+}
+
+interface Constructors {
+  entities: Record<string, EntityClass>;
+  components: Record<string, ComponentClass>;
 }
 
 export class World<T extends BaseType<System> = {}> {
@@ -26,6 +36,11 @@ export class World<T extends BaseType<System> = {}> {
   protected manager: EntityManager = new EntityManager();
   protected queries: QueryManager = new QueryManager(this.manager);
 
+  public constructors: Constructors = {
+    entities: {},
+    components: {}
+  };
+
   public get items(): SystemClass[] {
     return [];
   }
@@ -36,13 +51,37 @@ export class World<T extends BaseType<System> = {}> {
   public init?(): Promise<void> | void;
 
   public tick(delta: number, time: number): void {
+    this.manager.tick();
     for (const system of this.systems) {
       system.tick?.(delta, time);
       this.manager.tick();
     }
   }
 
+  public load(save: Compressed): void {
+    const d = new Deserializer(this);
+    d.deserialize(save);
+  }
+
+  public save(): Compressed {
+    const s = new Serializer(this.manager);
+    return s.serialize();
+  }
+
   public register(...items: (ComponentClass | EntityClass)[]): void {
+    for (const item of items) {
+      if (isEntityClass(item)) {
+        const key =
+          item.name === anonymous
+            ? (item.prototype.items as ComponentClass[])
+                .map(e => e.type)
+                .join('|')
+            : item.name;
+        this.constructors.entities[key] = item;
+      } else {
+        this.constructors.components[item.type] = item;
+      }
+    }
     this.manager.register(...items);
   }
 

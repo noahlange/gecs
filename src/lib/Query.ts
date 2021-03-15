@@ -1,13 +1,12 @@
 import type { Entity } from '../ecs';
 import type { QueryStep, BaseType } from '../types';
 import type { EntityManager } from '../managers/EntityManager';
-
-import { QueryTag } from '../types';
-
-import { match, union } from '../utils';
-import { nanoid } from 'nanoid/non-secure';
 import type { QueryManager } from '../managers';
 import type { Unsubscribe } from 'nanoevents';
+
+import { nanoid } from 'nanoid/non-secure';
+import { match, union } from '../utils';
+import { QueryTag } from '../types';
 
 type TagsExceptSome = Exclude<QueryTag, QueryTag.SOME>;
 type Targets = { [key in TagsExceptSome]: bigint | null };
@@ -105,9 +104,8 @@ export class Query<
   /**
    * Filter an arbitrary set of entities by the query's constraints.
    */
-  protected filter(masks: bigint[]): bigint[] {
+  protected *filter(masks: bigint[]): IterableIterator<bigint> {
     const { tags, targets } = this;
-    const keys: bigint[] = [];
     search: for (const mask of masks) {
       for (const tag of tags) {
         const target = targets[tag];
@@ -115,14 +113,13 @@ export class Query<
           continue search;
         }
       }
-      keys.push(mask);
+      yield mask;
     }
-    return keys;
   }
 
   public refresh(): void {
     const keys = this.queryManager.index.keys();
-    const matches = this.filter(keys);
+    const matches = Array.from(this.filter(keys));
     this.results = new Set(this.queryManager.index.get(matches)) as Set<E>;
   }
 
@@ -133,7 +130,7 @@ export class Query<
 
   protected addEventListeners(): void {
     this.unsubscribe.add = this.queryManager.on('added', additions => {
-      const matches = this.filter(additions.map(a => a.key));
+      const matches = Array.from(this.filter(additions.map(a => a.key)));
       for (const addition of additions) {
         if (matches.includes(addition.key)) {
           this.results.add(addition as E);
@@ -164,16 +161,15 @@ export class Query<
       }
     }
   }
+
   /**
    * Iterate through search results.
    */
-  public *[Symbol.iterator](): Iterator<E> {
+  public *[Symbol.iterator](): IterableIterator<E> {
     if (this.status === QueryStatus.PENDING) {
       this.resolve();
     }
-    for (const item of this.results) {
-      yield item;
-    }
+    yield* this.results;
   }
 
   /**
