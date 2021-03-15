@@ -42,11 +42,9 @@ export class Sprite extends Component {
 }
 ```
 
-By passing a series of component classes to the entity's static `with()` method, you can declaratively define the structure of your entity.
+By passing a series of component classes to the entity's static `with()` method, you can declaratively define the structure of your entity. The static `type` property of each component class serves as the key by which the component can be accessed from its containing entity.
 
-An entity's component instances can be accessed via the `$` property. The static `type` property of each component class serves as the key by which the component can be accessed from its containing entity.
-
-```js
+```ts
 import { Component, Entity } from 'tecs';
 
 export class Foo extends Component {
@@ -58,26 +56,52 @@ export class Foo extends Component {
 export class Bar extends Component {
   // this component is accessed via `woobly`
   public static readonly type = 'woobly';
-  public value: number = 1
+  public value: number = 1;
 }
+```
 
+An entity's component instances can be accessed via the `$` property.
+
+```ts
+import { Entity } from 'tecs';
+import { Foo, Bar } from './components';
+
+const MyEntity = Entity.with(Foo, Bar);
+
+const e = new MyEntity();
+
+e.$.foobly instanceof Foo; // true
+e.$.foobly.value === '1'; // true
+
+e.$.woobly instanceof Bar; // true
+e.$.woobly.value === 1; // true
 ```
 
 As above, you can `extend` the result of the `with()` call to create a custom entity class, or create new instances using the return value as-is.
 
-There are two ways to create Entity instances: `extend`ing the result of the `with()` call or using the returned constructor as-is. In practice, the latter is often preferable—you don't want to get in the habit of putting significant amounts of logic into your entities.
+There are two ways to create Entity classes: using the returned constructor as-is or `extend`-ing the result of the `with()` call.
 
 ```typescript
 const MyEntity1 = Entity.with(Position, Sprite);
 class MyEntity2 extends Entity.with(Position, Sprite) {}
 ```
 
-Sometimes you'll need the entity's instance type—even if you don't have a concrete object on hand.
+This is a trade-off; while the first is terser and discourages the addition of custom functionality to your entities, typing the corresponding entity instance is slightly more obnoxious.
 
 ```typescript
-export type MyEntityInstance = EntityType<[typeof Position, typeof Sprite]>;
+type InstanceMyEntity1 = InstanceType<typeof MyEntity>;
+type InstanceMyEntity2 = MyEntity2;
+```
 
-const res: MyEntityInstance = world.query.components(Position, Sprite).find();
+Sometimes you'll need to hint an entity's type without a concrete instance on hand.
+
+```typescript
+export type SpritePositionEntity = EntityType<[typeof Position, typeof Sprite]>;
+
+function usingSpritePosition(entity: SpritePositionEntity): void {
+  entity.$.position.x += 1;
+  entity.$.position.y += 1;
+}
 ```
 
 ## Worlds & Systems
@@ -171,16 +195,24 @@ Steps are executed sequentially. The result of a query is the intersection of ea
 world.query.some.components(A, B).all.tags('one', 'two'); // (A | B) & ('one' & 'two')
 ```
 
-Query steps can be modified with `.all`, `.any` and `.none` to perform basic boolean operations. `.some` expands the query result's type signature with additional (optional) properties, but has no effect on the contents of the query.
+Query steps can be modified with `.all`, `.any` and `.none` to perform basic boolean operations. `.some` expands the query result's type signature with additional (optional) properties, but has no effect on the query's results. `.none` has no effect on the query's type signature, but does have an effect on its results.
 
 ```typescript
 // the "all" is implicit for tags/components
-const q1a = world.query.all.components(A, B); // A & B
-const q1b = world.query.components(A, B); // A & B
+world.query.all.components(A, B); // A & B
+world.query.components(A, B); // A & B
 
-const q2 = world.query.any.components(A, B); // A | B
-const q3 = world.query.some.components(A, B); // A? | B?
-const q4 = world.query.none.components(A, B); // !(A | B)
+world.query.any.components(A, B); // (A | B) | (A & B)
+world.query.some.components(A, B); // A? | B?
+world.query.none.components(A, B); // !(A | B)
+```
+
+Naturally, these can be chained:
+
+```typescript
+world.query.components(A, B)
+  .some.components(C);
+  .none.components(D); // A & B & C? & !D
 ```
 
 ## Serialization
@@ -204,6 +236,7 @@ const toStringify = world.save();
 // instantiate new world and reload state
 const world = new World();
 world.load(toStringify);
+
 // start world
 await world.start();
 ```
@@ -218,7 +251,7 @@ There are a couple caveats here:
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: Somewhere between "not great" and "bad" but it was never one of the primary design goals. So long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance boosts.
+**A/R**: Somewhere between "not great" and "bad," but particularly good performance was never one of the primary design goals. So long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance improvements.
 
 **Q/S**: But _how_ bad, exactly?  
 **A/R**: Hovers around the bottom third of [ecs-benchmark](https://github.com/noctjs/ecs-benchmark) and ddmills' [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks).

@@ -61,7 +61,10 @@ export interface QueryStep {
   key: string;
 }
 
-export type EntityType<A extends ComponentClass[]> = Entity<KeyedByType<A>>;
+export type EntityType<
+  A extends ComponentClass[],
+  O extends ComponentClass[] = []
+> = Entity<U.Merge<KeyedByType<A> & PartialByType<O>>>;
 
 export type FullDataType<T> = T extends EntityClass<infer D> ? D : never;
 
