@@ -9,7 +9,7 @@ import { QueryTag } from '../types';
 interface BaseQueryBuilder<
   T extends BaseType = {},
   C extends Entity<T> = Entity<T>
-> {
+> extends QueryBuilderAll {
   get(): C[];
   first(): C | null;
   find(): C;
@@ -147,7 +147,7 @@ export class QueryBuilder<
     ...components: A
   ): BaseQueryBuilder<U.Merge<T & KeyedByType<A>>> {
     this.state.ids.push(...components.map(c => c.type));
-    return (this.reset() as unknown) as QueryBuilder<
+    return (this.reset() as unknown) as BaseQueryBuilder<
       U.Merge<T & KeyedByType<A>>
     >;
   }

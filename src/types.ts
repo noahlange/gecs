@@ -5,6 +5,16 @@ import type { Component, ComponentClass, Entity, EntityClass } from './ecs';
 export const anonymous = '_a';
 export const eid = '$id$';
 
+/**
+ * avoidable `any`s that should be rewritten.
+ */
+export type $AnyEvil = any;
+
+/**
+ * `any`s that are unavoidable.
+ */
+export type $AnyOK = any;
+
 export type KeyedByType<A extends WithStaticType[]> = U.Merge<
   A extends (infer B)[]
     ? B extends WithStaticType

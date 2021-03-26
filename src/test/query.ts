@@ -15,13 +15,37 @@ describe('basic query types', () => {
 
   test('select by tag', () => {
     const { em } = setup();
+    const withABTags = em.query.any.tags('a', 'b').get();
+    expect(withABTags).toHaveLength(count * 4);
+  });
+
+  test('select by entity', () => {
+    const { em } = setup();
+    const withAs = em.query.any.entities(WithA).get();
+    for (const item of withAs) {
+      expect(item).toBeInstanceOf(WithA);
+    }
+  });
+});
+
+describe('implicit queries', () => {
+  const count = 5;
+
+  test('select by component', () => {
+    const { em } = setup();
+    const hasA = em.query.components(A).get();
+    expect(hasA).toHaveLength(count * 3);
+  });
+
+  test('select by tag', () => {
+    const { em } = setup();
     const withABTags = em.query.tags('a', 'b').get();
     expect(withABTags).toHaveLength(count * 1);
   });
 
   test('select by entity', () => {
     const { em } = setup();
-    const withAs = em.query.any.entities(WithA).get();
+    const withAs = em.query.entities(WithA).get();
     for (const item of withAs) {
       expect(item).toBeInstanceOf(WithA);
     }

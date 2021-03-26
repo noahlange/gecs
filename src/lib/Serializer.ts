@@ -1,5 +1,5 @@
 import type { Compressed } from 'compress-json';
-import type { Manager } from '../';
+import type { Manager } from '..';
 import type { Visiting, Visited, SomeHash } from '../types';
 
 import { compress } from 'compress-json';

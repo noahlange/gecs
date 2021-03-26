@@ -29,21 +29,21 @@ export class Query<
 > {
   protected id = nanoid(6);
 
-  protected arrays: Set<string> = new Set();
-  protected singles: Set<string> = new Set();
-
-  protected steps: QueryStep[];
-  protected results: Set<E> = new Set();
-  protected tags: Set<TagsExceptSome> = new Set();
   /**
    * Unidentified query items (i.e., without a bitmask).
    */
   protected unresolved: Set<string> = new Set();
+  protected arrays: Set<string> = new Set();
+  protected singles: Set<string> = new Set();
+  protected results: Set<E> = new Set();
+  protected tags: Set<TagsExceptSome> = new Set();
 
   protected queryManager: QueryManager;
   protected entityManager: EntityManager;
   protected attempts: number = 0;
   protected status: QueryStatus = QueryStatus.PENDING;
+
+  protected steps: QueryStep[];
 
   protected unsubscribe: {
     add: Unsubscribe | null;
@@ -102,7 +102,10 @@ export class Query<
   }
 
   /**
-   * Filter an arbitrary set of entities by the query's constraints.
+   * Secret sauce: by definition, the number of unique bitmasks will always be
+   * less than or equal to the total number of entities. So instead of iterating
+   * over entities, we'll filter on unique bitmasks and return the
+   * corresponding entities.
    */
   protected *filter(masks: bigint[]): IterableIterator<bigint> {
     const { tags, targets } = this;

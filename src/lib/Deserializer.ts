@@ -1,7 +1,8 @@
 import type { Compressed } from 'compress-json';
-import type { World } from '../';
+import type { World } from '..';
 
 import { decompress } from 'compress-json';
+import type { $AnyEvil, $AnyOK } from '../types';
 import { eid } from '../types';
 import { Entity } from '../ecs';
 
