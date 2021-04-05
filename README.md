@@ -217,7 +217,33 @@ world.query.components(A, B)
 
 ## Serialization
 
-Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward:
+Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward.
+
+You can customize the serialization output of a component by adding a `toJSON()` method. You can pair this with a setter to populate a component's "exotic" properties upon instantiation.
+
+```ts
+class Health extends Component {
+  public health = new MyHealth(100);
+
+  // return "$" on save...
+  public toJSON() {
+    return {
+      $: {
+        value: this.health.value,
+        max: this.health.max
+      }
+    };
+  }
+
+  // ...set via "$" on load
+  public set $(value) {
+    this.health.setValue($.value);
+    this.health.setMax($.max);
+  }
+}
+```
+
+The output is a pretty bulky POJO—~2000 entities runs me about 650 KB—but compressing the stringified output with [Brotli](https://www.npmjs.com/package/brotli) brings it down to less than 20 KB, which should be plenty small.
 
 ### Save
 
@@ -227,7 +253,7 @@ const world = new World();
 await world.start();
 
 // dump to POJO, convert to string
-const toStringify = world.save();
+const toStringifyOrCompressOrWhatever = world.save();
 ```
 
 ### Load
@@ -235,16 +261,13 @@ const toStringify = world.save();
 ```typescript
 // instantiate new world and reload state
 const world = new World();
-world.load(toStringify);
+world.load(toStringifyOrCompressOrWhatever);
 
 // start world
 await world.start();
 ```
 
-There are a couple caveats here:
-
-1. You'll need to manually register components (and any custom entities) before attempting to reload the game state.
-2. While your components' object properties will be instantiated normally, these objects' values will be directly assigned. If you need to perform operations on these objects based on assigned values, you'll want to use setters/getters to do that.
+In order to properly reload the world state, you'll need to manually register your components (and any custom entities) before calling `load()`.
 
 ---
 

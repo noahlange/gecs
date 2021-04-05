@@ -1,20 +1,11 @@
-import type { Compressed } from 'compress-json';
 import type { Manager } from '..';
-import type { Visiting, Visited, SomeHash } from '../types';
+import type { Visiting, Visited, SomeHash, Serialized } from '../types';
 
-import { compress } from 'compress-json';
 import { eid, anonymous } from '../types';
 import { Entity } from '../ecs';
 
-interface SerializedEntity {
-  id: string;
-  type: string;
-  tags: string[];
-  $: Record<string, unknown>;
-}
-
-interface Serialized {
-  entities: SerializedEntity[];
+interface SerializeOptions {
+  entityFilter?: (entity: Entity) => boolean;
 }
 
 export class Serializer {
@@ -48,15 +39,19 @@ export class Serializer {
               : this.serializeValue(item)
           );
         } else if (value) {
-          // `null` being a legal alternative here...
-          if (value instanceof Entity) {
-            // create an entity reference so we can re-link it on load
-            res = [eid, value.id].join('|');
+          if (value.toJSON) {
+            res = value.toJSON();
           } else {
-            for (const key of Object.getOwnPropertyNames(value)) {
-              const next = value[key];
-              if (!this.stack.includes(next)) {
-                value[key] = next ? this.serializeValue(next) : next;
+            // `null` being a legal alternative here...
+            if (value instanceof Entity) {
+              // create an entity reference so we can re-link it on load
+              res = [eid, value.id].join('|');
+            } else {
+              for (const key of Object.getOwnPropertyNames(value)) {
+                const next = value[key];
+                if (!this.stack.includes(next)) {
+                  value[key] = next ? this.serializeValue(next) : next;
+                }
               }
             }
           }
@@ -81,10 +76,11 @@ export class Serializer {
   /**
    * Convert the world into a structure we can stringify and save to disk
    */
-  public serialize(): Compressed {
+  public serialize(options: SerializeOptions = {}): Serialized {
+    const entityFilter = options.entityFilter ?? (() => true);
     this.stack = [];
     const save: Serialized = {
-      entities: this.entities.map(entity => {
+      entities: this.entities.filter(entityFilter).map(entity => {
         const type =
           // if the class is anonymous (i.e., not `extend`ed), we'll give it a
           // name so we can recreate it properly. since, by definition, it cannot
@@ -105,7 +101,8 @@ export class Serializer {
     };
 
     this.stack = [];
-    return compress(save);
+
+    return save;
   }
 
   public constructor(manager: Manager) {

@@ -5,6 +5,17 @@ import type { Component, ComponentClass, Entity, EntityClass } from './ecs';
 export const anonymous = '_a';
 export const eid = '$id$';
 
+export interface SerializedEntity {
+  id: string;
+  type: string;
+  tags: string[];
+  $: Record<string, unknown>;
+}
+
+export interface Serialized {
+  entities: SerializedEntity[];
+}
+
 /**
  * avoidable `any`s that should be rewritten.
  */
@@ -59,6 +70,11 @@ export enum QueryTag {
   ALL = 1,
   ANY = 2,
   NONE = 3
+}
+
+export enum Tag {
+  TO_DESTROY = 'TO_DESTROY',
+  TO_PERSIST = 'TO_PERSIST'
 }
 
 export interface SomeHash {

@@ -1,6 +1,9 @@
-import type { Compressed } from 'compress-json';
-
-import type { BaseType, KeyedByType, PartialBaseType } from '../types';
+import type {
+  BaseType,
+  KeyedByType,
+  PartialBaseType,
+  Serialized
+} from '../types';
 import type { System, SystemClass } from './System';
 import type { Entity, EntityClass } from './Entity';
 import type { Component, ComponentClass } from './Component';
@@ -58,12 +61,13 @@ export class World<T extends BaseType<System> = {}> {
     }
   }
 
-  public load(save: Compressed): void {
+  public load(save: Serialized): void {
     const d = new Deserializer(this);
     d.deserialize(save);
+    this.manager.tick();
   }
 
-  public save(): Compressed {
+  public save(): Serialized {
     const s = new Serializer(this.manager);
     return s.serialize();
   }

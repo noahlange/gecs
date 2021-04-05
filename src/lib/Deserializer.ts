@@ -1,25 +1,8 @@
-import type { Compressed } from 'compress-json';
 import type { World } from '..';
+import type { $AnyEvil, $AnyOK, Serialized } from '../types';
 
-import { decompress } from 'compress-json';
-import type { $AnyEvil, $AnyOK } from '../types';
 import { eid } from '../types';
 import { Entity } from '../ecs';
-
-interface SerializedEntity {
-  id: string;
-  type: string;
-  tags: string[];
-  $: Record<string, unknown>;
-}
-
-interface Serialized {
-  entities: SerializedEntity[];
-}
-
-interface Serialized {
-  entities: SerializedEntity[];
-}
 
 export class Deserializer {
   protected world: World;
@@ -39,7 +22,7 @@ export class Deserializer {
 
   /**
    * Given an object, array of string path segments and an arbitrary value,
-   * assign the value. Basically a naïve `_.set()` implementation.
+   * assign the value. Basically a naïve implementation of lodash's `_.set()`
    */
   protected set(obj: object, path: string[], value: $AnyOK): void {
     let next: $AnyEvil = obj;
@@ -115,12 +98,11 @@ export class Deserializer {
     return res;
   }
 
-  public deserialize(save: Compressed): void {
-    const parsed: Serialized = decompress(save);
+  public deserialize(save: Serialized): void {
     this.stack = [];
     const { entities, components } = this.world.constructors;
 
-    for (const { id, tags, type, $ } of parsed.entities) {
+    for (const { id, tags, type, $ } of save.entities) {
       // if the entity class hasn't been registered or doesn't exist, we'll recreate the prefab manually.
       if (!(type in entities)) {
         const EntityClass = Entity.with(
@@ -137,7 +119,7 @@ export class Deserializer {
 
       // ...and instantiate
       const e = this.world.create(entities[type], data, tags);
-      // @ts-ignore: we do want it to be read-only, but this is a special case
+      // @ts-ignore: we _do_ want it to be read-only, but this is a special case
       e.id = id;
 
       // track the entity ID and a reference so we can repopulate refs later, if needed

@@ -1,7 +1,7 @@
-import type { Compressed } from 'compress-json';
+import type { Serialized } from '../types';
+
 import { describe, test, expect } from '@jest/globals';
 import { World } from '../ecs';
-
 import * as E from './helpers/entities';
 import * as C from './helpers/components';
 
@@ -24,7 +24,7 @@ describe('save and load', () => {
       world.create(E.WithRef);
     }
 
-    let res: Compressed;
+    let res: Serialized;
 
     expect(() => (res = world.save())).not.toThrow();
     expect(() => world.load(res)).not.toThrow();
