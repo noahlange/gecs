@@ -1,29 +1,31 @@
 # tecs
 
-**tecs** (_tecks_) is an experimental entity-component-system framework thing written in [TypeScript](https://www.typescriptlang.org).
+**tecs** (_tecks_) is an experimental [entity-component-system](https://en.wikipedia.org/wiki/Entity_component_system) framework thing written in [TypeScript](https://www.typescriptlang.org).
 
 ## Installation
 
-There isn't an NPM package because it's _way_ too soon for that. If you want to mess around with a demo, there's an [example repository](https://github.com/noahlange/tecs-example).
+(There isn't an NPM package because it's _way_ too soon for that.)
 
 If you'd like to fiddle with the library itself:
 
 ```
 git clone https://github.com/noahlange/tecs.git && cd tecs
-npm install && npm run build && npm link
+npm install && npm start
 ```
 
-Then you can `npm link` to it from the example project and import.
+If you want to mess around with a demo, there's an [example repository](https://github.com/noahlange/tecs-example) here. Adding tecs to a new/existing project is easy, due to NPM's handling of GitHub repo packages.
 
-```ts
-import { Entity, Component, System } from 'tecs';
 ```
+npm i noahlange/tecs
+```
+
+Note that if you update the package with `npm update`, you'll need to run `npm rebuild` to regenerate the JS output.
 
 ## Entities & Components
 
 An Entity is a loose wrapper around an arbitrary collection of Components.
 
-Each component extends the `Component` class and must define a static `type` property. This property should be `readonly`, defined in an accessor or otherwise annotated `as const`, or TypeScript won't be able to resolve its name.
+Each component extends the `Component` class and must define a static `type` property. This property must resolve to [a literal type](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#literal-types) or TypeScript will be basically useless for any entity/query using this component.
 
 ```typescript
 export class Position extends Component {
@@ -35,7 +37,8 @@ export class Position extends Component {
 }
 
 export class Sprite extends Component {
-  public static readonly type = 'sprite';
+  // alternative to "readonly"
+  public static type = 'sprite' as const;
   // instance properties...
   public anchor: number = 0.5;
   public path: string = '/assets/mole.png';
@@ -60,7 +63,7 @@ export class Bar extends Component {
 }
 ```
 
-An entity's component instances can be accessed via the `$` property.
+These component instances are accessed via the `$` property.
 
 ```ts
 import { Entity } from 'tecs';
@@ -77,32 +80,45 @@ e.$.woobly instanceof Bar; // true
 e.$.woobly.value === 1; // true
 ```
 
-As above, you can `extend` the result of the `with()` call to create a custom entity class, or create new instances using the return value as-is.
-
-There are two ways to create Entity classes: using the returned constructor as-is or `extend`-ing the result of the `with()` call.
+Per the example above, you can `extend` the result of the `with()` call to create a custom entity class, or create new instances using the return value of `with()` value as-is.
 
 ```typescript
+// composition
 const MyEntity1 = Entity.with(Position, Sprite);
+// inheritance
 class MyEntity2 extends Entity.with(Position, Sprite) {}
 ```
 
-This is a trade-off; while the first is terser and discourages the addition of custom functionality to your entities, typing the corresponding entity instance is slightly more obnoxious.
+This is a trade-off; while the first ("composition") is terser and discourages the addition of custom functionality to your entities, typing its instances is slightly more obnoxious.
+
+The second ("inheritance") gives you more flexibility, as well as a lengthy rope to hang yourself with.
 
 ```typescript
+// composition
 type InstanceMyEntity1 = InstanceType<typeof MyEntity>;
+// inheritance
 type InstanceMyEntity2 = MyEntity2;
 ```
 
-Sometimes you'll need to hint an entity's type without a concrete instance on hand.
+You'll often need to hint an entity's type without a concrete instance on hand (especially function parameters).
 
 ```typescript
+import { SpritePosition } from '../entities';
+
 export type SpritePositionEntity = EntityType<[typeof Position, typeof Sprite]>;
 
 function usingSpritePosition(entity: SpritePositionEntity): void {
+  // generic component
   entity.$.position.x += 1;
   entity.$.position.y += 1;
+
+  if (entity instanceof SpritePosition) {
+    // can use class-specific functionality
+  }
 }
 ```
+
+And if you need to "convert" a generic entity type to an instance of a specific class with a compatible component set, you can use `instanceof` to [narrow the type](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#instanceof-narrowing) accordingly.
 
 ## Worlds & Systems
 
@@ -123,11 +139,13 @@ class Renderer extends System {
 
   protected sprites: Record<string, PIXI.Sprite> = {};
 
-  // constructing queries takes time; a persisted query has less overhead when called repeatedly.
-  protected query = this.world.query.components(Position, Sprite).persist();
+  // building queries takes time; if called repeatedly, persisted queries have less overhead
+  protected $ = {
+    entities: this.world.query.components(Position, Sprite).persist()
+  };
 
   public tick(delta: number, time?: number): void {
-    for (const { $ } of this.query) {
+    for (const { $ } of this.$.entities) {
       const child = this.sprites[$.sprite.id];
       if (child) {
         // update position and rotation
@@ -181,6 +199,8 @@ When the world's (async) `start()` method is invoked, each of the world's system
 
 Queries return collections of entities based on the user's criteria. Query results are typed exactly like an ordinary entity, so you'll have access to each of the components you've requested in your query—and nothing more.
 
+### Building
+
 Queries consist of one or more "steps," each corresponding to a different type of query— components, tags or entities.
 
 ```typescript
@@ -195,12 +215,12 @@ Steps are executed sequentially. The result of a query is the intersection of ea
 world.query.some.components(A, B).all.tags('one', 'two'); // (A | B) & ('one' & 'two')
 ```
 
-Query steps can be modified with `.all`, `.any` and `.none` to perform basic boolean operations. `.some` expands the query result's type signature with additional (optional) properties, but has no effect on the query's results. `.none` has no effect on the query's type signature, but does have an effect on its results.
+Query steps can be modified with `.all`, `.any` and `.none` to perform basic boolean operations. `.none` has no effect on the query's type signature, but does have an effect on its results. `.some` expands the query result's type signature with additional optional (i.e., possibly undefined) components, but has no effect on the query's results.
 
 ```typescript
 // the "all" is implicit for tags/components
-world.query.all.components(A, B); // A & B
 world.query.components(A, B); // A & B
+world.query.all.components(A, B); // A & B
 
 world.query.any.components(A, B); // (A | B) | (A & B)
 world.query.some.components(A, B); // A? | B?
@@ -215,18 +235,85 @@ world.query.components(A, B)
   .none.components(D); // A & B & C? & !D
 ```
 
+### Execution
+
+You can invoke a query's `first()` or `get()` methods to access its result set. The query instance also has a `[Symbol.iterator]` method, so you can iterate directly over the result set with `for-of` or collect it with `Array.from()`.
+
+```typescript
+const query = world.query.components(A, B);
+
+// instance methods
+const first = query.first(); // (A & B) | null
+const all = query.get(); // (A & B)[]
+
+// iterators
+const array = Array.from(query); // (A & B)[]
+for (const result of query) {
+  // A & B
+}
+```
+
+### Persistence
+
+Once a query is cached, any subsequent query with the same "signature" will return the cached result set. The main overhead associated with creating a new query each `tick()` is the actual query-building. Invoking the query builder's `persist()` method returns the corresponding query that can be re-executed in subsequent ticks.
+
+```typescript
+class MySystem extends System {
+  public $ = {
+    abc: this.world.query.components(A, B, C).persist()
+  };
+
+  public tick() {
+    for (const abc of this.$.abc) {
+      // ...
+    }
+  }
+}
+```
+
 ## Serialization
 
-Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward.
+Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward. There's one caveat: in order to properly reload the world state, you must manually register your components and inheritance entities (composed entities are handled automatically) before calling `load()`.
 
-You can customize the serialization output of a component by adding a `toJSON()` method. You can pair this with a setter to populate a component's "exotic" properties upon instantiation.
+The output is a bulky POJO—~2000 entities runs me about 650 KB. Compressing the stringified output with [Brotli](https://www.npmjs.com/package/brotli) brings it down to less than 20 KB (about 3% of the original size). If you're working in the browser and can't load WebAssembly for one reason or another, [pako](https://github.com/nodeca/pako) is a great, marginally less effective (about 4% of the original size) alternative.
+
+### Save
+
+```typescript
+// create and start the world
+const world = new World();
+await world.start();
+
+// dump to POJO and do whatever
+const toStringifyOrWhatever = world.save();
+```
+
+### Load
+
+```typescript
+// instantiate new world, import state
+const world = new World();
+world.load(toStringifyOrWhatever);
+
+// restart
+await world.start();
+```
+
+### Custom serialization
+
+If you're using `JSON.stringify` to serialize your state, you can customize a component's output by adding a `toJSON()` method. You can pair this with a setter to populate or manipulate a component's "exotic" properties on instantiation.
 
 ```ts
+interface HealthState {
+  value: number;
+  max: number;
+}
+
 class Health extends Component {
   public health = new MyHealth(100);
 
   // return "$" on save...
-  public toJSON() {
+  public toJSON(): HealthState {
     return {
       $: {
         value: this.health.value,
@@ -236,38 +323,11 @@ class Health extends Component {
   }
 
   // ...set via "$" on load
-  public set $(value) {
-    this.health.setValue($.value);
-    this.health.setMax($.max);
+  public set $(value: HealthState) {
+    this.health.doSomethingSpecial($.value, $.max);
   }
 }
 ```
-
-The output is a pretty bulky POJO—~2000 entities runs me about 650 KB—but compressing the stringified output with [Brotli](https://www.npmjs.com/package/brotli) brings it down to less than 20 KB, which should be plenty small.
-
-### Save
-
-```typescript
-// create and start the world
-const world = new World();
-await world.start();
-
-// dump to POJO, convert to string
-const toStringifyOrCompressOrWhatever = world.save();
-```
-
-### Load
-
-```typescript
-// instantiate new world and reload state
-const world = new World();
-world.load(toStringifyOrCompressOrWhatever);
-
-// start world
-await world.start();
-```
-
-In order to properly reload the world state, you'll need to manually register your components (and any custom entities) before calling `load()`.
 
 ---
 
@@ -280,4 +340,4 @@ In order to properly reload the world state, you'll need to manually register yo
 **A/R**: Hovers around the bottom third of [ecs-benchmark](https://github.com/noctjs/ecs-benchmark) and ddmills' [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks).
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
-**A/R**: Also yes. But again, this is all about ergonomics and my feelings.
+**A/R**: Also yes. But again, this library and its design are more about ergonomics and my feelings than type-safety.
