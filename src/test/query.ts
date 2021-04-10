@@ -188,18 +188,17 @@ describe('caching', () => {
 describe('indexing', () => {
   test('entities with added components should appear in new result sets', () => {
     const em = new EntityManager();
+    const q = em.query.all.components(B).persist();
     const [a] = [em.create(WithA), em.create(WithAB)];
+
     em.tick();
 
-    const q1 = em.query.all.components(B).get();
+    expect(Array.from(q)).toHaveLength(1);
 
     a.components.add(B);
     em.tick();
 
-    const q2 = em.query.all.components(B).get();
-
-    expect(q1).toHaveLength(1);
-    expect(q2).toHaveLength(2);
+    expect(Array.from(q)).toHaveLength(2);
   });
 
   test('entities with removed components should disappear from result sets', () => {

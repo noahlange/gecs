@@ -1,7 +1,7 @@
 import { test, describe, expect } from '@jest/globals';
 import { EntityManager as Manager } from '../managers';
 
-import { WithABC } from './helpers/entities';
+import { WithABC, WithAB } from './helpers/entities';
 import { A, B, C } from './helpers/components';
 
 describe('creating entities', () => {
@@ -49,5 +49,19 @@ describe('component bindings', () => {
     expect($[A.type]).toBeInstanceOf(A);
     expect($[B.type]).toBeInstanceOf(B);
     expect($[C.type]).toBeInstanceOf(C);
+  });
+});
+
+describe('component helpers', () => {
+  const em = new Manager();
+  const entity = em.create(WithAB, {}, ['MY_TAG']);
+  test('has() returns true if all components are present', () => {
+    expect(entity.has(A, B)).toBeTruthy();
+    expect(entity.has(A, C)).toBeFalsy();
+  });
+
+  test('is() returns true if all tags are present', () => {
+    expect(entity.is('MY_TAG')).toBeTruthy();
+    expect(entity.is('OTHER_TAG')).toBeFalsy();
   });
 });

@@ -22,7 +22,10 @@ export class QueryManager {
 
   public index = new EntityIndex();
 
-  protected reduceUpdate(entities: Set<Entity>): Map<bigint, Entity[]> {
+  /**
+   * Group entities by key.
+   */
+  protected groupByKey(entities: Set<Entity>): Map<bigint, Entity[]> {
     return Array.from(entities).reduce((a, b) => {
       const arr = a.get(b.key) ?? [];
       arr.push(b);
@@ -51,7 +54,7 @@ export class QueryManager {
 
   public remove(entities: Set<Entity>): void {
     const removals: Entity[] = [];
-    for (const [key, values] of this.reduceUpdate(entities).entries()) {
+    for (const [key, values] of this.groupByKey(entities)) {
       this.index.remove(key, values);
       removals.push(...values);
     }
@@ -60,7 +63,7 @@ export class QueryManager {
 
   public add(entities: Set<Entity>): void {
     const additions: Entity[] = [];
-    for (const [key, values] of this.reduceUpdate(entities).entries()) {
+    for (const [key, values] of this.groupByKey(entities)) {
       this.index.append(key, values);
       additions.push(...values);
     }

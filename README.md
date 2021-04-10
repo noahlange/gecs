@@ -100,20 +100,31 @@ type InstanceMyEntity1 = InstanceType<typeof MyEntity>;
 type InstanceMyEntity2 = MyEntity2;
 ```
 
-You'll often need to hint an entity's type without a concrete instance on hand (especially function parameters).
+You may need to hint an entity's type without a concrete instance on hand (e.g., function parameters).
 
 ```typescript
 import { SpritePosition } from '../entities';
 
-export type SpritePositionEntity = EntityType<[typeof Position, typeof Sprite]>;
+export type SpritePositionEntity = EntityType<
+  [typeof Position, typeof Sprite], // required
+  [typeof Foo] // optional
+>;
 
 function usingSpritePosition(entity: SpritePositionEntity): void {
-  // generic component
+  // a generic Component instance
   entity.$.position.x += 1;
   entity.$.position.y += 1;
 
   if (entity instanceof SpritePosition) {
-    // can use class-specific functionality
+    // with a type guard, we can use class-specific functionality
+  }
+
+  if (entity.has(Foo)) {
+    // the `has()` type guard ensures the presence of the component Foo
+  }
+
+  if (entity.is('BAR')) {
+    // the `is()` type guard ensures the presence of the tag "BAR"
   }
 }
 ```

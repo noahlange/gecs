@@ -94,7 +94,7 @@ export class Serializer {
         return {
           id: entity.id,
           type,
-          tags: entity.tags.all().slice(),
+          tags: Array.from(entity.tags),
           $: this.visit(entity.$)
         };
       })

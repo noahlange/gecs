@@ -37,8 +37,8 @@ export class EntityIndex {
    */
   public remove(key: bigint, entities: Entity[]): void {
     const value = this.map.get(key) ?? new Set();
-    for (const e of entities) {
-      value.delete(e);
+    for (const entity of entities) {
+      value.delete(entity);
     }
     this.map.set(key, value);
   }

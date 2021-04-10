@@ -41,7 +41,7 @@ export class EntityManager {
   protected getEntityKey(entity: Entity): bigint {
     return this.registry.add([
       (entity.constructor as EntityClass).id,
-      ...entity.tags.all().map(t => this.getTagKey(t)),
+      ...entity.tags.map(t => this.getTagKey(t)),
       ...entity.items.map(e => e.type)
     ]);
   }
@@ -59,7 +59,7 @@ export class EntityManager {
   }
 
   public tick(): void {
-    // make sure the old IDs are in place as we remove.
+    // make sure the old IDs are in place when we remove.
     this.queries.remove(this.removes);
     this.removes.clear();
 
