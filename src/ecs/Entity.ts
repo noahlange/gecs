@@ -2,7 +2,7 @@ import type { BaseType, KeyedByType, PartialBaseType } from '../types';
 import type { EntityManager } from '../managers';
 import type { Component, ComponentClass } from './Component';
 
-import { ExtSet } from '../lib/ExtSet';
+import { ChangeSet } from '../lib/ChangeSet';
 import { useWithComponent } from '../utils';
 import { nanoid } from 'nanoid/non-secure';
 
@@ -75,7 +75,7 @@ export class Entity<T extends BaseType = {}> {
   public readonly $: T;
   public readonly id: string = nanoid(6);
   public readonly manager: EntityManager;
-  public readonly tags: ExtSet<string>;
+  public readonly tags: ChangeSet<string>;
 
   public key: bigint = 0n;
 
@@ -115,7 +115,7 @@ export class Entity<T extends BaseType = {}> {
     tags: string[] = []
   ) {
     this.manager = manager;
-    this.tags = new ExtSet(tags);
+    this.tags = new ChangeSet(tags, () => this.manager.index(this));
     this.$ = this.getBindings(data);
   }
 }

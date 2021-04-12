@@ -7,9 +7,11 @@ interface ReduceCallback<T, U> {
 }
 
 /**
- * Small extension of the "Set" class to add map/filter/reduce methods and spread arguments for add/remove/delete/has.
+ * Small extension of the "Set" class to add map/filter/reduce methods, spread arguments for add/remove/delete/has and an optional onChange handler.
  */
-export class ExtSet<T> extends Set<T> {
+export class ChangeSet<T> extends Set<T> {
+  protected onChange?: () => void;
+
   public all(): readonly T[] {
     return Array.from(this);
   }
@@ -27,6 +29,7 @@ export class ExtSet<T> extends Set<T> {
     for (const item of items) {
       super.add(item);
     }
+    this.onChange?.();
     return this;
   }
 
@@ -34,6 +37,7 @@ export class ExtSet<T> extends Set<T> {
     for (const item of items) {
       super.delete(item);
     }
+    this.onChange?.();
     return true;
   }
 
@@ -41,15 +45,20 @@ export class ExtSet<T> extends Set<T> {
     this.delete(...items);
   }
 
-  public map<U>(callback: Callback<T, U>): ExtSet<U> {
-    return new ExtSet<U>(Array.from(this).map(callback));
+  public map<U>(callback: Callback<T, U>): ChangeSet<U> {
+    return new ChangeSet<U>(Array.from(this).map(callback));
   }
 
-  public filter(callback: Callback<T, boolean>): ExtSet<T> {
-    return new ExtSet<T>(Array.from(this).filter(callback));
+  public filter(callback: Callback<T, boolean>): ChangeSet<T> {
+    return new ChangeSet<T>(Array.from(this).filter(callback));
   }
 
   public reduce<U>(callback: ReduceCallback<T, U>, initial: U): U {
     return Array.from(this).reduce(callback, initial);
+  }
+
+  public constructor(items: T[], changeHandler?: () => void) {
+    super(items);
+    this.onChange = changeHandler;
   }
 }
