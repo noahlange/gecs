@@ -4,7 +4,7 @@ import type { Component, ComponentClass } from './Component';
 
 import { ChangeSet } from '../lib/ChangeSet';
 import { useWithComponent } from '../utils';
-import { nanoid } from 'nanoid/non-secure';
+import { getID } from '../ids';
 
 export interface EntityComponents {
   all: () => readonly Component[];
@@ -27,7 +27,7 @@ export interface EntityClass<
 }
 
 export class Entity<T extends BaseType = {}> {
-  public static id: string = nanoid(6);
+  public static id: string = getID();
 
   public static with<T, A extends ComponentClass[]>(
     ...components: A
@@ -73,7 +73,7 @@ export class Entity<T extends BaseType = {}> {
   }
 
   public readonly $: T;
-  public readonly id: string = nanoid(6);
+  public readonly id: string = getID();
   public readonly manager: EntityManager;
   public readonly tags: ChangeSet<string>;
 

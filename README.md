@@ -129,7 +129,7 @@ function usingSpritePosition(entity: SpritePositionEntity): void {
 }
 ```
 
-And if you need to "convert" a generic entity type to an instance of a specific class with a compatible component set, you can use `instanceof` to [narrow the type](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#instanceof-narrowing) accordingly.
+And if you need to type-cast a generic entity type to an instance of a specific class with a compatible component set, you can use `instanceof` to [narrow the type](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#instanceof-narrowing) accordingly.
 
 ## Worlds & Systems
 

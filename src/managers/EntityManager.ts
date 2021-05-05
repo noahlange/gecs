@@ -3,8 +3,9 @@ import type { BaseType, PartialBaseType } from '../types';
 
 import { QueryBuilder, Registry } from '../lib';
 import { QueryManager } from './QueryManager';
-import { nanoid } from 'nanoid/non-secure';
+
 import { isEntityClass } from '../utils';
+import { getID } from '../ids';
 
 export class EntityManager {
   // map tags/components/entity types to bigints for bitmasking
@@ -33,7 +34,7 @@ export class EntityManager {
   }
 
   public getTagKey(tag: string): string {
-    const key = (this.tags[tag] ??= nanoid(6));
+    const key = (this.tags[tag] ??= getID());
     this.registry.register(key);
     return key;
   }

@@ -4,9 +4,9 @@ import type { EntityManager } from '../managers/EntityManager';
 import type { QueryManager } from '../managers';
 import type { Unsubscribe } from 'nanoevents';
 
-import { nanoid } from 'nanoid/non-secure';
 import { match, union } from '../utils';
 import { QueryTag } from '../types';
+import { getID } from '../ids';
 
 type TagsExceptSome = Exclude<QueryTag, QueryTag.SOME>;
 type Targets = { [key in TagsExceptSome]: bigint | null };
@@ -27,7 +27,7 @@ export class Query<
   T extends BaseType = BaseType,
   E extends Entity<T> = Entity<T>
 > {
-  protected id = nanoid(6);
+  protected id = getID();
 
   /**
    * Unidentified query items (i.e., without a bitmask).

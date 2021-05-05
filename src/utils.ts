@@ -7,25 +7,13 @@ import type {
   SystemClass,
   WorldClass
 } from './ecs';
-import { nanoid } from 'nanoid/non-secure';
+import { getID } from './ids';
 
 export function isEntityClass(
   e: ComponentClass | EntityClass
 ): e is EntityClass {
   return !('type' in e);
 }
-
-export function* idGenerator(): IterableIterator<bigint> {
-  let id = 1n;
-  do {
-    yield 1n << id++;
-  } while (true);
-}
-
-export const id = (): (() => bigint) => {
-  const gen = idGenerator();
-  return (): bigint => gen.next().value;
-};
 /**
  * Helper function to create new container class constructors with typed `$`s.
  * @param Constructor - Constructor to extend.
@@ -37,7 +25,7 @@ export function useWithComponent<
 >(Constructor: EntityClass<T>, ...items: A): EntityClass<T & KeyedByType<A>> {
   // type system abuse
   return (class extends Constructor {
-    public static id = nanoid(6);
+    public static id = getID();
     public get items(): A {
       return items;
     }

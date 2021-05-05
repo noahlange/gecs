@@ -1,11 +1,12 @@
-import { id, union } from '../utils';
+import { union } from '../utils';
+import { intID } from '../ids';
 
 /**
  * Map human-readable identifiers (nanoid, .type, etc) to bigints for faster,
  * bitmask-based searches.
  */
 export class Registry {
-  protected id = id();
+  protected id = intID();
   protected registry: Record<string, bigint> = {};
 
   public register(key: string): void {
