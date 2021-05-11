@@ -12,9 +12,11 @@ module.exports = {
     'prettier',
     'plugin:prettier/recommended',
     'plugin:@typescript-eslint/eslint-recommended',
-    'prettier/@typescript-eslint'
+    'prettier/@typescript-eslint',
+    'plugin:import/errors',
+    'plugin:import/typescript'
   ],
-  plugins: ['prettier', '@typescript-eslint'],
+  plugins: ['prettier', '@typescript-eslint', 'import', 'simple-import-sort'],
   rules: {
     /** miscellaneous rules */
     'max-classes-per-file': [2, 1],
@@ -43,6 +45,13 @@ module.exports = {
     '@typescript-eslint/consistent-type-assertions': [
       2,
       { assertionStyle: 'as' }
+    ],
+    'sort-imports': [0],
+    'simple-import-sort/imports': [
+      1,
+      {
+        groups: [['^.*\\u0000$'], ['^\\u0000'], ['^@?\\w'], ['^'], ['^\\.']]
+      }
     ]
   },
   ignorePatterns: ['*.js']

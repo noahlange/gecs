@@ -1,5 +1,5 @@
-import { union } from '../utils';
 import { intID } from '../ids';
+import { union } from '../utils';
 
 /**
  * Map human-readable identifiers (nanoid, .type, etc) to bigints for faster,

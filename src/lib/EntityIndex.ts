@@ -3,6 +3,14 @@ import type { Entity } from '../ecs';
 export class EntityIndex {
   protected map: Map<bigint, Set<Entity>> = new Map();
 
+  public all(): Entity[] {
+    const res = [];
+    for (const set of this.map.values()) {
+      res.push(...set);
+    }
+    return Array.from(new Set(res));
+  }
+
   /**
    * Get all indexed bigint keys.
    */
@@ -24,22 +32,22 @@ export class EntityIndex {
   /**
    * For a given key, index additional entities.
    */
-  public append(key: bigint, entities: Entity[]): void {
-    const value = this.map.get(key) ?? new Set();
-    for (const entity of entities) {
+  public append(key: bigint, entity: Entity): void {
+    const value = this.map.get(key);
+    if (value) {
       value.add(entity);
+    } else {
+      this.map.set(key, new Set([entity]));
     }
-    this.map.set(key, new Set(value));
   }
 
   /**
    * For a given key, remove given entities.
    */
-  public remove(key: bigint, entities: Entity[]): void {
-    const value = this.map.get(key) ?? new Set();
-    for (const entity of entities) {
+  public remove(key: bigint, entity: Entity): void {
+    const value = this.map.get(key);
+    if (value) {
       value.delete(entity);
     }
-    this.map.set(key, value);
   }
 }

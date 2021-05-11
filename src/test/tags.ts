@@ -1,6 +1,6 @@
-import { test, describe, expect } from '@jest/globals';
-import { EntityManager as Manager } from '../managers';
+import { describe, expect, test } from '@jest/globals';
 
+import { Manager as Manager } from '../lib';
 import { WithABC } from './helpers/entities';
 
 describe('tagging entities', () => {

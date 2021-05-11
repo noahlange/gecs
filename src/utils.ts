@@ -1,12 +1,14 @@
 /* eslint-disable max-classes-per-file */
-import type { BaseType, KeyedByType } from './types';
 import type {
   ComponentClass,
+  Entity,
   EntityClass,
   System,
   SystemClass,
   WorldClass
 } from './ecs';
+import type { BaseType, KeyedByType } from './types';
+
 import { getID } from './ids';
 
 export function isEntityClass(
@@ -43,6 +45,7 @@ export function useWithSystem<
     }
   } as unknown) as WorldClass<T & KeyedByType<A>>;
 }
+
 export function union(...values: bigint[]): bigint {
   return values.reduce((a, b) => a | b, 0n);
 }
@@ -62,3 +65,15 @@ export const match = {
     return !toMatch || !(toMatch & target);
   }
 };
+
+/**
+ * Group entities by key.
+ */
+export function groupByKey(entities: Set<Entity>): Map<bigint, Entity[]> {
+  return Array.from(entities).reduce((a, b) => {
+    const arr = a.get(b.key) ?? [];
+    arr.push(b);
+    a.set(b.key, arr);
+    return a;
+  }, new Map<bigint, Entity[]>());
+}

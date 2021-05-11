@@ -1,9 +1,11 @@
 import type { Serialized } from '../types';
 
-import { describe, test, expect } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
+
 import { World } from '../ecs';
-import * as E from './helpers/entities';
 import * as C from './helpers/components';
+import * as E from './helpers/entities';
+import { withTick } from './helpers/utils';
 
 function setup(): World {
   const world = new World();
@@ -32,13 +34,18 @@ describe('save and load', () => {
 
   test('saves anonymous entities', () => {
     const [world1, world2] = [setup(), setup()];
-    for (let i = 0; i < 5; i++) {
-      world1.create(E.cWithAB);
-    }
+
+    withTick(world1, () => {
+      for (let i = 0; i < 5; i++) {
+        world1.create(E.cWithAB);
+      }
+    });
+
     const saved = world1.save();
 
-    world2.load(saved);
-    world2.tick(0, 0);
+    withTick(world2, () => {
+      world2.load(saved);
+    });
 
     expect(Array.from(world2.query.components(C.A, C.B))).toHaveLength(5);
     for (const entity of world2.query.components(C.A, C.B)) {

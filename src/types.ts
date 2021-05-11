@@ -1,7 +1,8 @@
-import type { U } from 'ts-toolbelt';
 import type { Component, ComponentClass, Entity, EntityClass } from './ecs';
+import type { EntityRef } from './ecs/EntityRef';
+import type { U } from 'ts-toolbelt';
 
-// I imagine there is a better way of handling this, but it appears to behave consistently enough—at least in Chrome.
+// There's certainly a better way to handle this, but it appears to behave consistently enough—at least in Chrome.
 export const anonymous = '_a';
 export const eid = '$id$';
 
@@ -29,7 +30,11 @@ export type $AnyOK = any;
 export type KeyedByType<A extends WithStaticType[]> = U.Merge<
   A extends (infer B)[]
     ? B extends WithStaticType
-      ? { [key in B['type']]: InstanceType<B> }
+      ? {
+          [key in B['type']]: InstanceType<B> extends EntityRef
+            ? Ref<InstanceType<B>> | null
+            : InstanceType<B>;
+        }
       : never
     : never
 >;
@@ -37,7 +42,11 @@ export type KeyedByType<A extends WithStaticType[]> = U.Merge<
 export type PartialByType<A extends WithStaticType[]> = U.Merge<
   A extends (infer B)[]
     ? B extends WithStaticType
-      ? { [key in B['type']]?: InstanceType<B> }
+      ? {
+          [key in B['type']]?: InstanceType<B> extends EntityRef
+            ? Ref<InstanceType<B>> | null
+            : InstanceType<B>;
+        }
       : never
     : never
 >;
@@ -47,16 +56,20 @@ export interface WithStaticType<T = $AnyOK> {
   new (...args: $AnyOK[]): T;
 }
 
-export interface BaseType<T = Component> {
-  [key: string]: T;
+export interface BaseType<T extends Component = {}> {
+  [key: string]: T | null;
 }
 
 export type PartialContained<T> = {
   [K in Exclude<keyof T, 'container'>]?: T[K];
 };
 
-export type PartialBaseType<T extends BaseType> = {
-  [K in keyof T]?: PartialContained<T[K]>;
+export type Ref<T> = T extends EntityRef<infer R> ? R : T;
+
+export type BaseDataType<T extends BaseType> = {
+  [K in keyof T]?: T[K] extends EntityRef
+    ? Ref<T[K]> | null
+    : PartialContained<T[K]>;
 };
 
 export type Primitive = string | number | boolean | null | bigint;
@@ -95,5 +108,5 @@ export type EntityType<
 export type FullDataType<T> = T extends EntityClass<infer D> ? D : never;
 
 export type DataType<T> = T extends EntityClass<infer D>
-  ? PartialBaseType<D>
+  ? BaseDataType<D>
   : never;

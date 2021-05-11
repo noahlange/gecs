@@ -1,11 +1,11 @@
 import type { Entity } from '../../ecs';
-import { EntityManager } from '../../managers';
 
-import { WithA, WithAC, WithABC, WithB } from './entities';
+import { Manager } from '../../lib';
+import { WithA, WithABC, WithAC, WithB } from './entities';
 import { withTick } from './utils';
 
-export function setup(): { em: EntityManager; ids: string[] } {
-  const em = new EntityManager();
+export function setup(): { em: Manager; ids: string[] } {
+  const em = new Manager();
   const entities: Entity[] = [];
   const count = 5;
 

@@ -1,6 +1,8 @@
-import type { Manager } from '../..';
+interface Tickable {
+  tick(...args: any[]): void;
+}
 
-export function withTick(tickable: Manager, callback: () => void): void {
+export function withTick(tickable: Tickable, callback: () => void): void {
   tickable.tick();
   callback();
   tickable.tick();

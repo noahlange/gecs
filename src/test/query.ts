@@ -1,10 +1,12 @@
-import { describe, test, expect } from '@jest/globals';
-import { EntityManager } from '../managers/EntityManager';
-import { setup } from './helpers/setup';
+import type { Entity } from '../ecs';
+
+import { describe, expect, test } from '@jest/globals';
+
+import { Manager } from '../lib/Manager';
 import { A, B, C } from './helpers/components';
 import { WithA, WithAB } from './helpers/entities';
+import { setup } from './helpers/setup';
 import { withTick } from './helpers/utils';
-import type { Entity } from '../ecs';
 
 describe('basic query types', () => {
   const count = 5;
@@ -98,7 +100,7 @@ describe('tag queries', () => {
   });
 
   test('newly-added tags', () => {
-    const em = new EntityManager();
+    const em = new Manager();
     const q = em.query.all.components(A).tags('a').persist();
     const entities: Entity[] = [];
 
@@ -120,7 +122,7 @@ describe('tag queries', () => {
   });
 
   test('newly-removed tags', () => {
-    const em = new EntityManager();
+    const em = new Manager();
     const q = em.query.components(A).tags('a').persist();
     const entities: Entity[] = [];
 
@@ -179,7 +181,7 @@ describe('entity queries', () => {
 
 describe('first()', () => {
   test('first() should return a single entity', () => {
-    const em = new EntityManager();
+    const em = new Manager();
     let a: WithA | null = null;
     withTick(em, () => {
       a = em.create(WithA, {}, ['a']);
@@ -191,7 +193,7 @@ describe('first()', () => {
 
 describe('caching', () => {
   test("make sure a restricted result set doesn't inadvertently filter larger result sets", () => {
-    const em = new EntityManager();
+    const em = new Manager();
 
     withTick(em, () => {
       em.create(WithA, {}, ['a', 'b', 'c']);
@@ -206,7 +208,7 @@ describe('caching', () => {
   });
 
   test('should add new items to cached result sets', () => {
-    const em = new EntityManager();
+    const em = new Manager();
     const q = em.query.components(A).persist();
 
     withTick(em, () => em.create(WithA));
@@ -217,7 +219,7 @@ describe('caching', () => {
   });
 
   test('removed items should disappear from cached result sets', () => {
-    const em = new EntityManager();
+    const em = new Manager();
     const q = em.query.all.components(A).persist();
     let ab: Entity | null = null;
 
@@ -234,7 +236,7 @@ describe('caching', () => {
 
 describe('indexing', () => {
   test('entities with added components should appear in new result sets', () => {
-    const em = new EntityManager();
+    const em = new Manager();
     const q = em.query.all.components(B).persist();
     const a = em.create(WithA);
 
@@ -246,7 +248,7 @@ describe('indexing', () => {
   });
 
   test('entities with removed components should disappear from result sets', () => {
-    const em = new EntityManager();
+    const em = new Manager();
     const q = em.query.components(A).persist();
     const ab = em.create(WithAB);
 

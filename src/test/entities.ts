@@ -1,8 +1,8 @@
-import { test, describe, expect } from '@jest/globals';
-import { EntityManager as Manager } from '../managers';
+import { describe, expect, test } from '@jest/globals';
 
-import { WithABC, WithAB } from './helpers/entities';
+import { Manager as Manager } from '../lib';
 import { A, B, C } from './helpers/components';
+import { WithAB, WithABC } from './helpers/entities';
 
 describe('creating entities', () => {
   const em = new Manager();

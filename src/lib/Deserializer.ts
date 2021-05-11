@@ -1,8 +1,8 @@
 import type { World } from '..';
 import type { $AnyEvil, $AnyOK, Serialized } from '../types';
 
-import { eid } from '../types';
 import { Entity } from '../ecs';
+import { eid } from '../types';
 
 export class Deserializer {
   protected world: World;
@@ -100,7 +100,7 @@ export class Deserializer {
 
   public deserialize(save: Serialized): void {
     this.stack = [];
-    const { entities, components } = this.world.constructors;
+    const { entities, components } = this.world.registrations;
 
     for (const { id, tags, type, $ } of save.entities) {
       // if the entity class hasn't been registered or doesn't exist, we'll recreate the prefab manually.
