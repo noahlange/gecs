@@ -1,5 +1,12 @@
-import type { Component, ComponentClass, Entity, EntityClass } from './ecs';
+import type {
+  Component,
+  ComponentClass,
+  Entity,
+  EntityClass,
+  SystemClass
+} from './ecs';
 import type { EntityRef } from './ecs/EntityRef';
+import type { SystemFunction } from './ecs/System';
 import type { U } from 'ts-toolbelt';
 
 // There's certainly a better way to handle this, but it appears to behave consistently enough—at least in Chrome.
@@ -18,7 +25,7 @@ export interface Serialized {
 }
 
 /**
- * avoidable `any`s that should be rewritten.
+ * avoidable `any`s that should be revisited and fixed.
  */
 export type $AnyEvil = any;
 
@@ -74,6 +81,7 @@ export type BaseDataType<T extends BaseType> = {
 
 export type Primitive = string | number | boolean | null | bigint;
 export type OfOrArrayOf<T> = T | T[];
+export type OfOrPromiseOf<T> = T | Promise<T>;
 
 export type Visiting = OfOrArrayOf<$AnyEvil>;
 export type Visited = OfOrArrayOf<Primitive | SomeHash> | undefined;
@@ -99,6 +107,8 @@ export interface QueryStep {
   tag: QueryTag;
   key: string;
 }
+
+export type SystemType<T = {}> = SystemClass<T> | SystemFunction<T>;
 
 export type EntityType<
   A extends ComponentClass[],

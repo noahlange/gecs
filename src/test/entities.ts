@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { Manager as Manager } from '../lib';
+import { Manager } from '../lib';
 import { A, B, C } from './helpers/components';
 import { WithAB, WithABC } from './helpers/entities';
 

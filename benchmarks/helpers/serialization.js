@@ -1,4 +1,4 @@
-const { World, Entity, Component } = require('../../lib');
+const { Context, Entity, Component } = require('../../lib');
 
 class Complex1 extends Component {
   static type = 'complex1';
@@ -22,8 +22,8 @@ const entities = [E1, E2, E3];
 
 function setup(create, components) {
   const E = entities[components - 1];
-  const w = new World();
-  w.register(...register);
+  const ctx = new Context();
+  ctx.register(...register);
 
   for (let i = 0; i < create * 1000; i++) {
     const data = { complex1: { a: { b: { c: 5 } } } };
@@ -36,10 +36,10 @@ function setup(create, components) {
         bar: [{ bar: 'asdf' }, { bar: 'asdf' }, { bar: 'asdf' }]
       };
     }
-    w.create(E, data);
+    ctx.create(E, data);
   }
-  w.tick();
-  return w;
+  ctx.manager.tick();
+  return ctx;
 }
 
 module.exports = {

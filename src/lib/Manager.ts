@@ -29,7 +29,7 @@ export class Manager {
   // maps bigints to result sets
   public index = new EntityIndex();
 
-  public get query(): QueryBuilder {
+  public get $(): QueryBuilder {
     return new QueryBuilder(this);
   }
 

@@ -25,7 +25,6 @@ module.exports = {
     '@typescript-eslint/no-unused-vars': [1],
     '@typescript-eslint/no-implicit-any': [0],
     /** personal preferences */
-    '@typescript-eslint/promise-function-async': [2],
     '@typescript-eslint/prefer-optional-chain': [2],
     '@typescript-eslint/member-delimiter-style': [2],
     '@typescript-eslint/no-empty-interface': [1],

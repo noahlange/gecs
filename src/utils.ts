@@ -1,12 +1,12 @@
 /* eslint-disable max-classes-per-file */
 import type {
   ComponentClass,
+  ContextClass,
   Entity,
   EntityClass,
-  System,
-  SystemClass,
-  WorldClass
+  SystemClass
 } from './ecs';
+import type { SystemFunction } from './ecs/System';
 import type { BaseType, KeyedByType } from './types';
 
 import { getID } from './ids';
@@ -34,16 +34,16 @@ export function useWithComponent<
   } as unknown) as EntityClass<T & KeyedByType<A>>;
 }
 
-export function useWithSystem<
-  T extends BaseType<System>,
-  A extends SystemClass[] = []
->(Constructor: WorldClass<T>, ...items: A): WorldClass<T & KeyedByType<A>> {
+export function useWithSystem<T>(
+  Constructor: ContextClass<T>,
+  ...items: (SystemClass<T> | SystemFunction<T>)[]
+): ContextClass<T> {
   // type system abuse
-  return (class extends Constructor {
-    public get items(): A {
+  return class extends Constructor {
+    public get items(): (SystemClass<T> | SystemFunction<T>)[] {
       return items;
     }
-  } as unknown) as WorldClass<T & KeyedByType<A>>;
+  };
 }
 
 export function union(...values: bigint[]): bigint {
@@ -76,4 +76,10 @@ export function groupByKey(entities: Set<Entity>): Map<bigint, Entity[]> {
     a.set(b.key, arr);
     return a;
   }, new Map<bigint, Entity[]>());
+}
+
+export function isSystemConstructor<T>(
+  value: SystemClass<T> | SystemFunction<T>
+): value is SystemClass<T> {
+  return /^\s*class\b/.test(value.toString());
 }

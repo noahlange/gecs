@@ -1,20 +1,18 @@
-import type { BaseDataType, BaseType, KeyedByType, Serialized } from '../types';
+import type { BaseDataType, BaseType, Serialized } from '../types';
 import type { Component, ComponentClass } from './Component';
 import type { Entity, EntityClass } from './Entity';
-import type { System, SystemClass } from './System';
+import type { System, SystemClass, SystemFunction } from './System';
 
 import { Manager, QueryBuilder } from '../lib';
 import { Deserializer } from '../lib/Deserializer';
 import { Serializer } from '../lib/Serializer';
 import { anonymous } from '../types';
 import { isEntityClass, useWithSystem } from '../utils';
+import { sequence } from './composers';
 
-export interface WorldClass<T extends BaseType<System> = {}> {
-  data?: BaseDataType<T>;
-  with<A extends SystemClass[], T extends BaseType<System> = {}>(
-    ...items: A
-  ): WorldClass<T & KeyedByType<A>>;
-  new (): World;
+export interface ContextClass<T> {
+  with(...items: SystemClass<T>[]): ContextClass<T>;
+  new (state?: T): Context<T>;
 }
 
 interface Registrations {
@@ -22,19 +20,22 @@ interface Registrations {
   components: Record<string, ComponentClass>;
 }
 
-export class World<T extends BaseType<System> = {}> {
-  public static with<T, A extends SystemClass[]>(
-    ...systems: A
-  ): WorldClass<T & KeyedByType<A>> {
-    return useWithSystem<T & KeyedByType<A>, A>(this, ...systems);
+export class Context<T extends {} = {}> {
+  public static with<T extends {}>(
+    ...systems: (SystemClass<T> | SystemFunction<T>)[]
+  ): ContextClass<T> {
+    return useWithSystem<T>(this, ...systems);
   }
 
-  protected systems: System[] = [];
-  protected manager: Manager = new Manager();
+  protected pipeline: System<T>;
+  // binary semaphore to prevent overlapping tick() calls
+  protected locked: boolean = false;
 
+  public state: T;
   public registrations: Registrations = { entities: {}, components: {} };
+  public manager: Manager = new Manager();
 
-  public get items(): SystemClass[] {
+  public get items(): (SystemClass<T> | SystemFunction<T>)[] {
     return [];
   }
 
@@ -43,11 +44,14 @@ export class World<T extends BaseType<System> = {}> {
    */
   public init?(): Promise<void> | void;
 
-  public tick(delta: number, time: number): void {
-    this.manager.tick();
-    for (const system of this.systems) {
-      system.tick?.(delta, time);
-      this.manager.tick();
+  public async tick(delta: number, time: number): Promise<void> {
+    if (!this.locked) {
+      this.locked = true;
+      await this.pipeline.tick?.(delta, time);
+      this.locked = false;
+    } else {
+      console.warn('Tick execution exceeds frame rate.');
+      return;
     }
   }
 
@@ -80,18 +84,16 @@ export class World<T extends BaseType<System> = {}> {
   }
 
   /**
-   * Kickstart the world and its systems.
+   * Kickstart the Context and its systems.
    */
   public async start(): Promise<void> {
-    await this.init?.();
-    for (const System of this.items) {
-      this.systems.push(new System(this));
-    }
-    for (const system of this.systems) {
-      await system.init?.();
-      this.manager.tick();
-    }
-    this.tick(0, 0);
+    await this.pipeline.start?.();
+    this.manager.tick();
+    await this.tick(0, 0);
+  }
+
+  public async stop(): Promise<void> {
+    await this.pipeline.stop?.();
   }
 
   public create<C extends BaseType<Component>>(
@@ -102,16 +104,14 @@ export class World<T extends BaseType<System> = {}> {
     return this.manager.create(EntityConstructor, data, tags);
   }
 
-  public get query(): QueryBuilder {
+  public get $(): QueryBuilder {
     return new QueryBuilder(this.manager);
   }
 
-  public $: T;
-
-  public constructor() {
-    this.$ = {} as T;
-    for (const System of this.items) {
-      this.$[System.type as keyof T] = new System(this) as T[keyof T];
-    }
+  public constructor(state?: T) {
+    // using the React approach of "define it in the class or pass it in or it'll be null"
+    this.state = (state ?? null)!;
+    const Pipeline = sequence(...this.items);
+    this.pipeline = new Pipeline(this);
   }
 }

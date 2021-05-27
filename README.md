@@ -131,11 +131,51 @@ function usingSpritePosition(entity: SpritePositionEntity): void {
 
 And if you need to type-cast a generic entity type to an instance of a specific class with a compatible component set, you can use `instanceof` to [narrow the type](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#instanceof-narrowing) accordingly.
 
-## Worlds & Systems
+## Systems
 
-The relationship between the `World` and its `Systems` parallels that of an `Entity` and its `Components`. A `World` serves as a container for an arbitrary number of `Systems`, each of which performs a single, well-defined task that operates across numerous entities.
+At its core, a system is a function or object that performs one or more closely-related tasks.
 
-The key functionality of a System is executed within its `init()` and `tick()` methods. While both methods are technically optional, every system will have at least one. Some run once or twice—map generation, for example—while others might run on every tick and have no initialization code to speak of.
+```ts
+import type { Context } from 'tecs';
+import { Position, Velocity } from './components';
+
+export function movement(ctx: Context): void {
+  for (const { $ } of ctx.$.components(Position, Velocity)) {
+    $.position.x += $.velocity.dx;
+    $.position.y += $.velocity.dy;
+  }
+}
+```
+
+**tecs** supports both stateful object-oriented systems and stateless functional systems. If you need to take advantage of object persistence or invoke system lifecycle methods, then a stateful system is your best option.
+
+```ts
+import { System } from 'tecs';
+import { InputManager } from 'custom-library';
+
+import { Position, Clickable } from './components';
+
+export class ClickPositionSystem extends System {
+  public input = new InputManager();
+
+  public canClick = this.ctx.$.components(Position, Clickable).persist();
+
+  public tick() {
+    if (this.input.isMouseDown()) {
+      const { x, y } = this.input.getMousePosition();
+      for (const { $ } of this.canClick) {
+        if ($.position.x === x && $.position.y === y) {
+          alert('Clicked!');
+        }
+      }
+    }
+  }
+}
+```
+
+If not, stateless systems can help simplify your codebase.
+
+The primary functionality of a System is executed within its `init()` and/or `tick()` methods. While both methods are technically optional, every system will have at least one. Some run once or twice—map generation, for example—while others might run on every tick and have no initialization code to speak of.
 
 An example implementation of a simple PIXI.js renderer:
 
@@ -146,13 +186,11 @@ import { System } from 'tecs';
 import { Sprite, Position, Player } from './components';
 
 class Renderer extends System {
-  public static readonly type = 'renderer';
-
   protected sprites: Record<string, PIXI.Sprite> = {};
 
   // building queries takes time; if called repeatedly, persisted queries have less overhead
   protected $ = {
-    entities: this.world.query.components(Position, Sprite).persist()
+    entities: this.ctx.$.components(Position, Sprite).persist()
   };
 
   public tick(delta: number, time?: number): void {
@@ -169,7 +207,7 @@ class Renderer extends System {
   // init() functions can be async
   public async init(): Promise<void> {
     this.app = new PIXI.Application();
-    const query = this.world.query.all.components(Sprite);
+    const query = this.ctx.$.all.components(Sprite);
     // create all sprites and add to the stage
     for (const { $ } of query) {
       const child = PIXI.Sprite.from($.sprite.path);
@@ -177,34 +215,71 @@ class Renderer extends System {
       this.sprites[$.sprite.id] = child;
       this.app.stage.addChild(child);
     }
-    // bind the world's "tick" method to PIXI's ticker
-    this.app.ticker.add(this.world.tick.bind(this.world));
+    // bind the Context's "tick" method to PIXI's ticker
+    this.app.ticker.add(this.ctx.tick.bind(this.ctx));
     // mount stage to DOM
     document.body.appendChild(this.app.view);
   }
 }
 ```
 
-Like an entity is created `with()` components, a world is created `with()` systems.
+### Composition
 
-```typescript
-import { World, Entity } from 'tecs';
+**tecs** offers three helper functions that allow you to structure your game's system flow without forcing to wrap systems in complex branching logic.
 
-import { Renderer } from './systems';
+The `sequence()` and `parallel()` functions accept an array of systems or system functions and return another system "wrapping" the ones passed in.
 
-class MyWorld extends World.with(Renderer) {
-  public init(): void {
-    console.log('initializing!');
-  }
-}
+- Systems passed to the `sequence()` helper are run consecutively. If your tick method/system function returns a `Promise`, it will be resolved before starting the next system. The systems passed to `System.with()` are implicitly run in sequence.
 
-(async () => {
-  const world = new MyWorld();
-  await world.start();
-})();
+- Systems passed to the `parallel()` helper run simultaneously. If these systems execute synchronously, the helper has no effect. If not, the system will wait until all returned promises have been resolved before moving on.
+
+```ts
+import { parallel, sequence, conditional } from 'tecs';
+import { SimA, SimB, SimC } from './sims';
+import { setup, teardown } from './misc';
+
+// execute all systems simultaneously, moving on once all have returned/resolved
+const inParallel = parallel(SimA, SimB, SimC);
+
+// execute all systems in order, waiting for each system to resolve in turn
+const inSequence = sequence(setup, inParallel, teardown);
+
+// only execute if the game state's mode property is "SIMULATION"
+const ifSimulating = conditional(
+  ctx => ctx.state.mode === GameMode.SIMULATION,
+  inSequence
+);
 ```
 
-When the world's (async) `start()` method is invoked, each of the world's systems is booted in the order it was passed to `with()`. Each time `tick()` is called, the world invokes the `tick()` method of each of its systems (again, in order).
+### Caveats
+
+**tecs** is not thread-safe and offers no guarantees of anything beyond "these will run one at a time in this order" and "nothing else will happen until these are done." The specifics of handling locks, mutexes, sharred memory arrays and how to wrangle WebWorkers likewise beyond the purview of this README.
+
+## Contexts
+
+The relationship between the `Context` and its `Systems` mirrors that of an `Entity` and its `Components`. A `Context` serves as a container for an arbitrary number of `Systems`, each of which
+
+Like an entity is created `with()` components, a context is created `with()` systems. A context can also have a `state` property.
+
+```typescript
+import { Context, Entity } from 'tecs';
+
+import { A, B, C, D } from './systems';
+
+interface MyContextState {
+  foo: number;
+}
+
+// run A, B, C and D in order
+const MyContext1 = Context.with < MyContextState(A, B, C, D);
+
+// run A, followed by B+C in parallel and then followed by D.
+const MyContext2 = Context.with(A, parallel(B, C), D);
+```
+
+The precise mechanism by which an async system runs asynchronously (e.g., web worker, etc.), is up to the developer. Currently, parallel system are _not_ thread-safe.
+
+When the context's (async) `start()` method is invoked, each of the context's systems is booted in the order it was passed to `with()`. Each time `tick()` is called, the context invokes the `tick()` method of each of its systems (again, in order).
 
 ## Queries
 
@@ -215,33 +290,33 @@ Queries return collections of entities based on the user's criteria. Query resul
 Queries consist of one or more "steps," each corresponding to a different type of query— components, tags or entities.
 
 ```typescript
-const q1 = world.query.components(A, B);
-const q4 = world.query.tags('one', 'two', 'three');
-const q2 = world.query.entities(MyEntity);
+const q1 = ctx.$.components(A, B);
+const q4 = ctx.$.tags('one', 'two', 'three');
+const q2 = ctx.$.entities(MyEntity);
 ```
 
 Steps are executed sequentially. The result of a query is the intersection of each step's results.
 
 ```typescript
-world.query.some.components(A, B).all.tags('one', 'two'); // (A | B) & ('one' & 'two')
+ctx.$.some.components(A, B).all.tags('one', 'two'); // (A | B) & ('one' & 'two')
 ```
 
 Query steps can be modified with `.all`, `.any` and `.none` to perform basic boolean operations. `.none` has no effect on the query's type signature, but does have an effect on its results. `.some` expands the query result's type signature with additional optional (i.e., possibly undefined) components, but has no effect on the query's results.
 
 ```typescript
 // the "all" is implicit for tags/components
-world.query.components(A, B); // A & B
-world.query.all.components(A, B); // A & B
+ctx.$.components(A, B); // A & B
+ctx.$.all.components(A, B); // A & B
 
-world.query.any.components(A, B); // (A | B) | (A & B)
-world.query.some.components(A, B); // A? | B?
-world.query.none.components(A, B); // !(A | B)
+ctx.$.any.components(A, B); // (A | B) | (A & B)
+ctx.$.some.components(A, B); // A? | B?
+ctx.$.none.components(A, B); // !(A | B)
 ```
 
 Naturally, these can be chained:
 
 ```typescript
-world.query.components(A, B)
+ctx.$.components(A, B)
   .some.components(C);
   .none.components(D); // A & B & C? & !D
 ```
@@ -251,7 +326,7 @@ world.query.components(A, B)
 You can invoke a query's `first()` or `get()` methods to access its result set. The query instance also has a `[Symbol.iterator]` method, so you can iterate directly over the result set with `for-of` or collect it with `Array.from()`.
 
 ```typescript
-const query = world.query.components(A, B);
+const query = ctx.$.components(A, B);
 
 // instance methods
 const first = query.first(); // (A & B) | null
@@ -271,7 +346,7 @@ Once a query is cached, any subsequent query with the same "signature" will retu
 ```typescript
 class MySystem extends System {
   public $ = {
-    abc: this.world.query.components(A, B, C).persist()
+    abc: this.ctx.$.components(A, B, C).persist()
   };
 
   public tick() {
@@ -284,30 +359,30 @@ class MySystem extends System {
 
 ## Serialization
 
-Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward. There's one caveat: in order to properly reload the world state, you must manually register your components and inheritance entities (composed entities are handled automatically) before calling `load()`.
+Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward. There's one caveat: in order to properly reload the context's state, you must manually register your components and inheritance entities (composed entities are handled automatically) before calling `load()`.
 
 The output is a bulky POJO—~2000 entities runs me about 650 KB. Compressing the stringified output with [Brotli](https://www.npmjs.com/package/brotli) brings it down to less than 20 KB (about 3% of the original size). If you're working in the browser and can't load WebAssembly for one reason or another, [pako](https://github.com/nodeca/pako) is a great, marginally less effective (about 4% of the original size) alternative.
 
 ### Save
 
 ```typescript
-// create and start the world
-const world = new World();
-await world.start();
+// create and start the context
+const ctx = new Context();
+await ctx.start();
 
 // dump to POJO and do whatever
-const toStringifyOrWhatever = world.save();
+const toStringifyOrWhatever = ctx.save();
 ```
 
 ### Load
 
 ```typescript
-// instantiate new world, import state
-const world = new World();
-world.load(toStringifyOrWhatever);
+// instantiate new ctx, import state
+const ctx = new Context();
+ctx.load(toStringifyOrWhatever);
 
 // restart
-await world.start();
+await ctx.start();
 ```
 
 ### Custom serialization

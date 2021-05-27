@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 
 import { Entity, EntityRef } from '../ecs';
-import { Manager as Manager } from '../lib';
+import { Manager } from '../lib';
 import { WithABC } from './helpers/entities';
 
 class RefABC extends EntityRef<WithABC> {

@@ -74,7 +74,7 @@ export class Serializer {
   }
 
   /**
-   * Convert the world into a structure we can stringify and save to disk
+   * Convert the context into a structure we can stringify and save to disk
    */
   public serialize(options: SerializeOptions = {}): Serialized {
     const entityFilter = options.entityFilter ?? (() => true);
