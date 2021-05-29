@@ -12,9 +12,11 @@ module.exports = {
     'prettier',
     'plugin:prettier/recommended',
     'plugin:@typescript-eslint/eslint-recommended',
-    'prettier/@typescript-eslint'
+    'prettier/@typescript-eslint',
+    'plugin:import/errors',
+    'plugin:import/typescript'
   ],
-  plugins: ['prettier', '@typescript-eslint'],
+  plugins: ['prettier', '@typescript-eslint', 'import', 'simple-import-sort'],
   rules: {
     /** miscellaneous rules */
     'max-classes-per-file': [2, 1],
@@ -23,7 +25,6 @@ module.exports = {
     '@typescript-eslint/no-unused-vars': [1],
     '@typescript-eslint/no-implicit-any': [0],
     /** personal preferences */
-    '@typescript-eslint/promise-function-async': [2],
     '@typescript-eslint/prefer-optional-chain': [2],
     '@typescript-eslint/member-delimiter-style': [2],
     '@typescript-eslint/no-empty-interface': [1],
@@ -43,6 +44,13 @@ module.exports = {
     '@typescript-eslint/consistent-type-assertions': [
       2,
       { assertionStyle: 'as' }
+    ],
+    'sort-imports': [0],
+    'simple-import-sort/imports': [
+      1,
+      {
+        groups: [['^.*\\u0000$'], ['^\\u0000'], ['^@?\\w'], ['^'], ['^\\.']]
+      }
     ]
   },
   ignorePatterns: ['*.js']

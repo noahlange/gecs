@@ -1,8 +1,8 @@
-import type { U } from 'ts-toolbelt';
 import type { Component, ComponentClass, Entity, EntityClass } from '../ecs';
+import type { Manager } from '../lib';
 import type { BaseType, KeyedByType, PartialByType, QueryStep } from '../types';
-import type { QueryManager, EntityManager } from '../managers';
 import type { Query } from './Query';
+import type { U } from 'ts-toolbelt';
 
 import { QueryTag } from '../types';
 
@@ -64,8 +64,7 @@ export class QueryBuilder<
 > implements BaseQueryBuilder<T, C> {
   protected state!: TempQueryBuilderState;
   protected criteria: QueryStep[] = [];
-  protected queryManager: QueryManager;
-  protected entityManager: EntityManager;
+  protected manager: Manager;
 
   protected reset(): this {
     if (this.state) {
@@ -123,9 +122,7 @@ export class QueryBuilder<
    * Create a new step with one or more tag requirements.
    */
   public tags<A extends string[]>(...tags: A): BaseQueryBuilder<T, C> {
-    const mapped = tags
-      .map(t => this.entityManager.getTagKey(t))
-      .filter(f => !!f);
+    const mapped = tags.map(t => this.manager.getTagKey(t)).filter(f => !!f);
     this.state.ids.push(...mapped);
     return this.reset();
   }
@@ -190,12 +187,11 @@ export class QueryBuilder<
   }
 
   public get query(): Query<T, C> {
-    return this.queryManager.getQuery<T, C>(this.criteria);
+    return this.manager.getQuery<T, C>(this.criteria);
   }
 
-  public constructor(entities: EntityManager, manager: QueryManager) {
-    this.entityManager = entities;
-    this.queryManager = manager;
+  public constructor(entities: Manager) {
+    this.manager = entities;
     this.reset();
   }
 }

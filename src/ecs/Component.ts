@@ -1,13 +1,10 @@
+import type { $AnyEvil } from '../types';
+
 export interface ComponentClass {
   readonly type: string;
-  new (data?: Record<string, unknown>): Component;
+  new (data?: $AnyEvil): Component;
 }
 
 export class Component {
   public static readonly type: string;
-  public constructor(data?: Record<string, unknown>) {
-    if (data) {
-      Object.assign(this, data);
-    }
-  }
 }

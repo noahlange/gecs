@@ -1,6 +1,7 @@
 /* eslint-disable max-classes-per-file */
 
 import type { Entity } from '../../ecs';
+
 import { Component } from '../../ecs';
 
 export class A extends Component {

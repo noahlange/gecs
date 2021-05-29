@@ -1,19 +1,33 @@
-import type { World } from './World';
+import type { OfOrPromiseOf } from '../types';
+import type { Context } from './Context';
 
-export interface SystemClass {
-  type: string;
-  new (world: World): System;
+export interface SystemClass<T extends {} = {}> {
+  ofType<T>(): SystemClass<T>;
+  new (ctx: Context<T>): System<T>;
 }
 
-export class System {
-  public static readonly type: string;
+export interface SystemFunction<T extends {} = {}> {
+  (ctx: Context<T>, delta: number, ts: number): OfOrPromiseOf<unknown>;
+}
 
-  public tick?(delta: number, ts: number): void;
-  public init?(): void | Promise<void>;
+export interface SystemLike {
+  tick?(dt: number, ts: number): OfOrPromiseOf<unknown>;
+  start?(): OfOrPromiseOf<unknown>;
+  stop?(): OfOrPromiseOf<unknown>;
+}
 
-  public world: World;
+export class System<T extends {} = {}> {
+  public static ofType<T>(): SystemClass<T> {
+    return this as SystemClass<T>;
+  }
 
-  public constructor(world: World) {
-    this.world = world;
+  public tick?(delta: number, ts: number): OfOrPromiseOf<unknown>;
+  public start?(): OfOrPromiseOf<unknown>;
+  public stop?(): OfOrPromiseOf<unknown>;
+
+  public ctx: Context<T>;
+
+  public constructor(ctx: Context<T>) {
+    this.ctx = ctx;
   }
 }

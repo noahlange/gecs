@@ -1,77 +1,85 @@
 import type { Serialized } from '../types';
 
-import { describe, test, expect } from '@jest/globals';
-import { World } from '../ecs';
-import * as E from './helpers/entities';
-import * as C from './helpers/components';
+import { describe, expect, test } from '@jest/globals';
 
-function setup(): World {
-  const world = new World();
-  world.register(C.A, C.B, C.C, C.Ref);
+import { Context } from '../ecs';
+import * as C from './helpers/components';
+import * as E from './helpers/entities';
+import { withTick } from './helpers/utils';
+
+function setup(): Context {
+  const ctx = new Context({});
+  ctx.register(C.A, C.B, C.C, C.Ref);
   // named entities
-  world.register(E.WithA, E.WithAB, E.WithABC, E.WithRef);
+  ctx.register(E.WithA, E.WithAB, E.WithABC, E.WithRef);
   // anonymous entities
-  world.register(E.cWithA, E.cWithAB, E.cWithABC, E.cWithRef);
-  return world;
+  ctx.register(E.cWithA, E.cWithAB, E.cWithABC, E.cWithRef);
+  return ctx;
 }
 
 describe('save and load', () => {
   test("basics: doesn't explode", () => {
-    const world = setup();
+    const ctx = setup();
     for (let i = 0; i < 5; i++) {
-      world.create(E.WithA);
-      world.create(E.cWithAB);
-      world.create(E.WithRef);
+      ctx.create(E.WithA);
+      ctx.create(E.cWithAB);
+      ctx.create(E.WithRef);
     }
 
     let res: Serialized;
 
-    expect(() => (res = world.save())).not.toThrow();
-    expect(() => world.load(res)).not.toThrow();
+    expect(() => (res = ctx.save())).not.toThrow();
+    expect(() => ctx.load(res)).not.toThrow();
   });
 
-  test('saves anonymous entities', () => {
-    const [world1, world2] = [setup(), setup()];
-    for (let i = 0; i < 5; i++) {
-      world1.create(E.cWithAB);
-    }
-    const saved = world1.save();
+  test('saves anonymous entities', async () => {
+    const [ctx1, ctx2] = [setup(), setup()];
 
-    world2.load(saved);
-    world2.tick(0, 0);
+    await withTick(ctx1, () => {
+      for (let i = 0; i < 5; i++) {
+        ctx1.create(E.cWithAB);
+      }
+    });
 
-    expect(Array.from(world2.query.components(C.A, C.B))).toHaveLength(5);
-    for (const entity of world2.query.components(C.A, C.B)) {
+    ctx1.manager.tick();
+
+    const saved = ctx1.save();
+
+    await withTick(ctx2, () => ctx2.load(saved));
+
+    expect(Array.from(ctx2.$.components(C.A, C.B))).toHaveLength(5);
+
+    for (const entity of ctx2.$.components(C.A, C.B)) {
       expect(entity).toBeInstanceOf(E.cWithAB);
     }
   });
 
   test('idempotent serializations', () => {
-    const [world1, world2] = [setup(), setup()];
+    const [ctx1, ctx2] = [setup(), setup()];
     for (let i = 0; i < 5; i++) {
-      world1.create(E.cWithAB);
+      ctx1.create(E.cWithAB);
     }
 
-    const save1 = world1.save();
-    world2.load(save1);
-    const save2 = world2.save();
+    const save1 = ctx1.save();
+    ctx2.load(save1);
+    const save2 = ctx2.save();
 
     expect(save1).toEqual(save2);
   });
 
-  test('reattaches entity instances', () => {
-    const [world1, world2] = [setup(), setup()];
+  test('reattaches entity instances', async () => {
+    const [ctx1, ctx2] = [setup(), setup()];
     for (let i = 0; i < 5; i++) {
-      const e = world1.create(E.WithRef);
+      const e = ctx1.create(E.WithRef);
       e.$.ref.value = e;
     }
 
-    const saved = world1.save();
+    const saved = ctx1.save();
 
-    world2.load(saved);
-    world2.tick(0, 0);
+    ctx2.load(saved);
+    await ctx2.tick(0, 0);
 
-    for (const entity of world2.query.components(C.Ref)) {
+    for (const entity of ctx2.$.components(C.Ref)) {
       expect(entity.$.ref.value).toBe(entity);
     }
   });

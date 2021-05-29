@@ -1,31 +1,21 @@
 /* eslint-disable max-classes-per-file */
-import type { BaseType, KeyedByType } from './types';
 import type {
   ComponentClass,
+  ContextClass,
+  Entity,
   EntityClass,
-  System,
-  SystemClass,
-  WorldClass
+  SystemClass
 } from './ecs';
-import { nanoid } from 'nanoid/non-secure';
+import type { SystemFunction } from './ecs/System';
+import type { BaseType, KeyedByType } from './types';
+
+import { getID } from './ids';
 
 export function isEntityClass(
   e: ComponentClass | EntityClass
 ): e is EntityClass {
   return !('type' in e);
 }
-
-export function* idGenerator(): IterableIterator<bigint> {
-  let id = 1n;
-  do {
-    yield 1n << id++;
-  } while (true);
-}
-
-export const id = (): (() => bigint) => {
-  const gen = idGenerator();
-  return (): bigint => gen.next().value;
-};
 /**
  * Helper function to create new container class constructors with typed `$`s.
  * @param Constructor - Constructor to extend.
@@ -37,24 +27,25 @@ export function useWithComponent<
 >(Constructor: EntityClass<T>, ...items: A): EntityClass<T & KeyedByType<A>> {
   // type system abuse
   return (class extends Constructor {
-    public static id = nanoid(6);
+    public static id = getID();
     public get items(): A {
       return items;
     }
   } as unknown) as EntityClass<T & KeyedByType<A>>;
 }
 
-export function useWithSystem<
-  T extends BaseType<System>,
-  A extends SystemClass[] = []
->(Constructor: WorldClass<T>, ...items: A): WorldClass<T & KeyedByType<A>> {
+export function useWithSystem<T>(
+  Constructor: ContextClass<T>,
+  ...items: (SystemClass<T> | SystemFunction<T>)[]
+): ContextClass<T> {
   // type system abuse
-  return (class extends Constructor {
-    public get items(): A {
+  return class extends Constructor {
+    public get items(): (SystemClass<T> | SystemFunction<T>)[] {
       return items;
     }
-  } as unknown) as WorldClass<T & KeyedByType<A>>;
+  };
 }
+
 export function union(...values: bigint[]): bigint {
   return values.reduce((a, b) => a | b, 0n);
 }
@@ -74,3 +65,21 @@ export const match = {
     return !toMatch || !(toMatch & target);
   }
 };
+
+/**
+ * Group entities by key.
+ */
+export function groupByKey(entities: Set<Entity>): Map<bigint, Entity[]> {
+  return Array.from(entities).reduce((a, b) => {
+    const arr = a.get(b.key) ?? [];
+    arr.push(b);
+    a.set(b.key, arr);
+    return a;
+  }, new Map<bigint, Entity[]>());
+}
+
+export function isSystemConstructor<T>(
+  value: SystemClass<T> | SystemFunction<T>
+): value is SystemClass<T> {
+  return /^\s*class\b/.test(value.toString());
+}

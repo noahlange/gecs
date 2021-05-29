@@ -1,11 +1,11 @@
-import type { World } from '..';
+import type { Context } from '..';
 import type { $AnyEvil, $AnyOK, Serialized } from '../types';
 
-import { eid } from '../types';
 import { Entity } from '../ecs';
+import { eid } from '../types';
 
 export class Deserializer {
-  protected world: World;
+  protected ctx: Context;
   protected stack: unknown[] = [];
 
   /**
@@ -100,7 +100,7 @@ export class Deserializer {
 
   public deserialize(save: Serialized): void {
     this.stack = [];
-    const { entities, components } = this.world.constructors;
+    const { entities, components } = this.ctx.registrations;
 
     for (const { id, tags, type, $ } of save.entities) {
       // if the entity class hasn't been registered or doesn't exist, we'll recreate the prefab manually.
@@ -108,17 +108,17 @@ export class Deserializer {
         const EntityClass = Entity.with(
           ...type.split('|').map(c => components[c])
         );
-        this.world.register(EntityClass);
+        this.ctx.register(EntityClass);
         entities[type] = EntityClass;
       }
 
-      // now that we're confident that the entity class exists, we're going to populate data for `world.create()`
+      // now that we're confident that the entity class exists, we're going to populate data for `ctx.create()`
       const data = Object.getOwnPropertyNames($).map(key =>
         this.deserializeValue(['$', key], id, $[key])
       );
 
       // ...and instantiate
-      const e = this.world.create(entities[type], data, tags);
+      const e = this.ctx.create(entities[type], data, tags);
       // @ts-ignore: we _do_ want it to be read-only, but this is a special case
       e.id = id;
 
@@ -132,7 +132,7 @@ export class Deserializer {
     this.stack = [];
   }
 
-  public constructor(world: World) {
-    this.world = world;
+  public constructor(ctx: Context<any>) {
+    this.ctx = ctx;
   }
 }

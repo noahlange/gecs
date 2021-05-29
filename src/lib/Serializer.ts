@@ -1,8 +1,8 @@
-import type { Manager } from '..';
-import type { Visiting, Visited, SomeHash, Serialized } from '../types';
+import type { Serialized, SomeHash, Visited, Visiting } from '../types';
+import type { Manager } from './Manager';
 
-import { eid, anonymous } from '../types';
 import { Entity } from '../ecs';
+import { anonymous, eid } from '../types';
 
 interface SerializeOptions {
   entityFilter?: (entity: Entity) => boolean;
@@ -74,7 +74,7 @@ export class Serializer {
   }
 
   /**
-   * Convert the world into a structure we can stringify and save to disk
+   * Convert the context into a structure we can stringify and save to disk
    */
   public serialize(options: SerializeOptions = {}): Serialized {
     const entityFilter = options.entityFilter ?? (() => true);
@@ -106,6 +106,6 @@ export class Serializer {
   }
 
   public constructor(manager: Manager) {
-    this.entities = Array.from(manager.entities.values());
+    this.entities = manager.index.all();
   }
 }

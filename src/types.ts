@@ -1,7 +1,15 @@
+import type {
+  Component,
+  ComponentClass,
+  Entity,
+  EntityClass,
+  SystemClass
+} from './ecs';
+import type { EntityRef } from './ecs/EntityRef';
+import type { SystemFunction } from './ecs/System';
 import type { U } from 'ts-toolbelt';
-import type { Component, ComponentClass, Entity, EntityClass } from './ecs';
 
-// I imagine there is a better way of handling this, but it appears to behave consistently enough—at least in Chrome.
+// There's certainly a better way to handle this, but it appears to behave consistently enough—at least in Chrome.
 export const anonymous = '_a';
 export const eid = '$id$';
 
@@ -17,7 +25,7 @@ export interface Serialized {
 }
 
 /**
- * avoidable `any`s that should be rewritten.
+ * avoidable `any`s that should be revisited and fixed.
  */
 export type $AnyEvil = any;
 
@@ -29,7 +37,11 @@ export type $AnyOK = any;
 export type KeyedByType<A extends WithStaticType[]> = U.Merge<
   A extends (infer B)[]
     ? B extends WithStaticType
-      ? { [key in B['type']]: InstanceType<B> }
+      ? {
+          [key in B['type']]: InstanceType<B> extends EntityRef
+            ? Ref<InstanceType<B>> | null
+            : InstanceType<B>;
+        }
       : never
     : never
 >;
@@ -37,7 +49,11 @@ export type KeyedByType<A extends WithStaticType[]> = U.Merge<
 export type PartialByType<A extends WithStaticType[]> = U.Merge<
   A extends (infer B)[]
     ? B extends WithStaticType
-      ? { [key in B['type']]?: InstanceType<B> }
+      ? {
+          [key in B['type']]?: InstanceType<B> extends EntityRef
+            ? Ref<InstanceType<B>> | null
+            : InstanceType<B>;
+        }
       : never
     : never
 >;
@@ -47,20 +63,25 @@ export interface WithStaticType<T = $AnyOK> {
   new (...args: $AnyOK[]): T;
 }
 
-export interface BaseType<T = Component> {
-  [key: string]: T;
+export interface BaseType<T extends Component = {}> {
+  [key: string]: T | null;
 }
 
 export type PartialContained<T> = {
   [K in Exclude<keyof T, 'container'>]?: T[K];
 };
 
-export type PartialBaseType<T extends BaseType> = {
-  [K in keyof T]?: PartialContained<T[K]>;
+export type Ref<T> = T extends EntityRef<infer R> ? R : T;
+
+export type BaseDataType<T extends BaseType> = {
+  [K in keyof T]?: T[K] extends EntityRef
+    ? Ref<T[K]> | null
+    : PartialContained<T[K]>;
 };
 
 export type Primitive = string | number | boolean | null | bigint;
 export type OfOrArrayOf<T> = T | T[];
+export type OfOrPromiseOf<T> = T | Promise<T>;
 
 export type Visiting = OfOrArrayOf<$AnyEvil>;
 export type Visited = OfOrArrayOf<Primitive | SomeHash> | undefined;
@@ -87,6 +108,8 @@ export interface QueryStep {
   key: string;
 }
 
+export type SystemType<T = {}> = SystemClass<T> | SystemFunction<T>;
+
 export type EntityType<
   A extends ComponentClass[],
   O extends ComponentClass[] = []
@@ -95,5 +118,5 @@ export type EntityType<
 export type FullDataType<T> = T extends EntityClass<infer D> ? D : never;
 
 export type DataType<T> = T extends EntityClass<infer D>
-  ? PartialBaseType<D>
+  ? BaseDataType<D>
   : never;

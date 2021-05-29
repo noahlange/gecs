@@ -1,12 +1,11 @@
 import type { Entity } from '../ecs';
-import type { QueryStep, BaseType } from '../types';
-import type { EntityManager } from '../managers/EntityManager';
-import type { QueryManager } from '../managers';
+import type { BaseType, QueryStep } from '../types';
+import type { Manager } from './Manager';
 import type { Unsubscribe } from 'nanoevents';
 
-import { nanoid } from 'nanoid/non-secure';
-import { match, union } from '../utils';
+import { getID } from '../ids';
 import { QueryTag } from '../types';
+import { match, union } from '../utils';
 
 type TagsExceptSome = Exclude<QueryTag, QueryTag.SOME>;
 type Targets = { [key in TagsExceptSome]: bigint | null };
@@ -27,7 +26,7 @@ export class Query<
   T extends BaseType = BaseType,
   E extends Entity<T> = Entity<T>
 > {
-  protected id = nanoid(6);
+  protected id = getID();
 
   /**
    * Unidentified query items (i.e., without a bitmask).
@@ -37,18 +36,18 @@ export class Query<
   protected singles: Set<string> = new Set();
   protected results: Set<E> = new Set();
   protected tags: Set<TagsExceptSome> = new Set();
+  protected keys: Map<bigint, boolean> = new Map();
 
-  protected queryManager: QueryManager;
-  protected entityManager: EntityManager;
+  protected manager: Manager;
   protected attempts: number = 0;
   protected status: QueryStatus = QueryStatus.PENDING;
 
   protected steps: QueryStep[];
 
   protected unsubscribe: {
-    add: Unsubscribe | null;
-    remove: Unsubscribe | null;
-  } = { add: null, remove: null };
+    added: Unsubscribe | null;
+    removed: Unsubscribe | null;
+  } = { added: null, removed: null };
 
   protected reducer = (targets: Targets, step: QueryStep): Targets => {
     if (step.tag === QueryTag.SOME) {
@@ -57,7 +56,7 @@ export class Query<
 
     const ids = step.ids
       .map(i => {
-        const res = this.entityManager.getID(i);
+        const res = this.manager.getID(i);
         // if we aren't able to find a reference in the registry, mark it unresolved
         res === null ? this.unresolved.add(i) : this.unresolved.delete(i);
         return res;
@@ -107,40 +106,40 @@ export class Query<
    * over entities, we'll filter on unique bitmasks and return the
    * corresponding entities.
    */
-  protected *filter(masks: bigint[]): IterableIterator<bigint> {
+  protected filter(mask: bigint): boolean {
     const { tags, targets } = this;
-    search: for (const mask of masks) {
+    let res = this.keys.get(mask) ?? null;
+    if (res === null) {
+      res = true;
       for (const tag of tags) {
         const target = targets[tag];
         if (!target || !fns[tag](target, mask)) {
-          continue search;
+          res = false;
+          break;
         }
       }
-      yield mask;
+      this.keys.set(mask, res);
     }
+    return res;
   }
 
   public refresh(): void {
-    const keys = this.queryManager.index.keys();
-    const matches = Array.from(this.filter(keys));
-    this.results = new Set(this.queryManager.index.get(matches)) as Set<E>;
+    const matches = this.manager.index.keys().filter(key => this.filter(key));
+    this.results = new Set(this.manager.index.get(matches)) as Set<E>;
   }
 
   public destroy(): void {
-    this.unsubscribe.add?.();
-    this.unsubscribe.remove?.();
+    this.unsubscribe.added?.();
+    this.unsubscribe.removed?.();
   }
 
   protected addEventListeners(): void {
-    this.unsubscribe.add = this.queryManager.on('added', additions => {
-      const matches = Array.from(this.filter(additions.map(a => a.key)));
-      for (const addition of additions) {
-        if (matches.includes(addition.key)) {
-          this.results.add(addition as E);
-        }
+    this.unsubscribe.added = this.manager.on('added', additions => {
+      for (const add of additions.filter(entity => this.filter(entity.key))) {
+        this.results.add(add as E);
       }
     });
-    this.unsubscribe.remove = this.queryManager.on('removed', removals => {
+    this.unsubscribe.removed = this.manager.on('removed', removals => {
       for (const removal of removals) {
         this.results.delete(removal as E);
       }
@@ -202,13 +201,10 @@ export class Query<
     return null;
   }
 
-  public constructor(
-    manager: QueryManager,
-    entities: EntityManager,
-    steps: QueryStep[]
-  ) {
-    this.queryManager = manager;
-    this.entityManager = entities;
-    this.steps = steps.filter(step => step.tag !== QueryTag.SOME);
+  public constructor(entities: Manager, steps: QueryStep[]) {
+    this.manager = entities;
+    this.steps = steps
+      // .some() only changes the type signature
+      .filter(step => step.tag !== QueryTag.SOME);
   }
 }
