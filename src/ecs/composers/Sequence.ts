@@ -4,14 +4,6 @@ import type { SystemClass, SystemLike } from '../System';
 import { isSystemConstructor } from '../../utils';
 import { System } from '../System';
 
-interface Runner<T> {
-  (item: T): Promise<void>;
-}
-
-function run<T>(items: T[], fn: Runner<T>): Promise<void> {
-  return items.reduce((a, b) => a.then(() => fn(b)), Promise.resolve());
-}
-
 /**
  * Return a system composed of multiple systems to be run one after another,
  * pausing to resolve if necessary.
@@ -23,17 +15,17 @@ export function sequence<T extends {} = {}>(
     public pipeline: SystemLike[] = [];
 
     public async tick(dt: number, ts: number): Promise<void> {
-      await run(this.pipeline, async system => {
+      for (const system of this.pipeline) {
         await system.tick?.(dt, ts);
         this.ctx.manager.tick();
-      });
+      }
     }
 
     public async stop(): Promise<void> {
-      await run(this.pipeline, async system => {
+      for (const system of this.pipeline) {
         await system.stop?.();
         this.ctx.manager.tick();
-      });
+      }
     }
 
     public async start(): Promise<void> {
@@ -42,10 +34,10 @@ export function sequence<T extends {} = {}>(
           ? new System(this.ctx)
           : { tick: (dt, ts) => System(this.ctx, dt, ts) };
       });
-      await run(this.pipeline, async system => {
+      for (const system of this.pipeline) {
         await system.start?.();
         this.ctx.manager.tick();
-      });
+      }
     }
   };
 }

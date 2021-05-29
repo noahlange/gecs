@@ -175,7 +175,7 @@ export class ClickPositionSystem extends System {
 
 If not, stateless systems can help simplify your codebase.
 
-The primary functionality of a System is executed within its `init()` and/or `tick()` methods. While both methods are technically optional, every system will have at least one. Some run once or twice—map generation, for example—while others might run on every tick and have no initialization code to speak of.
+The primary functionality of a System is executed within its `start()`, `stop()` and/or `tick()` methods. While both methods are technically optional, every system will have at least one. Some run once or twice—map generation, for example—while others might run on every tick and have no initialization code to speak of.
 
 An example implementation of a simple PIXI.js renderer:
 
@@ -204,8 +204,8 @@ class Renderer extends System {
     }
   }
 
-  // init() functions can be async
-  public async init(): Promise<void> {
+  // both start() and tick() functions can be async
+  public async start(): Promise<void> {
     this.app = new PIXI.Application();
     const query = this.ctx.$.all.components(Sprite);
     // create all sprites and add to the stage
