@@ -78,8 +78,16 @@ export function groupByKey(entities: Set<Entity>): Map<bigint, Entity[]> {
   }, new Map<bigint, Entity[]>());
 }
 
+/**
+ * Determine if a system-like function is the constructor of a stateful system
+ * or simply a stateless function system.
+ */
 export function isSystemConstructor<T>(
-  value: SystemClass<T> | SystemFunction<T>
-): value is SystemClass<T> {
-  return /^\s*class\b/.test(value.toString());
+  system: SystemClass<T> | SystemFunction<T>
+): system is SystemClass<T> {
+  return !!(
+    system.prototype?.tick ??
+    system.prototype?.stop ??
+    system.prototype?.start
+  );
 }

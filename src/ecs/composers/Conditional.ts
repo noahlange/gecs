@@ -2,8 +2,8 @@ import type { SystemType } from '../../types';
 import type { Context } from '../Context';
 import type { SystemClass, SystemLike } from '../System';
 
-import { isSystemConstructor } from '../../utils';
 import { System } from '../System';
+import { sequence } from './Sequence';
 
 interface ConditionPredicate<T> {
   (context: Context<T>): boolean;
@@ -14,12 +14,12 @@ interface ConditionPredicate<T> {
  */
 export function conditional<T extends {} = {}>(
   predicate: ConditionPredicate<T>,
-  system: SystemType<T>
+  ...systems: SystemType<T>[]
 ): SystemClass<T> {
+  const system = sequence(...systems);
+
   return class ConditionSystem extends System<any> {
-    protected system: SystemLike = isSystemConstructor(system)
-      ? new system(this.ctx)
-      : { tick: (dt, ts) => system(this.ctx, dt, ts) };
+    protected system: SystemLike = new system(this.ctx);
 
     public async tick(dt: number, ts: number): Promise<void> {
       if (predicate(this.ctx)) {

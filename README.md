@@ -116,7 +116,7 @@ function usingSpritePosition(entity: SpritePositionEntity): void {
   entity.$.position.y += 1;
 
   if (entity instanceof SpritePosition) {
-    // with a type guard, we can use class-specific functionality
+    // using an `instanceof` type guard, we can use class-specific functionality
   }
 
   if (entity.has(Foo)) {
@@ -124,7 +124,7 @@ function usingSpritePosition(entity: SpritePositionEntity): void {
   }
 
   if (entity.is('BAR')) {
-    // the `is()` type guard ensures the presence of the tag "BAR"
+    // and `is()` ensures the presence of the tag "BAR"
   }
 }
 ```
@@ -151,7 +151,7 @@ export function movement(ctx: Context): void {
 
 ```ts
 import { System } from 'tecs';
-import { InputManager } from 'custom-library';
+import { InputManager } from 'my-magical-library';
 
 import { Position, Clickable } from './components';
 
@@ -253,13 +253,13 @@ const ifSimulating = conditional(
 
 ### Caveats
 
-**tecs** is not thread-safe and offers no guarantees of anything beyond "these will run one at a time in this order" and "nothing else will happen until these are done." The specifics of handling locks, mutexes, sharred memory arrays and how to wrangle WebWorkers likewise beyond the purview of this README.
+**tecs** is not thread-safe and offers no guarantees of anything beyond "these will run one at a time in this order" and "nothing else will happen until these are done." The specifics of handling locks, mutexes, shared memory arrays and how to wrangle WebWorkers are likewise beyond the purview of this README.
 
 ## Contexts
 
-The relationship between the `Context` and its `Systems` mirrors that of an `Entity` and its `Components`. A `Context` serves as a container for an arbitrary number of `Systems`, each of which
+The relationship between the `Context` and its `Systems` mirrors that of an `Entity` and its `Components`. Like an entity is created `with()` components, a context is created `with()` systems.
 
-Like an entity is created `with()` components, a context is created `with()` systems. A context can also have a `state` property.
+You can optionally define the tyep of a Context's a `state`.
 
 ```typescript
 import { Context, Entity } from 'tecs';
@@ -271,7 +271,7 @@ interface MyContextState {
 }
 
 // run A, B, C and D in order
-const MyContext1 = Context.with < MyContextState(A, B, C, D);
+const MyContext1 = Context.with<MyContextState>(A, B, C, D);
 
 // run A, followed by B+C in parallel and then followed by D.
 const MyContext2 = Context.with(A, parallel(B, C), D);
@@ -424,6 +424,9 @@ class Health extends Component {
 
 **Q/S**: But _how_ bad, exactly?  
 **A/R**: Hovers around the bottom third of [ecs-benchmark](https://github.com/noctjs/ecs-benchmark) and ddmills' [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks).
+
+**Q/S**: Real world example?  
+**A/R**: A 256x256 world map drops to 30-40 FPS.
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
 **A/R**: Also yes. But again, this library and its design are more about ergonomics and my feelings than type-safety.
