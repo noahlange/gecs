@@ -85,6 +85,7 @@ Per the example above, you can `extend` the result of the `with()` call to creat
 ```typescript
 // composition
 const MyEntity1 = Entity.with(Position, Sprite);
+
 // inheritance
 class MyEntity2 extends Entity.with(Position, Sprite) {}
 ```
@@ -100,7 +101,7 @@ type InstanceMyEntity1 = InstanceType<typeof MyEntity>;
 type InstanceMyEntity2 = MyEntity2;
 ```
 
-You may need to hint an entity's type without a concrete instance on hand (e.g., function parameters).
+You may need to hint an entity's type without a concrete instance on hand (e.g. in the case of function parameters).
 
 ```typescript
 import { SpritePosition } from '../entities';
@@ -426,7 +427,7 @@ class Health extends Component {
 **A/R**: Hovers around the bottom third of [ecs-benchmark](https://github.com/noctjs/ecs-benchmark) and ddmills' [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks).
 
 **Q/S**: Real world example?  
-**A/R**: A 256x256 world map drops to 30-40 FPS.
+**A/R**: A 256×256 map from [FLARE](https://github.com/flareteam/flare-game) drops to 25-35 FPS at ~100 MB memory.
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
 **A/R**: Also yes. But again, this library and its design are more about ergonomics and my feelings than type-safety.

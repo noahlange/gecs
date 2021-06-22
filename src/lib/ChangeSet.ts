@@ -18,10 +18,16 @@ export class ChangeSet<T> extends Set<T> {
   }
 
   public add(...items: T[]): this {
+    let changed = false;
     for (const item of items) {
-      super.add(item);
+      if (!super.has(item)) {
+        super.add(item);
+        changed = true;
+      }
     }
-    this.onChange?.();
+    if (changed) {
+      this.onChange?.();
+    }
     return this;
   }
 
@@ -31,10 +37,16 @@ export class ChangeSet<T> extends Set<T> {
   }
 
   public delete(...items: T[]): boolean {
+    let changed = false;
     for (const item of items) {
-      super.delete(item);
+      if (super.has(item)) {
+        changed = true;
+        super.delete(item);
+      }
     }
-    this.onChange?.();
+    if (changed) {
+      this.onChange?.();
+    }
     return true;
   }
 

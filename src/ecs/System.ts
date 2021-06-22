@@ -2,11 +2,13 @@ import type { OfOrPromiseOf } from '../types';
 import type { Context } from './Context';
 
 export interface SystemClass<T extends {} = {}> {
+  priority?: number;
   ofType<T>(): SystemClass<T>;
   new (ctx: Context<T>): System<T>;
 }
 
 export interface SystemFunction<T extends {} = {}> {
+  priority?: number;
   (ctx: Context<T>, delta: number, ts: number): OfOrPromiseOf<unknown>;
 }
 

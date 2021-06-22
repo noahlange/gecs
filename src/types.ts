@@ -68,7 +68,7 @@ export interface BaseType<T extends Component = {}> {
 }
 
 export type PartialContained<T> = {
-  [K in Exclude<keyof T, 'container'>]?: T[K];
+  [K in Exclude<keyof T, 'container'>]?: Partial<T[K]>;
 };
 
 export type Ref<T> = T extends EntityRef<infer R> ? R : T;
@@ -91,11 +91,6 @@ export enum QueryTag {
   ALL = 1,
   ANY = 2,
   NONE = 3
-}
-
-export enum Tag {
-  TO_DESTROY = 'TO_DESTROY',
-  TO_PERSIST = 'TO_PERSIST'
 }
 
 export interface SomeHash {

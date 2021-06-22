@@ -50,8 +50,9 @@ export class Context<T extends {} = {}> {
       await this.pipeline.tick?.(delta, time);
       this.locked = false;
     } else {
-      console.warn('Tick execution exceeds frame rate.');
-      return;
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Tick duration exceeds tick rate.');
+      }
     }
   }
 

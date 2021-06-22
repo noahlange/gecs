@@ -16,22 +16,35 @@ export function isEntityClass(
 ): e is EntityClass {
   return !('type' in e);
 }
+
+const ctors: { [key: string]: Set<ComponentClass> | undefined } = {};
+
 /**
  * Helper function to create new container class constructors with typed `$`s.
  * @param Constructor - Constructor to extend.
- * @param items - array of containees; this will override existing `$`s
+ * @param items - array of containees; this will extend existing `$`s
  */
 export function useWithComponent<
   T extends BaseType,
   A extends ComponentClass[] = []
 >(Constructor: EntityClass<T>, ...items: A): EntityClass<T & KeyedByType<A>> {
+  // we're tracking entity class => component classes, allowing us to extend existing component sets.
+  const [id, curr] = [getID(), ctors[Constructor.id] ?? []];
+  // we need to give each entity its own constructor
+  const res = class extends Constructor {
+    public static readonly id = id;
+  };
+
+  // and we need to define this here because no other configuration permits
+  // `items` to be accessible on the prototype while being not being subject to
+  // changes in other items of the same type (via `.slice()` in the entity constructor)
+  Object.defineProperty(res.prototype, 'items', {
+    value: Array.from((ctors[id] = new Set([...curr, ...items]))),
+    writable: true
+  });
+
   // type system abuse
-  return (class extends Constructor {
-    public static id = getID();
-    public get items(): A {
-      return items;
-    }
-  } as unknown) as EntityClass<T & KeyedByType<A>>;
+  return (res as unknown) as EntityClass<T & KeyedByType<A>>;
 }
 
 export function useWithSystem<T>(

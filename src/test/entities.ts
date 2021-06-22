@@ -65,3 +65,16 @@ describe('component helpers', () => {
     expect(entity.is('OTHER_TAG')).toBeFalsy();
   });
 });
+
+describe('removing components', () => {
+  test("removing one entity's components should not affect other entities with the same prototype", () => {
+    const em = new Manager();
+    const [a, b] = [em.create(WithAB), em.create(WithAB)];
+    // out of the box, same items
+    expect(a.items).toEqual(b.items);
+    a.components.remove(B);
+    // a loses a component, b doesn't
+    expect(a.items).not.toContain(B);
+    expect(b.items).toContain(B);
+  });
+});

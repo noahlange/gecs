@@ -22,9 +22,6 @@ export class Manager {
   protected tags: Record<string, string> = {};
   protected events = createNanoEvents<ChangeEvents>();
   protected toDestroy: Set<Entity> = new Set();
-  // entity updates we're saving up for the end of the tick.
-  protected added = new Set<Entity>();
-  protected removed = new Set<Entity>();
 
   // maps bigints to result sets
   public index = new EntityIndex();
@@ -71,30 +68,46 @@ export class Manager {
     return this.events.on(event, callback);
   }
 
+  protected toIndex: Map<Entity, bigint> = new Map();
+
+  // multi-step process:
+  // 1. first, we indicate we want to index it and save it with its current (i.e., beginning-of-tick) key
   public indexEntity(entity: Entity): void {
-    // if it's already indexed, we need to remove the old item
-    if (entity.key) {
-      this.removed.add(entity);
-    }
-    this.added.add(entity);
+    this.toIndex.set(entity, entity.key ?? null);
   }
 
+  // multi-step process, cont'd:
+  // 2. at the end the tick, we'll determine which items _actually_ need to be added or removed
   public tick(): void {
-    // make sure the old IDs are in place when we remove.
-    for (const item of this.removed) {
-      this.index.remove(item.key, item);
-      item.key = this.getEntityKey(item);
-    }
-    this.events.emit('removed', Array.from(this.removed));
-    this.removed.clear();
+    const removed = [];
+    const added = [];
 
-    // make sure the new IDs are in place when we add
-    for (const addition of this.added) {
-      addition.key = this.getEntityKey(addition);
-      this.index.append(addition.key, addition);
+    for (const [entity, key] of this.toIndex) {
+      entity.key = this.getEntityKey(entity);
+      if (!key) {
+        added.push(entity);
+        this.index.append(entity.key, entity);
+      } else if (entity.key !== key) {
+        removed.push(entity);
+        added.push(entity);
+      }
     }
-    this.events.emit('added', Array.from(this.added));
-    this.added.clear();
+
+    // un-index the to-be-destroyeds as well
+    for (const entity of this.toDestroy) {
+      removed.push(entity);
+    }
+
+    if (removed.length) {
+      this.events.emit('removed', removed);
+    }
+
+    if (added.length) {
+      this.events.emit('added', added);
+    }
+
+    this.toIndex.clear();
+    this.toDestroy.clear();
   }
 
   public getID(name: string): bigint | null {
@@ -102,7 +115,7 @@ export class Manager {
   }
 
   public destroy(entity: Entity): void {
-    this.removed.add(entity);
+    this.toDestroy.add(entity);
   }
 
   public create<T extends BaseType>(

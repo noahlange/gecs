@@ -135,10 +135,16 @@ export class Query<
 
   protected addEventListeners(): void {
     this.unsubscribe.added = this.manager.on('added', additions => {
-      for (const add of additions.filter(entity => this.filter(entity.key))) {
-        this.results.add(add as E);
+      for (const add of additions) {
+        const res = this.keys.get(add.key) ?? null;
+        if (res) {
+          this.results.add(add as E);
+        } else if (res === null && this.filter(add.key)) {
+          this.results.add(add as E);
+        }
       }
     });
+
     this.unsubscribe.removed = this.manager.on('removed', removals => {
       for (const removal of removals) {
         this.results.delete(removal as E);

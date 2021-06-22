@@ -207,7 +207,7 @@ describe('caching', () => {
     expect(b.get()).toHaveLength(2);
   });
 
-  test('should add new items to cached result sets', async () => {
+  test('created entities should be added to cached result sets', async () => {
     const em = new Manager();
     const q = em.$.components(A).persist();
 
@@ -218,7 +218,7 @@ describe('caching', () => {
     expect(q.get()).toHaveLength(2);
   });
 
-  test('removed items should disappear from cached result sets', async () => {
+  test('destroyed entities should disappear from cached result sets', async () => {
     const em = new Manager();
     const q = em.$.all.components(A).persist();
     let ab: Entity | null = null;
