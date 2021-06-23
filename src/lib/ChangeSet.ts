@@ -1,27 +1,32 @@
 /**
- * Small extension of the "Set" class to add map/filter/reduce methods, spread arguments for add/remove/delete/has and an optional onChange handler.
+ * Rudimentary string set with a change callback.
  */
-export class ChangeSet<T> extends Set<T> {
+export class ChangeSet {
   protected onChange?: () => void;
+  protected tags: Record<string, unknown> = {};
 
-  public all(): readonly T[] {
-    return Array.from(this);
+  public *[Symbol.iterator](): Iterator<string> {
+    yield* this.all();
   }
 
-  public has(...items: T[]): boolean {
+  public all(): string[] {
+    return Object.keys(this.tags);
+  }
+
+  public has(...items: string[]): boolean {
     for (const item of items) {
-      if (!super.has(item)) {
+      if (!(item in this.tags)) {
         return false;
       }
     }
     return true;
   }
 
-  public add(...items: T[]): this {
+  public add(...items: string[]): this {
     let changed = false;
     for (const item of items) {
-      if (!super.has(item)) {
-        super.add(item);
+      if (!(item in this.tags)) {
+        this.tags[item] = true;
         changed = true;
       }
     }
@@ -32,30 +37,32 @@ export class ChangeSet<T> extends Set<T> {
   }
 
   public clear(): void {
-    super.clear();
+    this.tags = {};
     this.onChange?.();
   }
 
-  public delete(...items: T[]): boolean {
+  public delete(...items: string[]): boolean {
     let changed = false;
+
     for (const item of items) {
-      if (super.has(item)) {
+      if (item in this.tags) {
+        delete this.tags[item];
         changed = true;
-        super.delete(item);
       }
     }
+
     if (changed) {
       this.onChange?.();
     }
     return true;
   }
 
-  public remove(...items: T[]): void {
+  public remove(...items: string[]): void {
     this.delete(...items);
   }
 
-  public constructor(items: T[], onChange?: () => void) {
-    super(items);
+  public constructor(items: string[], onChange?: () => void) {
+    this.tags = items.reduce((a, b) => ({ ...a, [b]: true }), {});
     this.onChange = onChange;
   }
 }

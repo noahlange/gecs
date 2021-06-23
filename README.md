@@ -21,6 +21,10 @@ npm i noahlange/tecs
 
 Note that if you update the package with `npm update`, you'll need to run `npm rebuild` to regenerate the JS output.
 
+## Running the benchmarks
+
+First, with a fresh install and having already run `build`, run <kbd>npm run bench:master</kbd> to generate baseline results. Once you've made some changes, run <kbd>npm run bench</kbd> to generate a "working" benchmark file and compare to the baseline.
+
 ## Entities & Components
 
 An Entity is a loose wrapper around an arbitrary collection of Components.
@@ -427,7 +431,7 @@ class Health extends Component {
 **A/R**: Hovers around the bottom third of [ecs-benchmark](https://github.com/noctjs/ecs-benchmark) and ddmills' [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks).
 
 **Q/S**: Real world example?  
-**A/R**: A 256×256 map from [FLARE](https://github.com/flareteam/flare-game) drops to 25-35 FPS at ~100 MB memory.
+**A/R**: Using a naïve culling implementation and PIXI for rendering, a 256×256 map from [FLARE](https://github.com/flareteam/flare-game) runs at about 6ms/frame with ~75 MB memory usage.
 
 **Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
 **A/R**: Also yes. But again, this library and its design are more about ergonomics and my feelings than type-safety.

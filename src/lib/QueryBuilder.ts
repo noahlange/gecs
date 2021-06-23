@@ -55,29 +55,27 @@ interface QueryBuilderAny<
 
 export interface TempQueryBuilderState {
   tag: QueryTag | null;
-  ids: (number | string)[];
+  ids: string[];
 }
 
 export class QueryBuilder<
   T extends BaseType = {},
   C extends Entity<T> = Entity<T>
 > implements BaseQueryBuilder<T, C> {
+  protected key: string = '';
+
   protected state!: TempQueryBuilderState;
   protected criteria: QueryStep[] = [];
   protected manager: Manager;
 
   protected reset(): this {
     if (this.state) {
-      const step = {
-        ...this.state,
-        // default to an OR for mutations, an ALL for the rest
+      this.key += '::' + this.state.tag + '|' + this.state.ids.join(',');
+      this.criteria.push({
         tag: this.state.tag ?? QueryTag.ALL,
-        // sort items now so we don't have to worry about string order for caching later
-        ids: this.state.ids.map(item => item.toString())
-      };
-      this.criteria.push({ ...step, key: `${step.tag}|${step.ids.join(',')}` });
+        ids: this.state.ids
+      });
     }
-
     this.state = { tag: null, ids: [] };
     return this;
   }
@@ -122,8 +120,10 @@ export class QueryBuilder<
    * Create a new step with one or more tag requirements.
    */
   public tags<A extends string[]>(...tags: A): BaseQueryBuilder<T, C> {
-    const mapped = tags.map(t => this.manager.getTagKey(t)).filter(f => !!f);
-    this.state.ids.push(...mapped);
+    for (let i = 0; i < tags.length; i++) {
+      const t = this.manager.getTagKey(tags[i]);
+      t && this.state.ids.push(t);
+    }
     return this.reset();
   }
 
@@ -181,13 +181,11 @@ export class QueryBuilder<
    * Iterate through search results.
    */
   public *[Symbol.iterator](): Iterator<C> {
-    for (const item of this.query) {
-      yield item as C;
-    }
+    yield* this.query;
   }
 
   public get query(): Query<T, C> {
-    return this.manager.getQuery<T, C>(this.criteria);
+    return this.manager.getQuery<T, C>(this.criteria, this.key);
   }
 
   public constructor(entities: Manager) {

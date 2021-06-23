@@ -1,4 +1,3 @@
-/* eslint-disable max-classes-per-file */
 import { describe, expect, test } from '@jest/globals';
 
 import { Context } from '../../ecs';
@@ -17,8 +16,8 @@ const systemB = (ctx: Context<ContextState>): void => {
 
 class MyContext extends Context.with<ContextState>(systemA, systemB) {}
 
-describe('function systems', () => {
-  test('should work', async () => {
+describe('stateless function systems', () => {
+  test('should execute properly', async () => {
     const world = new MyContext({ value: 0 });
     await world.start();
 

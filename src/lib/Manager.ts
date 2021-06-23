@@ -41,12 +41,11 @@ export class Manager {
   public getQuery<
     T extends BaseType = BaseType,
     E extends Entity<T> = Entity<T>
-  >(steps: QueryStep[]): Query<T, E> {
-    const key = steps.map(k => k.key).join('::');
-    if (!this.queries[key]) {
-      this.queries[key] = new Query(this, steps);
+  >(steps: QueryStep[], id: string): Query<T, E> {
+    if (!this.queries[id]) {
+      this.queries[id] = new Query(this, steps);
     }
-    return this.queries[key] as Query<T, E>;
+    return this.queries[id] as Query<T, E>;
   }
 
   public register(...items: (ComponentClass | EntityClass)[]): void {

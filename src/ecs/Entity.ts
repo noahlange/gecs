@@ -86,7 +86,7 @@ export class Entity<T extends BaseType = {}> {
   public readonly $: T;
   public readonly id: string = getID();
   public readonly manager: Manager;
-  public readonly tags: ChangeSet<string>;
+  public readonly tags: ChangeSet;
   public readonly items!: ComponentClass[];
 
   public key: bigint = 0n;

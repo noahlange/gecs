@@ -8,6 +8,7 @@
     "url": "https://noahlange.com"
   },
   "main": "lib/index.js",
+  "module": "esm/index.js",
   "source": "src/index.ts",
   "types": "types/index.d.ts",
   "dependencies": {
@@ -38,10 +39,10 @@
     "test": "cross-env NODE_ENV=development jest --coverage",
     "start": "tsc --watch",
     "build": "tsc --project tsconfig.prod.json",
+    "bench": "npm-run-all build bench:working bench:compare",
     "lint": "eslint 'src/**/*.{js,ts}' --fix ",
     "pretty": "prettier 'src/**/*.{js,ts}' --write",
     "precommit": "npm-run-all build test lint pretty",
-    "bench:build": "tsc --module 'commonjs'",
     "bench:working": "node benchmarks > \"coverage/working\"",
     "bench:master": "node benchmarks > \"coverage/master\"",
     "bench:compare": "nanobench-compare \"coverage/working\" \"coverage/master\""

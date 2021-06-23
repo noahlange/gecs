@@ -100,7 +100,6 @@ export interface SomeHash {
 export interface QueryStep {
   ids: string[];
   tag: QueryTag;
-  key: string;
 }
 
 export type SystemType<T = {}> = SystemClass<T> | SystemFunction<T>;

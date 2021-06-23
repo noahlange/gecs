@@ -4,3 +4,4 @@
 /coverage
 tsconfig.tsbuildinfo
 .DS_Store
+/esm
