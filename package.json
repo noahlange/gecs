@@ -10,7 +10,7 @@
   "type": "module",
   "module": "./esm/index.js",
   "main": "./lib/index.js",
-  "source": "src/index.ts",
+  "source": "./src/index.ts",
   "types": "types/index.d.ts",
   "dependencies": {
     "nanoevents": "^5.1.11",
@@ -39,7 +39,7 @@
   "scripts": {
     "test": "cross-env NODE_ENV=development jest --coverage",
     "start": "tsc --watch",
-    "build": "tsc --project tsconfig.prod.json",
+    "build": "tsc && tsc --project tsconfig.prod.json",
     "bench": "npm-run-all build bench:working bench:compare",
     "lint": "eslint 'src/**/*.{js,ts}' --fix ",
     "pretty": "prettier 'src/**/*.{js,ts}' --write",
