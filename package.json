@@ -7,8 +7,9 @@
     "email": "noahrlange@gmail.com",
     "url": "https://noahlange.com"
   },
-  "main": "lib/index.js",
-  "module": "esm/index.js",
+  "type": "module",
+  "module": "./esm/index.js",
+  "main": "./lib/index.js",
   "source": "src/index.ts",
   "types": "types/index.d.ts",
   "dependencies": {
