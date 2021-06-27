@@ -17,8 +17,10 @@ interface ChangeEvents {
 export class Manager {
   // map tags/components/entity types to bigints for bitmasking
   protected registry = new Registry();
+
   // cached queries
   protected queries: Record<string, Query> = {};
+
   protected tags: Record<string, string> = {};
   protected events = createNanoEvents<ChangeEvents>();
   protected toDestroy: Set<Entity> = new Set();
@@ -84,9 +86,11 @@ export class Manager {
     for (const [entity, key] of this.toIndex) {
       entity.key = this.getEntityKey(entity);
       if (!key) {
+        // the entity has not yet been created
         added.push(entity);
         this.index.append(entity.key, entity);
       } else if (entity.key !== key) {
+        // the entry has been created and has changed (old key !== new key)
         removed.push(entity);
         added.push(entity);
       }

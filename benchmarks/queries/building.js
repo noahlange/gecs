@@ -16,16 +16,13 @@ for (let count = 1; count <= 3; count++) {
 
   bench(`building 1 step query - ${count} items`, b => {
     b.start();
-    ctx.$.all.components(...c).persist();
+    ctx.$.all.components(...c).query;
     b.end();
   });
 
   bench(`building 2 step query - ${count} items`, b => {
     b.start();
-    ctx.$.all
-      .components(...c)
-      .all.entities(...e)
-      .persist();
+    ctx.$.all.components(...c).all.entities(...e).query;
     b.end();
   });
 
@@ -34,8 +31,7 @@ for (let count = 1; count <= 3; count++) {
     ctx.$.all
       .components(...c)
       .all.entities(...e)
-      .all.tags(...t)
-      .persist();
+      .all.tags(...t).query;
     b.end();
   });
 }

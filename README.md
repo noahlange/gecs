@@ -163,12 +163,10 @@ import { Position, Clickable } from './components';
 export class ClickPositionSystem extends System {
   public input = new InputManager();
 
-  public canClick = this.ctx.$.components(Position, Clickable).persist();
-
   public tick() {
     if (this.input.isMouseDown()) {
       const { x, y } = this.input.getMousePosition();
-      for (const { $ } of this.canClick) {
+      for (const { $ } of this.ctx.$.components(Position, Clickable)) {
         if ($.position.x === x && $.position.y === y) {
           alert('Clicked!');
         }
@@ -191,20 +189,23 @@ import { System } from 'tecs';
 import { Sprite, Position, Player } from './components';
 
 class Renderer extends System {
-  protected sprites: Record<string, PIXI.Sprite> = {};
+  protected sprites: Record<string, { path: string; sprite: PIXI.Sprite }> = {};
 
-  // building queries takes time; if called repeatedly, persisted queries have less overhead
   protected $ = {
-    entities: this.ctx.$.components(Position, Sprite).persist()
+    sprites: this.ctx.$.components(Sprite).some.components(Position)
   };
 
   public tick(delta: number, time?: number): void {
-    for (const { $ } of this.$.entities) {
-      const child = this.sprites[$.sprite.id];
-      if (child) {
-        // update position and rotation
-        child.position = new PIXI.Point($.position.x, position.y);
-        child.r = $.position.r;
+    for (const entity of this.$.sprites) {
+      const item = this.sprites[$.sprite.id];
+      if (item) {
+        // update sprite and position
+        if (item.path !== $.sprite.path) {
+          item.sprite = PIXI.Sprite.from($.sprite.path);
+        }
+        if (entity.has(Position)) {
+          item.sprite.position.set($.position.x, position.y);
+        }
       }
     }
   }
@@ -212,12 +213,11 @@ class Renderer extends System {
   // both start() and tick() functions can be async
   public async start(): Promise<void> {
     this.app = new PIXI.Application();
-    const query = this.ctx.$.all.components(Sprite);
     // create all sprites and add to the stage
-    for (const { $ } of query) {
-      const child = PIXI.Sprite.from($.sprite.path);
-      child.anchor = $.sprite.anchor;
-      this.sprites[$.sprite.id] = child;
+    for (const { $ } of this.$.sprites) {
+      const sprite = PIXI.Sprite.from($.sprite.path);
+      sprite.anchor = $.sprite.anchor;
+      this.sprites[$.sprite.id] = sprite;
       this.app.stage.addChild(child);
     }
     // bind the Context's "tick" method to PIXI's ticker
@@ -228,9 +228,9 @@ class Renderer extends System {
 }
 ```
 
-### Composition
+### System composition
 
-**tecs** offers three helper functions that allow you to structure your game's system flow without forcing to wrap systems in complex branching logic.
+**tecs** offers three system composition functions that allow you to structure your game's system flow without forcing you to wrap systems in complex branching logic.
 
 The `sequence()` and `parallel()` functions accept an array of systems or system functions and return another system "wrapping" the ones passed in.
 
@@ -264,7 +264,7 @@ const ifSimulating = conditional(
 
 The relationship between the `Context` and its `Systems` mirrors that of an `Entity` and its `Components`. Like an entity is created `with()` components, a context is created `with()` systems.
 
-You can optionally define the tyep of a Context's a `state`.
+You can optionally define the type of a Context's a `state`.
 
 ```typescript
 import { Context, Entity } from 'tecs';
@@ -282,13 +282,13 @@ const MyContext1 = Context.with<MyContextState>(A, B, C, D);
 const MyContext2 = Context.with(A, parallel(B, C), D);
 ```
 
-The precise mechanism by which an async system runs asynchronously (e.g., web worker, etc.), is up to the developer. Currently, parallel system are _not_ thread-safe.
+The precise mechanism by which an async system runs asynchronously (e.g., web worker, child process, etc.), is up to the developer.
 
 When the context's (async) `start()` method is invoked, each of the context's systems is booted in the order it was passed to `with()`. Each time `tick()` is called, the context invokes the `tick()` method of each of its systems (again, in order).
 
 ## Queries
 
-Queries return collections of entities based on the user's criteria. Query results are typed exactly like an ordinary entity, so you'll have access to each of the components you've requested in your query—and nothing more.
+Queries return collections of entities based on the user's criteria. Query results are typed exactly like an ordinary entity, so you'll have (typed) access to each of the components you've requested in your query—but nothing more.
 
 ### Building
 
@@ -321,7 +321,8 @@ ctx.$.none.components(A, B); // !(A | B)
 Naturally, these can be chained:
 
 ```typescript
-ctx.$.components(A, B)
+ctx.$
+  .all.components(A, B)
   .some.components(C);
   .none.components(D); // A & B & C? & !D
 ```
@@ -344,14 +345,14 @@ for (const result of query) {
 }
 ```
 
-### Persistence
+### Query persistence
 
-Once a query is cached, any subsequent query with the same "signature" will return the cached result set. The main overhead associated with creating a new query each `tick()` is the actual query-building. Invoking the query builder's `persist()` method returns the corresponding query that can be re-executed in subsequent ticks.
+Once a query is executed for the first time, any subsequent query with the same "signature" will return the cached result set. The overhead associated with creating a new query each `tick()` is pretty minor in practice, but by assigning the query to a variable/class property, you can access and execute the constructed query without being forced to rebuild it.
 
 ```typescript
 class MySystem extends System {
   public $ = {
-    abc: this.ctx.$.components(A, B, C).persist()
+    abc: this.ctx.$.components(A, B, C)
   };
 
   public tick() {
@@ -367,6 +368,8 @@ class MySystem extends System {
 Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward. There's one caveat: in order to properly reload the context's state, you must manually register your components and inheritance entities (composed entities are handled automatically) before calling `load()`.
 
 The output is a bulky POJO—~2000 entities runs me about 650 KB. Compressing the stringified output with [Brotli](https://www.npmjs.com/package/brotli) brings it down to less than 20 KB (about 3% of the original size). If you're working in the browser and can't load WebAssembly for one reason or another, [pako](https://github.com/nodeca/pako) is a great, marginally less effective (about 4% of the original size) alternative.
+
+The POJO can also be pared down significantly by using custom serializers, as described below.
 
 ### Save
 
@@ -425,13 +428,13 @@ class Health extends Component {
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: Somewhere between "not great" and "bad," but particularly good performance was never one of the primary design goals. So long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance improvements.
+**A/R**: Deceptively terrible.
 
-**Q/S**: But _how_ bad, exactly?  
-**A/R**: Hovers around the bottom third of [ecs-benchmark](https://github.com/noctjs/ecs-benchmark) and ddmills' [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks).
+**Q/S**: Wait, what?  
+**A/R**: Performs like garbage in micro-benchmarks (bottom 1-3 in [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks), depending on the task), but can consistently execute a tick of the [ECSY intersecting circles demo](https://ecsy.io/examples/#Intersecting%20circles) in 0.5ms (35×; speedup). That being said, _particularly_ awesome performance has never been a primary design goal—so long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance improvements.
 
-**Q/S**: Real world example?  
+**Q/S**: Real-world example?  
 **A/R**: Using a naïve culling implementation and PIXI for rendering, a 256×256 map from [FLARE](https://github.com/flareteam/flare-game) runs at about 6ms/frame with ~75 MB memory usage.
 
-**Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have thought possible.  
-**A/R**: Also yes. But again, this library and its design are more about ergonomics and my feelings than type-safety.
+**Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have even thought possible.  
+**A/R**: This is correct. Unfortunately, this library and its design are more about ergonomics and my feelings than bulletproof type-safety.

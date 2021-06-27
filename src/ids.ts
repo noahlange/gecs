@@ -20,6 +20,10 @@ export function getID(): string {
   return gen();
 }
 
+/**
+ * Return bigints increasing by powers of 2.
+ * 0001 -> 0010 -> 0100 -> 1000, etc.
+ */
 function* idGenerator(): IterableIterator<bigint> {
   let id = 1n;
   do {

@@ -33,12 +33,8 @@ export class EntityIndex {
    * For a given key, index additional entities.
    */
   public append(key: bigint, entity: Entity): void {
-    const value = this.map.get(key);
-    if (value) {
-      value.add(entity);
-    } else {
-      this.map.set(key, new Set([entity]));
-    }
+    const value = this.map.get(key) ?? new Set();
+    this.map.set(key, value.add(entity));
   }
 
   /**

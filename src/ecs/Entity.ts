@@ -89,8 +89,20 @@ export class Entity<T extends BaseType = {}> {
   public readonly tags: ChangeSet;
   public readonly items!: ComponentClass[];
 
+  /**
+   * A BigInt that corresponds to a combination of tags and components. We
+   * execute queries by comparing the query's key to each entity's key. Example:
+   * given (tags/components) A (0b001), B (0b010), C (0b100), the following
+   * combinations will yield the corresponding keys:
+   *   0b011 = A+B
+   *   0b101 = A+C
+   *   0b010 = B+C
+   */
   public key: bigint = 0n;
 
+  /**
+   * Destroy existing references and mark the entity for destruction + re-indexing.
+   */
   public destroy(): void {
     for (const reference of this.referenced) {
       reference.ref = null;
@@ -98,13 +110,18 @@ export class Entity<T extends BaseType = {}> {
     this.manager.destroy(this);
   }
 
-  // shorthand for entity.components.has
+  /**
+   * Shorthand for `entity.components.has()`.
+   */
   public has<C extends ComponentClass[]>(
     ...Components: C
   ): this is Entity<T & KeyedByType<C>> {
     return Components.every(C => C.type in this.$);
   }
 
+  /**
+   * Shorthand for `entity.tags.has()`.
+   */
   public is(...tags: string[]): boolean {
     return this.tags.has(...tags);
   }
@@ -113,23 +130,21 @@ export class Entity<T extends BaseType = {}> {
     const bindings = {} as T;
 
     for (const Item of this.items) {
-      const type = Item.type;
-      const item = new Item();
+      const [type, item] = [Item.type as keyof T, new Item()];
 
       if (item instanceof EntityRef) {
+        // modifying an object like this renders refs significantly more expensive than ordinary components
         Object.defineProperty(bindings, type, {
           get: () => item.ref,
-          set: (entity: Ref<EntityRef>) => (item.ref = entity)
+          set: (entity: Ref<EntityRef> | null): void => {
+            item.ref = entity;
+            item.ref?.referenced.add(item);
+          }
         });
-        if (data[type]) {
-          item.ref = data[type];
-          item.ref.referenced.add(item);
-        }
+        item.ref = data[type] ?? null;
+        item.ref?.referenced.add(item);
       } else {
-        bindings[type as keyof T] = Object.assign(
-          item,
-          data[type] ?? {}
-        ) as T[keyof T];
+        bindings[type] = Object.assign(item, data[type] ?? {}) as T[keyof T];
       }
     }
     return bindings;

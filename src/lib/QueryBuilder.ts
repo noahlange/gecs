@@ -9,11 +9,10 @@ import { QueryTag } from '../types';
 interface BaseQueryBuilder<
   T extends BaseType = {},
   C extends Entity<T> = Entity<T>
-> extends QueryBuilderAll {
+> extends QueryBuilderAll<T, C> {
   get(): C[];
   first(): C | null;
   find(): C;
-  persist(): Query<T>;
   [Symbol.iterator](): Iterator<C>;
   all: QueryBuilderAll<T, C>;
   any: QueryBuilderAny<T, C>;
@@ -49,7 +48,7 @@ interface QueryBuilderAny<
   ): BaseQueryBuilder<T, E>;
   components<A extends ComponentClass[]>(
     ...components: A
-  ): QueryBuilder<U.Merge<T & PartialByType<A>>>;
+  ): BaseQueryBuilder<U.Merge<T & PartialByType<A>>>;
   tags(...tags: string[]): BaseQueryBuilder<T, C>;
 }
 
@@ -168,13 +167,6 @@ export class QueryBuilder<
    */
   public first(): C | null {
     return this.query.first();
-  }
-
-  /**
-   * Returns a handle on the query object to avoid query rebuilds.
-   */
-  public persist(): Query<T> {
-    return this.query;
   }
 
   /**

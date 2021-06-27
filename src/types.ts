@@ -9,7 +9,7 @@ import type { EntityRef } from './ecs/EntityRef';
 import type { SystemFunction } from './ecs/System';
 import type { U } from 'ts-toolbelt';
 
-// There's certainly a better way to handle this, but it appears to behave consistently enough—at least in Chrome.
+// There's certainly a better way to handle this, but it appears to behave consistently enough—at least in Chrome...?
 export const anonymous = '_a';
 export const eid = '$id$';
 

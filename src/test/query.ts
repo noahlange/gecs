@@ -101,7 +101,7 @@ describe('tag queries', () => {
 
   test('newly-added tags', async () => {
     const em = new Manager();
-    const q = em.$.all.components(A).tags('a').persist();
+    const q = em.$.all.components(A).tags('a');
     const entities: Entity[] = [];
 
     await withTick(em, () => {
@@ -123,7 +123,7 @@ describe('tag queries', () => {
 
   test('newly-removed tags', async () => {
     const em = new Manager();
-    const q = em.$.components(A).tags('a').persist();
+    const q = em.$.components(A).tags('a');
     const entities: Entity[] = [];
 
     await withTick(em, () => {
@@ -209,7 +209,7 @@ describe('caching', () => {
 
   test('created entities should be added to cached result sets', async () => {
     const em = new Manager();
-    const q = em.$.components(A).persist();
+    const q = em.$.components(A);
 
     await withTick(em, () => em.create(WithA));
     expect(q.get()).toHaveLength(1);
@@ -220,7 +220,7 @@ describe('caching', () => {
 
   test('destroyed entities should disappear from cached result sets', async () => {
     const em = new Manager();
-    const q = em.$.all.components(A).persist();
+    const q = em.$.all.components(A);
     let ab: Entity | null = null;
 
     await withTick(em, () => {
@@ -237,7 +237,7 @@ describe('caching', () => {
 describe('indexing', () => {
   test('entities with added components should appear in new result sets', async () => {
     const em = new Manager();
-    const q = em.$.all.components(B).persist();
+    const q = em.$.all.components(B);
     const a = em.create(WithA);
 
     await withTick(em, () => em.create(WithAB));
@@ -249,7 +249,7 @@ describe('indexing', () => {
 
   test('entities with removed components should disappear from result sets', async () => {
     const em = new Manager();
-    const q = em.$.components(A).persist();
+    const q = em.$.components(A);
     const ab = em.create(WithAB);
 
     await withTick(em, () => em.create(WithA));

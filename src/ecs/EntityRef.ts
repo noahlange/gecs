@@ -10,6 +10,11 @@ export interface PopulatedEntityRef<E extends Entity = Entity>
   readonly entity: E;
 }
 
+/**
+ * An EntityRef is a special type of component that contains a nullable
+ * reference to another entity. Access to this component is proxied directly to
+ * its `ref` property.
+ */
 export class EntityRef<E extends Entity = Entity> {
   public static readonly type: string;
 

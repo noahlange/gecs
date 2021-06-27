@@ -101,10 +101,10 @@ export class Query<
   }
 
   /**
-   * Secret sauce: by definition, the number of unique bitmasks will always be
-   * less than or equal to the total number of entities. So instead of iterating
-   * over entities, we'll filter on unique bitmasks and return the
-   * corresponding entities.
+   * The number of unique bitmasks for all entities will always be less than
+   * (or equal to) the total number of entities. So instead of iterating over
+   * entities, we'll find each matching unique bitmask and return the entities
+   * corresponding to those bitmasks.
    */
   protected filter(mask: bigint): boolean {
     const { tags, targets } = this;
