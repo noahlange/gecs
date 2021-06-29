@@ -46,6 +46,20 @@ export type KeyedByType<A extends WithStaticType[]> = U.Merge<
     : never
 >;
 
+export type PartialValueByType<
+  A extends WithStaticType
+> = InstanceType<A> extends EntityRef
+  ? Ref<InstanceType<A>> | null
+  : PartialComponentData<InstanceType<A>>;
+
+export type NeverByType<A extends WithStaticType[]> = U.Merge<
+  A extends (infer B)[]
+    ? B extends WithStaticType
+      ? { [key in B['type']]: never }
+      : never
+    : never
+>;
+
 export type PartialByType<A extends WithStaticType[]> = U.Merge<
   A extends (infer B)[]
     ? B extends WithStaticType
@@ -67,7 +81,7 @@ export interface BaseType<T extends Component = {}> {
   [key: string]: T | null;
 }
 
-export type PartialContained<T> = {
+export type PartialComponentData<T> = {
   [K in Exclude<keyof T, 'container'>]?: Partial<T[K]>;
 };
 
@@ -76,7 +90,7 @@ export type Ref<T> = T extends EntityRef<infer R> ? R : T;
 export type BaseDataType<T extends BaseType> = {
   [K in keyof T]?: T[K] extends EntityRef
     ? Ref<T[K]> | null
-    : PartialContained<T[K]>;
+    : PartialComponentData<T[K]>;
 };
 
 export type Primitive = string | number | boolean | null | bigint;

@@ -3,19 +3,19 @@
  */
 export class ChangeSet {
   protected onChange?: () => void;
-  protected tags: Record<string, unknown> = {};
+  protected items: Record<string, unknown> = {};
 
   public *[Symbol.iterator](): Iterator<string> {
     yield* this.all();
   }
 
   public all(): string[] {
-    return Object.keys(this.tags);
+    return Object.keys(this.items);
   }
 
   public has(...items: string[]): boolean {
     for (const item of items) {
-      if (!(item in this.tags)) {
+      if (!(item in this.items)) {
         return false;
       }
     }
@@ -25,8 +25,8 @@ export class ChangeSet {
   public add(...items: string[]): this {
     let changed = false;
     for (const item of items) {
-      if (!(item in this.tags)) {
-        this.tags[item] = true;
+      if (!(item in this.items)) {
+        this.items[item] = true;
         changed = true;
       }
     }
@@ -37,7 +37,7 @@ export class ChangeSet {
   }
 
   public clear(): void {
-    this.tags = {};
+    this.items = {};
     this.onChange?.();
   }
 
@@ -45,8 +45,8 @@ export class ChangeSet {
     let changed = false;
 
     for (const item of items) {
-      if (item in this.tags) {
-        delete this.tags[item];
+      if (item in this.items) {
+        delete this.items[item];
         changed = true;
       }
     }
@@ -62,7 +62,7 @@ export class ChangeSet {
   }
 
   public constructor(items: string[], onChange?: () => void) {
-    this.tags = items.reduce((a, b) => ({ ...a, [b]: true }), {});
+    this.items = items.reduce((a, b) => ({ ...a, [b]: true }), {});
     this.onChange = onChange;
   }
 }

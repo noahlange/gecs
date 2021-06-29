@@ -8,6 +8,7 @@ import { getID } from '../ids';
 import { isEntityClass } from '../utils';
 import { Query, QueryBuilder, Registry } from '.';
 import { EntityIndex } from './EntityIndex';
+import { QueryBuilder2 } from './QueryBuilder2';
 
 interface ChangeEvents {
   removed: (entities: Entity[]) => void;
@@ -28,6 +29,13 @@ export class Manager {
   // maps bigints to result sets
   public index = new EntityIndex();
 
+  public get $$(): QueryBuilder2 {
+    return new QueryBuilder2(this);
+  }
+
+  /**
+   * @deprecated Old query builder, use `$$` instead.
+   */
   public get $(): QueryBuilder {
     return new QueryBuilder(this);
   }

@@ -5,6 +5,7 @@ import type { System, SystemClass, SystemFunction } from './System';
 
 import { Manager, QueryBuilder } from '../lib';
 import { Deserializer } from '../lib/Deserializer';
+import { QueryBuilder2 } from '../lib/QueryBuilder2';
 import { Serializer } from '../lib/Serializer';
 import { anonymous } from '../types';
 import { isEntityClass, useWithSystem } from '../utils';
@@ -103,6 +104,10 @@ export class Context<T extends {} = {}> {
     tags: string[] = []
   ): Entity<C> {
     return this.manager.create(EntityConstructor, data, tags);
+  }
+
+  public get $$(): QueryBuilder2 {
+    return new QueryBuilder2(this.manager);
   }
 
   public get $(): QueryBuilder {

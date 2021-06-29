@@ -4,6 +4,7 @@ import type {
   BaseDataType,
   BaseType,
   KeyedByType,
+  PartialValueByType,
   Ref
 } from '../types';
 import type { Component, ComponentClass } from './Component';
@@ -17,7 +18,10 @@ export interface EntityComponents {
   all: () => readonly Component[];
   has: (...components: ComponentClass[]) => boolean;
   // @todo - here be typing dragons
-  add: (ComponentConstructor: ComponentClass, data?: any) => void;
+  add: <C extends ComponentClass>(
+    ComponentConstructor: C,
+    data?: PartialValueByType<C>
+  ) => void;
   remove: (...components: ComponentClass[]) => void;
 }
 

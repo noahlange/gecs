@@ -290,41 +290,61 @@ When the context's (async) `start()` method is invoked, each of the context's sy
 
 Queries return collections of entities based on the user's criteria. Query results are typed exactly like an ordinary entity, so you'll have (typed) access to each of the components you've requested in your query—but nothing more.
 
+### API
+
+There are two different query builder APIs, accessible via the `$` and `$$` properties of the engine context. They're very similar—the only significant difference is word order (modifier → type in V1, type → modifier in V2).
+
+```ts
+const q1 = ctx.$.all
+  .components(A, B, C)
+  .some.components(D, E, F)
+  .any.tags('1', '2', '3');
+
+const q2 = ctx.$$.components
+  .all(A, B, C)
+  .components.some(D, E, F)
+  .tags.any('1', '2', '3');
+```
+
 ### Building
 
 Queries consist of one or more "steps," each corresponding to a different type of query— components, tags or entities.
 
 ```typescript
-const q1 = ctx.$.components(A, B);
-const q4 = ctx.$.tags('one', 'two', 'three');
+// `$$` is the new query builder API, `$` is the old, deprecated one.
+const q1 = ctx.$$.components(A, B);
+const q4 = ctx.$$.tags('one', 'two', 'three');
+// entity constraints unsupported in the new API
 const q2 = ctx.$.entities(MyEntity);
 ```
 
 Steps are executed sequentially. The result of a query is the intersection of each step's results.
 
 ```typescript
-ctx.$.some.components(A, B).all.tags('one', 'two'); // (A | B) & ('one' & 'two')
+ctx.$$.components
+  .some(A, B) // (A | B)
+  .tags.all('one', 'two'); //  & ('one' & 'two')
 ```
 
 Query steps can be modified with `.all`, `.any` and `.none` to perform basic boolean operations. `.none` has no effect on the query's type signature, but does have an effect on its results. `.some` expands the query result's type signature with additional optional (i.e., possibly undefined) components, but has no effect on the query's results.
 
 ```typescript
-// the "all" is implicit for tags/components
-ctx.$.components(A, B); // A & B
-ctx.$.all.components(A, B); // A & B
+// the "all" is implicit if a modifier is omitted
+ctx.$$.components(A, B); // A & B
+ctx.$$.components.all(A, B); // A & B
 
-ctx.$.any.components(A, B); // (A | B) | (A & B)
-ctx.$.some.components(A, B); // A? | B?
-ctx.$.none.components(A, B); // !(A | B)
+ctx.$$.components.any(A, B); // (A | B) | (A & B)
+ctx.$$.components.some(A, B); // A? | B?
+ctx.$$.components.none(A, B); // !(A | B)
 ```
 
 Naturally, these can be chained:
 
 ```typescript
-ctx.$
-  .all.components(A, B)
-  .some.components(C);
-  .none.components(D); // A & B & C? & !D
+ctx.$$
+  .components.all(A, B) // (A & B)
+  .components.some(C);  // & C?
+  .components.none(D);  // & !D
 ```
 
 ### Execution
@@ -428,7 +448,7 @@ class Health extends Component {
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: Deceptively terrible.
+**A/R**: Deceptively bad.
 
 **Q/S**: Wait, what?  
 **A/R**: Performs like garbage in micro-benchmarks (bottom 1-3 in [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks), depending on the task), but can consistently execute a tick of the [ECSY intersecting circles demo](https://ecsy.io/examples/#Intersecting%20circles) in 0.5ms (35×; speedup). That being said, _particularly_ awesome performance has never been a primary design goal—so long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance improvements.
