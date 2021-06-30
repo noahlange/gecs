@@ -16,13 +16,13 @@ for (let count = 1; count <= 3; count++) {
 
   bench(`building 1 step query - ${count} items`, b => {
     b.start();
-    ctx.$$.components(...c).query;
+    ctx.$.components(...c).query;
     b.end();
   });
 
   bench(`building 2 step query - ${count} items`, b => {
     b.start();
-    ctx.$$.components(...c).tags(...t).query;
+    ctx.$.components(...c).tags(...t).query;
     b.end();
   });
 }

@@ -302,7 +302,6 @@ const q = ctx.$.components
 Queries consist of one or more "steps," each corresponding to a different type of query— components, tags or entities.
 
 ```typescript
-// `$$` is the new query builder API, `$` is the old, deprecated one.
 const q1 = ctx.$.components(A, B);
 const q2 = ctx.$.tags('one', 'two', 'three');
 // entity constraints unsupported in the new API
