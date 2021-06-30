@@ -9,7 +9,7 @@ import type {
 import type { SystemFunction } from './ecs/System';
 import type { BaseType, KeyedByType } from './types';
 
-import { getID } from './ids';
+import { getID, setID } from './ids';
 
 export function isEntityClass(
   e: ComponentClass | EntityClass
@@ -104,3 +104,5 @@ export function isSystemConstructor<T>(
     system.prototype?.start
   );
 }
+
+export { getID, setID };

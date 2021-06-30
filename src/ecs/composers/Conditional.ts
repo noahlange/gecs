@@ -10,7 +10,7 @@ interface ConditionPredicate<T> {
 }
 
 /**
- * Return a system that executes only when `predicate` returns truthy.
+ * Given a predicate and arbitrary number of systems, return a single system that executes only when `predicate` returns truthy.
  */
 export function conditional<T extends {} = {}>(
   predicate: ConditionPredicate<T>,

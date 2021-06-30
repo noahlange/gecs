@@ -1,7 +1,7 @@
-import type { Serialized, SomeHash, Visited, Visiting } from '../types';
+import type { Serialized, SomeDictionary, Visited, Visiting } from '../types';
 import type { Manager } from './Manager';
 
-import { Entity } from '../ecs';
+import { Entity } from '../ecs/Entity';
 import { anonymous, eid } from '../types';
 
 interface SerializeOptions {
@@ -13,8 +13,8 @@ export class Serializer {
   protected stack: unknown[] = [];
   protected entities: Entity[] = [];
 
-  protected visit<O extends SomeHash = {}>(obj: O): SomeHash {
-    const res: SomeHash = {};
+  protected visit<O extends SomeDictionary = {}>(obj: O): SomeDictionary {
+    const res: SomeDictionary = {};
     for (const key of Object.getOwnPropertyNames(obj)) {
       const val = this.serializeValue(obj[key]);
       if (val !== undefined) {

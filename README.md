@@ -290,17 +290,8 @@ When the context's (async) `start()` method is invoked, each of the context's sy
 
 Queries return collections of entities based on the user's criteria. Query results are typed exactly like an ordinary entity, so you'll have (typed) access to each of the components you've requested in your query—but nothing more.
 
-### API
-
-There are two different query builder APIs, accessible via the `$` and `$$` properties of the engine context. They're very similar—the only significant difference is word order (modifier → type in V1, type → modifier in V2).
-
 ```ts
-const q1 = ctx.$.all
-  .components(A, B, C)
-  .some.components(D, E, F)
-  .any.tags('1', '2', '3');
-
-const q2 = ctx.$$.components
+const q = ctx.$.components
   .all(A, B, C)
   .components.some(D, E, F)
   .tags.any('1', '2', '3');
@@ -312,16 +303,16 @@ Queries consist of one or more "steps," each corresponding to a different type o
 
 ```typescript
 // `$$` is the new query builder API, `$` is the old, deprecated one.
-const q1 = ctx.$$.components(A, B);
-const q4 = ctx.$$.tags('one', 'two', 'three');
+const q1 = ctx.$.components(A, B);
+const q2 = ctx.$.tags('one', 'two', 'three');
 // entity constraints unsupported in the new API
-const q2 = ctx.$.entities(MyEntity);
+const q3 = ctx.$.entities(MyEntity);
 ```
 
 Steps are executed sequentially. The result of a query is the intersection of each step's results.
 
 ```typescript
-ctx.$$.components
+ctx.$.components
   .some(A, B) // (A | B)
   .tags.all('one', 'two'); //  & ('one' & 'two')
 ```
@@ -330,18 +321,18 @@ Query steps can be modified with `.all`, `.any` and `.none` to perform basic boo
 
 ```typescript
 // the "all" is implicit if a modifier is omitted
-ctx.$$.components(A, B); // A & B
-ctx.$$.components.all(A, B); // A & B
+ctx.$.components(A, B); // A & B
+ctx.$.components.all(A, B); // A & B
 
-ctx.$$.components.any(A, B); // (A | B) | (A & B)
-ctx.$$.components.some(A, B); // A? | B?
-ctx.$$.components.none(A, B); // !(A | B)
+ctx.$.components.any(A, B); // (A | B) | (A & B)
+ctx.$.components.some(A, B); // A? | B?
+ctx.$.components.none(A, B); // !(A | B)
 ```
 
 Naturally, these can be chained:
 
 ```typescript
-ctx.$$
+ctx.$
   .components.all(A, B) // (A & B)
   .components.some(C);  // & C?
   .components.none(D);  // & !D

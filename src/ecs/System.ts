@@ -1,15 +1,15 @@
 import type { OfOrPromiseOf } from '../types';
 import type { Context } from './Context';
 
-export interface SystemClass<T extends {} = {}> {
+export interface SystemClass<C extends {} = {}> {
   priority?: number;
-  ofType<T>(): SystemClass<T>;
-  new (ctx: Context<T>): System<T>;
+  ofType<C>(): SystemClass<C>;
+  new (ctx: Context<C>): System<C>;
 }
 
-export interface SystemFunction<T extends {} = {}> {
+export interface SystemFunction<C extends {} = {}> {
   priority?: number;
-  (ctx: Context<T>, delta: number, ts: number): OfOrPromiseOf<unknown>;
+  (ctx: Context<C>, delta: number, ts: number): OfOrPromiseOf<unknown>;
 }
 
 export interface SystemLike {
@@ -18,18 +18,18 @@ export interface SystemLike {
   stop?(): OfOrPromiseOf<unknown>;
 }
 
-export class System<T extends {} = {}> {
-  public static ofType<T>(): SystemClass<T> {
-    return this as SystemClass<T>;
+export class System<C extends {} = {}> {
+  public static ofType<C>(): SystemClass<C> {
+    return this as SystemClass<C>;
   }
 
   public tick?(delta: number, ts: number): OfOrPromiseOf<unknown>;
   public start?(): OfOrPromiseOf<unknown>;
   public stop?(): OfOrPromiseOf<unknown>;
 
-  public ctx: Context<T>;
+  public ctx: Context<C>;
 
-  public constructor(ctx: Context<T>) {
+  public constructor(ctx: Context<C>) {
     this.ctx = ctx;
   }
 }

@@ -1,187 +1,180 @@
-import type { Component, ComponentClass, Entity, EntityClass } from '../ecs';
-import type { Manager } from '../lib';
-import type { BaseType, KeyedByType, PartialByType, QueryStep } from '../types';
-import type { Query } from './Query';
+import type { ComponentClass, Entity } from '../ecs';
+import type {
+  $AnyEvil,
+  BaseType,
+  KeyedByType,
+  NeverByType,
+  PartialByType,
+  QueryStep
+} from '../types';
+import type { Manager, Query } from '.';
 import type { U } from 'ts-toolbelt';
 
-import { QueryTag } from '../types';
+import { Constraint } from '../types';
 
-interface BaseQueryBuilder<
+export interface BaseQueryBuilder<
   T extends BaseType = {},
   C extends Entity<T> = Entity<T>
-> extends QueryBuilderAll<T, C> {
-  get(): C[];
-  first(): C | null;
-  find(): C;
-  [Symbol.iterator](): Iterator<C>;
-  all: QueryBuilderAll<T, C>;
-  any: QueryBuilderAny<T, C>;
-  some: QueryBuilderAny<T, C>;
-  none: QueryBuilderNone<T, C>;
+> {
+  get(): Entity<T>[];
+  first(): Entity<T> | null;
+  [Symbol.iterator](): Iterator<Entity<T>>;
+  components: ComponentQueryBuilder<T, C>;
+  tags: TagQueryBuilder<T, C>;
 }
 
-interface QueryBuilderNone<
-  T extends BaseType<Component> = {},
+interface ComponentQueryBuilder<
+  T extends BaseType = {},
   C extends Entity<T> = Entity<T>
-> {
-  // no entities; not sure how best to handle this
-  components<A extends ComponentClass[]>(...components: A): QueryBuilder<T>;
-  tags(...tags: string[]): BaseQueryBuilder<T, C>;
+> extends ComponentQueryFns<T, C> {
+  <A extends ComponentClass[]>(...components: A): QueryBuilder<
+    U.Merge<T & KeyedByType<A>>,
+    C & Entity<U.Merge<T & KeyedByType<A>>>
+  >;
 }
 
-interface QueryBuilderAll<
-  T extends BaseType<Component> = {},
+interface TagQueryBuilder<
+  T extends BaseType = {},
+  C extends Entity<T> = Entity<T>
+> extends TagQueryFns<T, C> {
+  (...tags: string[]): QueryBuilder<T, C>;
+}
+
+interface ComponentQueryFns<
+  T extends BaseType = {},
   C extends Entity<T> = Entity<T>
 > {
-  components<A extends ComponentClass[]>(
+  all<A extends ComponentClass[]>(
     ...components: A
-  ): BaseQueryBuilder<U.Merge<T & KeyedByType<A>>>;
-  tags(...tags: string[]): BaseQueryBuilder<T, C>;
+  ): QueryBuilder<
+    U.Merge<T & KeyedByType<A>>,
+    C & Entity<U.Merge<T & KeyedByType<A>>>
+  >;
+  any<A extends ComponentClass[]>(
+    ...components: A
+  ): QueryBuilder<
+    U.Merge<T & PartialByType<A>>,
+    C & Entity<U.Merge<T & KeyedByType<A>>>
+  >;
+  some<A extends ComponentClass[]>(
+    ...components: A
+  ): QueryBuilder<
+    U.Merge<T & PartialByType<A>>,
+    C & Entity<U.Merge<T & KeyedByType<A>>>
+  >;
+  none<A extends ComponentClass[]>(
+    ...components: A
+  ): QueryBuilder<
+    U.Merge<T & NeverByType<A>>,
+    C & Entity<U.Merge<T & KeyedByType<A>>>
+  >;
 }
 
-interface QueryBuilderAny<
-  T extends BaseType<Component> = {},
+interface TagQueryFns<
+  T extends BaseType = {},
   C extends Entity<T> = Entity<T>
 > {
-  entities<T extends BaseType, E extends Entity<T>>(
-    EntityConstructor: EntityClass<T>
-  ): BaseQueryBuilder<T, E>;
-  components<A extends ComponentClass[]>(
-    ...components: A
-  ): BaseQueryBuilder<U.Merge<T & PartialByType<A>>>;
-  tags(...tags: string[]): BaseQueryBuilder<T, C>;
+  all(...tags: string[]): QueryBuilder<T, C>;
+  any(...tags: string[]): QueryBuilder<T, C>;
+  none(...tags: string[]): QueryBuilder<T, C>;
+  some(...tags: string[]): QueryBuilder<T, C>;
 }
 
-export interface TempQueryBuilderState {
-  tag: QueryTag | null;
+export interface QueryState {
+  tag: Constraint | null;
   ids: string[];
 }
 
 export class QueryBuilder<
   T extends BaseType = {},
   C extends Entity<T> = Entity<T>
-> implements BaseQueryBuilder<T, C> {
+> implements BaseQueryBuilder<T> {
   protected key: string = '';
-
-  protected state!: TempQueryBuilderState;
+  protected state!: QueryState;
+  protected resolved: Query<T, C> | null = null;
   protected criteria: QueryStep[] = [];
   protected manager: Manager;
 
   protected reset(): this {
     if (this.state) {
-      this.key += '::' + this.state.tag + '|' + this.state.ids.join(',');
+      this.key += this.state.tag + '|' + this.state.ids.join(',') + '::';
       this.criteria.push({
-        tag: this.state.tag ?? QueryTag.ALL,
-        ids: this.state.ids
+        constraint: this.state.tag ?? Constraint.ALL,
+        ids: this.state.ids.slice()
       });
     }
     this.state = { tag: null, ids: [] };
     return this;
   }
 
-  /**
-   * Mark step values as mandatory.
-   * A & B
-   */
-  public get all(): QueryBuilderAll<T, C> {
-    this.state.tag = QueryTag.ALL;
-    return (this as unknown) as QueryBuilderAll<T, C>;
+  protected tag(tag: Constraint) {
+    return (...items: string[]) => {
+      for (let i = 0; i < items.length; i++) {
+        const t = this.manager.getTagKey(items[i]);
+        t && this.state.ids.push(t);
+      }
+      this.state.tag = tag;
+      return this.reset();
+    };
   }
 
-  /**
-   * Mark step values as optional, with 1+ required matches.
-   * A | B
-   */
-  public get any(): QueryBuilderAny<T, C> {
-    this.state.tag = QueryTag.ANY;
-    return (this as unknown) as QueryBuilderAny<T, C>;
+  protected component(tag: Constraint) {
+    return (...items: ComponentClass[]) => {
+      this.state.ids.push(...items.map(item => item.type));
+      this.state.tag = tag;
+      return this.reset();
+    };
   }
 
-  /**
-   * Mark step values as optional, with 0+ matches.
-   * A? | B?
-   */
-  public get some(): QueryBuilderAny<T, C> {
-    this.state.tag = QueryTag.SOME;
-    return (this as unknown) as QueryBuilderAny<T, C>;
-  }
-
-  /**
-   * Mark step values as disqualifying.
-   * !(A & B)
-   */
-  public get none(): QueryBuilderNone<T, C> {
-    this.state.tag = QueryTag.NONE;
-    return (this as unknown) as QueryBuilderNone<T, C>;
-  }
-
-  /**
-   * Create a new step with one or more tag requirements.
-   */
-  public tags<A extends string[]>(...tags: A): BaseQueryBuilder<T, C> {
-    for (let i = 0; i < tags.length; i++) {
-      const t = this.manager.getTagKey(tags[i]);
-      t && this.state.ids.push(t);
+  protected handle: {
+    components: ComponentQueryFns<T, C>;
+    tags: TagQueryFns<T, C>;
+  } = {
+    components: ({
+      all: this.component(Constraint.ALL),
+      any: this.component(Constraint.ANY),
+      some: this.component(Constraint.SOME),
+      none: this.component(Constraint.NONE)
+    } as $AnyEvil) as ComponentQueryFns<T, C>,
+    tags: {
+      all: this.tag(Constraint.ALL),
+      any: this.tag(Constraint.ANY),
+      some: this.tag(Constraint.SOME),
+      none: this.tag(Constraint.NONE)
     }
-    return this.reset();
+  };
+
+  public readonly components: ComponentQueryBuilder<T, C> = Object.assign(
+    this.handle.components.all,
+    this.handle.components
+  );
+
+  public readonly tags: TagQueryBuilder<T, C> = Object.assign(
+    this.handle.tags.all,
+    this.handle.tags
+  );
+
+  public get query(): Query<T, C> {
+    return (this.resolved ??= this.manager.getQuery<T, C>(
+      this.criteria,
+      this.key
+    ));
   }
 
-  /**
-   * Constrain results to instances of an entity.
-   */
-  public entities<T extends BaseType, E extends Entity<T>>(
-    EntityConstructor: EntityClass<T>
-  ): BaseQueryBuilder<T, E> {
-    this.state.ids.push(EntityConstructor.id);
-    return (this.reset() as unknown) as BaseQueryBuilder<T, E>;
-  }
-
-  /**
-   * Constrain results to those with given components.
-   */
-  public components<A extends ComponentClass[]>(
-    ...components: A
-  ): BaseQueryBuilder<U.Merge<T & KeyedByType<A>>> {
-    this.state.ids.push(...components.map(c => c.type));
-    return (this.reset() as unknown) as BaseQueryBuilder<
-      U.Merge<T & KeyedByType<A>>
-    >;
-  }
-
-  /**
-   * Return query results as an array.
-   */
   public get(): C[] {
     return this.query.get();
   }
 
-  /**
-   * Return the first search result, throwing if no results are found.
-   */
-  public find(): C {
-    return this.query.find();
-  }
-
-  /**
-   * Return the first search result.
-   */
   public first(): C | null {
     return this.query.first();
   }
 
-  /**
-   * Iterate through search results.
-   */
   public *[Symbol.iterator](): Iterator<C> {
     yield* this.query;
   }
 
-  public get query(): Query<T, C> {
-    return this.manager.getQuery<T, C>(this.criteria, this.key);
-  }
-
-  public constructor(entities: Manager) {
-    this.manager = entities;
+  public constructor(manager: Manager) {
+    this.manager = manager;
     this.reset();
   }
 }

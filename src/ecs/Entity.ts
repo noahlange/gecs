@@ -46,73 +46,30 @@ export class Entity<T extends BaseType = {}> {
     return useWithComponent<T & KeyedByType<A>, A>(this, ...components);
   }
 
-  protected referenced: Set<EntityRef> = new Set();
+  protected readonly manager: Manager;
+  protected readonly referenced: Set<EntityRef> = new Set();
 
-  protected allComponents(): $AnyEvil[] {
-    return Object.values(this.$);
-  }
+  /**
+   * A BigInt that corresponds to a combination of tags and components. We execute queries by comparing queries' keys to each entity's key.
+   *
+   * @example
+   * Given (tags/components) A (0b001), B (0b010), C (0b100), the following combinations will yield the corresponding keys:
+   *   A+B = 0b011
+   *   A+C = 0b101
+   *   B+C = 0b010
+   */
+  public key: bigint = 0n;
+  public readonly $: T;
+  public readonly id: string = getID();
+  public readonly tags: ChangeSet;
+  public readonly items!: ComponentClass[];
 
-  protected hasComponents<C extends ComponentClass[]>(
-    ...components: C
-  ): this is Entity<T & KeyedByType<C>> {
-    return components.every(component => component.type in this.$);
-  }
-
-  protected addComponent(
-    ComponentConstructor: ComponentClass,
-    data: any
-  ): void {
-    const type = ComponentConstructor.type as string & keyof T;
-    const instance = Object.assign(new ComponentConstructor(), data);
-    // get the component in question
-    if (!(type in this.$)) {
-      this.$[type] = instance;
-      this.items.push(ComponentConstructor);
-    }
-    this.manager.indexEntity(this);
-  }
-
-  protected removeComponents(...components: ComponentClass[]): void {
-    for (const C of components) {
-      this.items.splice(this.items.indexOf(C), 1);
-      delete this.$[C.type];
-    }
-    this.manager.indexEntity(this);
-  }
-
-  public components: EntityComponents = {
+  public readonly components: EntityComponents = {
     all: this.allComponents.bind(this),
     has: this.hasComponents.bind(this),
     add: this.addComponent.bind(this),
     remove: this.removeComponents.bind(this)
   };
-
-  public readonly $: T;
-  public readonly id: string = getID();
-  public readonly manager: Manager;
-  public readonly tags: ChangeSet;
-  public readonly items!: ComponentClass[];
-
-  /**
-   * A BigInt that corresponds to a combination of tags and components. We
-   * execute queries by comparing the query's key to each entity's key. Example:
-   * given (tags/components) A (0b001), B (0b010), C (0b100), the following
-   * combinations will yield the corresponding keys:
-   *   0b011 = A+B
-   *   0b101 = A+C
-   *   0b010 = B+C
-   */
-  public key: bigint = 0n;
-
-  /**
-   * Destroy existing references and mark the entity for destruction + re-indexing.
-   */
-  public destroy(): void {
-    for (const reference of this.referenced) {
-      reference.ref = null;
-    }
-    this.manager.destroy(this);
-  }
 
   /**
    * Shorthand for `entity.components.has()`.
@@ -128,6 +85,16 @@ export class Entity<T extends BaseType = {}> {
    */
   public is(...tags: string[]): boolean {
     return this.tags.has(...tags);
+  }
+
+  /**
+   * Destroy existing references and mark the entity for destruction + re-indexing.
+   */
+  public destroy(): void {
+    for (const reference of this.referenced) {
+      reference.ref = null;
+    }
+    this.manager.destroy(this);
   }
 
   protected getBindings(data: BaseDataType<T>): T {
@@ -152,6 +119,39 @@ export class Entity<T extends BaseType = {}> {
       }
     }
     return bindings;
+  }
+
+  protected allComponents(): $AnyEvil[] {
+    return Object.values(this.$);
+  }
+
+  protected hasComponents<C extends ComponentClass[]>(
+    ...components: C
+  ): this is Entity<T & KeyedByType<C>> {
+    return components.every(component => component.type in this.$);
+  }
+
+  protected addComponent<C extends ComponentClass>(
+    ComponentConstructor: C,
+    data?: PartialValueByType<C>
+  ): void {
+    const type = ComponentConstructor.type as string & keyof T;
+    if (!this.$[type]) {
+      // get the component in question
+      this.$[type] = new ComponentConstructor(data) as T[string & keyof T];
+      this.items.push(ComponentConstructor);
+      this.manager.indexEntity(this);
+    }
+  }
+
+  protected removeComponents(...components: ComponentClass[]): void {
+    for (const C of components) {
+      if (C.type in this.$) {
+        this.items.splice(this.items.indexOf(C), 1);
+        delete this.$[C.type];
+        this.manager.indexEntity(this);
+      }
+    }
   }
 
   public constructor(

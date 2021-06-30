@@ -1,5 +1,8 @@
-export { Registry } from './Registry';
+export { ChangeSet } from './ChangeSet';
+export { Deserializer } from './Deserializer';
+export { EntityIndex } from './EntityIndex';
+export { Manager } from './Manager';
 export { QueryBuilder } from './QueryBuilder';
 export { Query } from './Query';
-export { Manager } from './Manager';
-export { ChangeSet } from './ChangeSet';
+export { Registry } from './Registry';
+export { Serializer } from './Serializer';

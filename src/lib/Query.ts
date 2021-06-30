@@ -1,19 +1,18 @@
 import type { Entity } from '../ecs';
 import type { BaseType, QueryStep } from '../types';
 import type { Manager } from './Manager';
-import type { Unsubscribe } from 'nanoevents';
 
 import { getID } from '../ids';
-import { QueryTag } from '../types';
+import { Constraint } from '../types';
 import { match, union } from '../utils';
 
-type TagsExceptSome = Exclude<QueryTag, QueryTag.SOME>;
+type TagsExceptSome = Exclude<Constraint, Constraint.SOME>;
 type Targets = { [key in TagsExceptSome]: bigint | null };
 
 const fns = {
-  [QueryTag.NONE]: match.none,
-  [QueryTag.ALL]: match.all,
-  [QueryTag.ANY]: match.any
+  [Constraint.NONE]: match.none,
+  [Constraint.ALL]: match.all,
+  [Constraint.ANY]: match.any
 };
 
 enum QueryStatus {
@@ -28,29 +27,24 @@ export class Query<
 > {
   protected id = getID();
 
+  public key: bigint = 0n;
+  public destroyed: boolean = false;
+
   /**
    * Unidentified query items (i.e., without a bitmask).
    */
   protected unresolved: Set<string> = new Set();
-  protected arrays: Set<string> = new Set();
-  protected singles: Set<string> = new Set();
   protected results: Set<E> = new Set();
   protected tags: Set<TagsExceptSome> = new Set();
   protected keys: Map<bigint, boolean> = new Map();
+  protected steps: QueryStep[];
 
   protected manager: Manager;
   protected attempts: number = 0;
   protected status: QueryStatus = QueryStatus.PENDING;
 
-  protected steps: QueryStep[];
-
-  protected unsubscribe: {
-    added: Unsubscribe | null;
-    removed: Unsubscribe | null;
-  } = { added: null, removed: null };
-
   protected reducer = (targets: Targets, step: QueryStep): Targets => {
-    if (step.tag === QueryTag.SOME) {
+    if (step.constraint === Constraint.SOME) {
       return targets;
     }
 
@@ -64,17 +58,17 @@ export class Query<
       // filter out unresolved items
       .filter(i => i !== null) as bigint[];
 
-    targets[step.tag] = targets[step.tag]
-      ? union(targets[step.tag]!, ...ids)
+    targets[step.constraint] = targets[step.constraint]
+      ? union(targets[step.constraint]!, ...ids)
       : union(...ids);
 
     return targets;
   };
 
   protected targets: Record<TagsExceptSome, bigint | null> = {
-    [QueryTag.ANY]: null,
-    [QueryTag.ALL]: null,
-    [QueryTag.NONE]: null
+    [Constraint.ANY]: null,
+    [Constraint.ALL]: null,
+    [Constraint.NONE]: null
   };
 
   /**
@@ -83,15 +77,15 @@ export class Query<
    */
   protected init(): void {
     const targets: Record<TagsExceptSome, QueryStep[]> = {
-      [QueryTag.ALL]: [],
-      [QueryTag.ANY]: [],
-      [QueryTag.NONE]: []
+      [Constraint.ALL]: [],
+      [Constraint.ANY]: [],
+      [Constraint.NONE]: []
     };
 
     for (const step of this.steps) {
-      if (step.tag !== QueryTag.SOME) {
-        this.tags.add(step.tag);
-        targets[step.tag].push(step);
+      if (step.constraint !== Constraint.SOME) {
+        this.tags.add(step.constraint);
+        targets[step.constraint].push(step);
       }
     }
 
@@ -107,12 +101,11 @@ export class Query<
    * corresponding to those bitmasks.
    */
   protected filter(mask: bigint): boolean {
-    const { tags, targets } = this;
     let res = this.keys.get(mask) ?? null;
     if (res === null) {
       res = true;
-      for (const tag of tags) {
-        const target = targets[tag];
+      for (const tag of this.tags) {
+        const target = this.targets[tag];
         if (!target || !fns[tag](target, mask)) {
           res = false;
           break;
@@ -128,28 +121,21 @@ export class Query<
     this.results = new Set(this.manager.index.get(matches)) as Set<E>;
   }
 
-  public destroy(): void {
-    this.unsubscribe.added?.();
-    this.unsubscribe.removed?.();
+  public update(additions: Entity[], removals: Entity[]): void {
+    // remove first, we may very well be re-adding it later
+    for (const removal of removals) {
+      this.results.delete(removal as E);
+    }
+    for (const add of additions) {
+      const res = this.keys.get(add.key) ?? null;
+      if (res || (res === null && this.filter(add.key))) {
+        this.results.add(add as E);
+      }
+    }
   }
 
-  protected addEventListeners(): void {
-    this.unsubscribe.added = this.manager.on('added', additions => {
-      for (const add of additions) {
-        const res = this.keys.get(add.key) ?? null;
-        if (res) {
-          this.results.add(add as E);
-        } else if (res === null && this.filter(add.key)) {
-          this.results.add(add as E);
-        }
-      }
-    });
-
-    this.unsubscribe.removed = this.manager.on('removed', removals => {
-      for (const removal of removals) {
-        this.results.delete(removal as E);
-      }
-    });
+  public destroy(): void {
+    this.destroyed = true;
   }
 
   protected resolve(): void {
@@ -163,8 +149,12 @@ export class Query<
       this.attempts++;
       this.init();
       if (this.unresolved.size === 0) {
+        let key = 0n;
         this.status = QueryStatus.RESOLVED;
-        this.addEventListeners();
+        for (const t of Object.values(this.targets)) {
+          key |= t ?? 0n;
+        }
+        this.key = key;
         this.refresh();
       }
     }
@@ -188,16 +178,6 @@ export class Query<
   }
 
   /**
-   * Return the first result, throwing if no results are found.
-   */
-  public find(): E {
-    for (const item of this) {
-      return item;
-    }
-    throw new Error('Query returned no results.');
-  }
-
-  /**
    * Return the first search result, or null if no results are found.
    */
   public first(): E | null {
@@ -211,6 +191,6 @@ export class Query<
     this.manager = entities;
     this.steps = steps
       // .some() only changes the type signature
-      .filter(step => step.tag !== QueryTag.SOME);
+      .filter(step => step.constraint !== Constraint.SOME);
   }
 }

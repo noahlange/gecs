@@ -1,6 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { conditional, Context, sequence } from '../../ecs';
+import { Context } from '../../ecs';
+import { conditional, sequence } from '../../ecs/composers';
 
 interface ContextState {
   value: number;

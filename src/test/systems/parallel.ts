@@ -1,7 +1,8 @@
 /* eslint-disable max-classes-per-file */
 import { describe, expect, test } from '@jest/globals';
 
-import { Context, parallel, sequence, System } from '../../ecs';
+import { Context, System } from '../../ecs';
+import { parallel, sequence } from '../../ecs/composers';
 
 const wait = (): Promise<void> => new Promise(ok => setTimeout(ok, 10));
 

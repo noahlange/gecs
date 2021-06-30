@@ -1,7 +1,7 @@
-import type { Context } from '..';
+import type { Context } from '../ecs/Context';
 import type { $AnyEvil, $AnyOK, Serialized } from '../types';
 
-import { Entity } from '../ecs';
+import { Entity } from '../ecs/Entity';
 import { eid } from '../types';
 
 export class Deserializer {
