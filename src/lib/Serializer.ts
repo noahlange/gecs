@@ -1,17 +1,23 @@
-import type { Serialized, SomeDictionary, Visited, Visiting } from '../types';
-import type { Manager } from './Manager';
+import type { Context } from '../ecs';
+import type {
+  Serialized,
+  SerializedEntity,
+  SomeDictionary,
+  Visited,
+  Visiting
+} from '../types';
 
 import { Entity } from '../ecs/Entity';
 import { anonymous, eid } from '../types';
 
-interface SerializeOptions {
+export interface SerializeOptions {
   entityFilter?: (entity: Entity) => boolean;
 }
 
-export class Serializer {
+export class Serializer<T extends {} = {}> {
   // make sure we aren't recursing infinitely through circular references
   protected stack: unknown[] = [];
-  protected entities: Entity[] = [];
+  protected ctx: Context<T>;
 
   protected visit<O extends SomeDictionary = {}>(obj: O): SomeDictionary {
     const res: SomeDictionary = {};
@@ -73,39 +79,44 @@ export class Serializer {
     return res;
   }
 
+  protected serializeEntities(options: SerializeOptions): SerializedEntity[] {
+    this.stack = [];
+    const filter = options.entityFilter ?? (() => true);
+    const entities = this.ctx.manager.index.all().filter(filter);
+    const res = entities.map(entity => {
+      const type =
+        // if the class is anonymous (i.e., not `extend`ed), we'll give it a
+        // name so we can recreate it properly. since, by definition, it cannot
+        // have any custom functionality, we don't have to worry about losing
+        // access to class methods, etc.
+        !entity.constructor.name || entity.constructor.name === anonymous
+          ? entity.items.map(e => e.type).join('|')
+          : // but if it is named, we want to track that.
+            entity.constructor.name;
+
+      return {
+        id: entity.id,
+        type,
+        tags: Array.from(entity.tags),
+        $: this.visit(entity.$)
+      };
+    });
+
+    this.stack = [];
+    return res;
+  }
+
   /**
    * Convert the context into a structure we can stringify and save to disk
    */
-  public serialize(options: SerializeOptions = {}): Serialized {
-    const entityFilter = options.entityFilter ?? (() => true);
-    this.stack = [];
-    const save: Serialized = {
-      entities: this.entities.filter(entityFilter).map(entity => {
-        const type =
-          // if the class is anonymous (i.e., not `extend`ed), we'll give it a
-          // name so we can recreate it properly. since, by definition, it cannot
-          // have any custom functionality, we don't have to worry about losing
-          // access to class methods, etc.
-          !entity.constructor.name || entity.constructor.name === anonymous
-            ? entity.items.map(e => e.type).join('|')
-            : // but if it is named, we want to track that.
-              entity.constructor.name;
-
-        return {
-          id: entity.id,
-          type,
-          tags: Array.from(entity.tags),
-          $: this.visit(entity.$)
-        };
-      })
+  public serialize(options: SerializeOptions = {}): Serialized<T> {
+    return {
+      state: this.ctx.state,
+      entities: this.serializeEntities(options)
     };
-
-    this.stack = [];
-
-    return save;
   }
 
-  public constructor(manager: Manager) {
-    this.entities = manager.index.all();
+  public constructor(ctx: Context<T>) {
+    this.ctx = ctx;
   }
 }

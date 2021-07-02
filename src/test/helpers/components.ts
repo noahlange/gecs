@@ -2,7 +2,7 @@
 
 import type { Entity } from '../../ecs';
 
-import { Component } from '../../ecs';
+import { Component, EntityRef } from '../../ecs';
 
 export class A extends Component {
   public static readonly type = 'a';
@@ -19,7 +19,6 @@ export class C extends Component {
   public value: boolean = true;
 }
 
-export class Ref extends Component {
+export class Ref extends EntityRef<Entity> {
   public static readonly type = 'ref';
-  public value!: Entity;
 }

@@ -348,16 +348,18 @@ const query = ctx.$.components(A, B);
 const first = query.first(); // (A & B) | null
 const all = query.get(); // (A & B)[]
 
-// iterators
-const array = Array.from(query); // (A & B)[]
+// will work with sets, etc.
+const set = new Set(query); // Set<A & B>
+
+// also as a generic iterable
 for (const result of query) {
   // A & B
 }
 ```
 
-### Query persistence
+### Persistence
 
-Once a query is executed for the first time, any subsequent query with the same "signature" will return the cached result set. The overhead associated with creating a new query each `tick()` is pretty minor in practice, but by assigning the query to a variable/class property, you can access and execute the constructed query without being forced to rebuild it.
+Once a query is executed for the first time, any subsequent query with the same "signature" will return the cached result set. The overhead associated with creating a new query each `tick()` is _relatively_ minor, but by assigning the query to a variable/class property, you can access and execute the constructed query without being forced to rebuild it.
 
 ```typescript
 class MySystem extends System {
@@ -373,37 +375,62 @@ class MySystem extends System {
 }
 ```
 
-## Serialization
+You can also persist queries with stateless systems using the `QueryType` export.
 
-Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward. There's one caveat: in order to properly reload the context's state, you must manually register your components and inheritance entities (composed entities are handled automatically) before calling `load()`.
+```typescript
+// Currently undefined; we'll define it shortly.
+let $: {
+  abc: QueryType<[typeof A, typeof B, typeof C]>;
+};
 
-The output is a bulky POJO—~2000 entities runs me about 650 KB. Compressing the stringified output with [Brotli](https://www.npmjs.com/package/brotli) brings it down to less than 20 KB (about 3% of the original size). If you're working in the browser and can't load WebAssembly for one reason or another, [pako](https://github.com/nodeca/pako) is a great, marginally less effective (about 4% of the original size) alternative.
+function MySystem(ctx: Context) {
+  // create it if it doesn't exist
+  $ ??= { abc: ctx.components(A, B, C) };
+  // and use normally
+  for (const abc of $.abc) {
+    // ...
+  }
+}
+```
 
-The POJO can also be pared down significantly by using custom serializers, as described below.
+## Saving & Loading
+
+Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward. _By default_, the output is a bulky POJO—~2000 entities runs me about 650 KB. There are a few strategies you can use to reduce the size of this output:
+
+### Entity filtering
+
+Filter entities by passing `ctx.save()` an `entityFilter` option—a predicate passed the entity instance and expecting a boolean-ish return value. This allows you to immediately weed out irrelevant entities before moving forward, which will significantly reduce the size of your result set (and save time).
+
+### Custom serialization
+
+You can write custom `toJSON()` methods to return only a subset of each component's data.
 
 ### Save
 
 ```typescript
+import { Context, Serializer } from 'tecs';
+import { Tag } from './misc';
+
 // create and start the context
 const ctx = new Context();
 await ctx.start();
 
-// dump to POJO and do whatever
-const toStringifyOrWhatever = ctx.save();
+// filter out unneeded entities and dump to POJO
+const { state, entities, queries } = ctx.save({
+  entityFilter: entity => entity.tags.has(Tag.TO_SERIALIZE)
+});
+
+console.log(state === ctx.state); // true
+console.log(entities.some(e => e.tags.includes(Tag.TO_SERIALIZE))); // false
 ```
 
-### Load
+#### Compression
 
-```typescript
-// instantiate new ctx, import state
-const ctx = new Context();
-ctx.load(toStringifyOrWhatever);
+Compressing the original 650KB payload output with [Brotli](https://www.npmjs.com/package/brotli) brings it down to less than 20 KB (about 3% of the original size).
 
-// restart
-await ctx.start();
-```
+If you're working in the browser and can't load WebAssembly for one reason or another, [pako](https://github.com/nodeca/pako) is a great, marginally less effective (about 4% of the original size) alternative.
 
-### Custom serialization
+#### Custom serialization
 
 If you're using `JSON.stringify` to serialize your state, you can customize a component's output by adding a `toJSON()` method. You can pair this with a setter to populate or manipulate a component's "exotic" properties on instantiation.
 
@@ -433,6 +460,30 @@ class Health extends Component {
 }
 ```
 
+### Load
+
+Serialization has one caveat: you must manually register all components types and entity constructors using `extends` before invoking `ctx.load()`. Composed entity classes don't need to be registered.
+
+```typescript
+import { Context } from 'tecs';
+import { Components, Entities } from './lib';
+
+// instantiate new context
+const ctx = new Context();
+
+// you must register components and entity constructors using inheritance
+// (composed entity constructors don't need to be registered)
+ctx.register({ ...Components, ...Entities });
+
+// fetch and load state
+await fetch('./save.json')
+  .then(res => res.json())
+  .then(ecs => ctx.load(ecs));
+
+// and restart
+await ctx.start();
+```
+
 ---
 
 ## Questions/Statements & Answers/Responses
@@ -441,10 +492,12 @@ class Health extends Component {
 **A/R**: Deceptively bad.
 
 **Q/S**: Wait, what?  
-**A/R**: Performs like garbage in micro-benchmarks (bottom 1-3 in [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks), depending on the task), but can consistently execute a tick of the [ECSY intersecting circles demo](https://ecsy.io/examples/#Intersecting%20circles) in 0.5ms (35×; speedup). That being said, _particularly_ awesome performance has never been a primary design goal—so long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance improvements.
+**A/R**: Performs like garbage in micro-benchmarks (bottom 1-3 in [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks), depending on the task), but is as fast as or faster than ECSY in the [intersecting circles demo](https://ecsy.io/examples/#Intersecting%20circles).
+
+That being said, _particularly_ awesome performance has never been a primary design goal—so long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance improvements.
 
 **Q/S**: Real-world example?  
-**A/R**: Using a naïve culling implementation and PIXI for rendering, a 256×256 map from [FLARE](https://github.com/flareteam/flare-game) runs at about 6ms/frame with ~75 MB memory usage.
+**A/R**: Using a naïve culling implementation and PIXI for rendering, a 256×256 map from [FLARE](https://github.com/flareteam/flare-game) runs at about 2ms/frame with ~50MB memory usage.
 
-**Q/S**: After reading the code, I realize this manages to be even less type-safe than I would have even thought possible.  
+**Q/S**: After reading the code, I am shocked, _shocked_ to find that this is less type-safe than I would have ever thought possible.  
 **A/R**: This is correct. Unfortunately, this library and its design are more about ergonomics and my feelings than bulletproof type-safety.

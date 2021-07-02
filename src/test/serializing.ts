@@ -9,11 +9,7 @@ import { withTick } from './helpers/utils';
 
 function setup(): Context {
   const ctx = new Context({});
-  ctx.register(C.A, C.B, C.C, C.Ref);
-  // named entities
-  ctx.register(E.WithA, E.WithAB, E.WithABC, E.WithRef);
-  // anonymous entities
-  ctx.register(E.cWithA, E.cWithAB, E.cWithABC, E.cWithRef);
+  ctx.register({ ...C, ...E });
   return ctx;
 }
 
@@ -32,7 +28,7 @@ describe('save and load', () => {
     expect(() => ctx.load(res)).not.toThrow();
   });
 
-  test('saves anonymous entities', async () => {
+  test('saves composed entities', async () => {
     const [ctx1, ctx2] = [setup(), setup()];
 
     await withTick(ctx1, () => {
@@ -71,7 +67,7 @@ describe('save and load', () => {
     const [ctx1, ctx2] = [setup(), setup()];
     for (let i = 0; i < 5; i++) {
       const e = ctx1.create(E.WithRef);
-      e.$.ref.value = e;
+      e.$.ref = e;
     }
 
     const saved = ctx1.save();
@@ -80,7 +76,7 @@ describe('save and load', () => {
     await ctx2.tick(0, 0);
 
     for (const entity of ctx2.$.components(C.Ref)) {
-      expect(entity.$.ref.value).toBe(entity);
+      expect(entity.$.ref).toBe(entity);
     }
   });
 });

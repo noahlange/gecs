@@ -25,8 +25,7 @@ export class Query<
   T extends BaseType = BaseType,
   E extends Entity<T> = Entity<T>
 > {
-  protected id = getID();
-
+  public readonly id = getID();
   public key: bigint = 0n;
   public destroyed: boolean = false;
 

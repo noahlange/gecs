@@ -205,6 +205,7 @@ export interface SerializedEntity {
   $: Record<string, unknown>;
 }
 
-export interface Serialized {
+export interface Serialized<T extends {} = {}> {
+  state: T;
   entities: SerializedEntity[];
 }

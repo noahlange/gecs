@@ -30,7 +30,6 @@ export interface EntityClass<
   E extends Entity<T> = Entity<T>
 > {
   data?: BaseDataType<T>;
-  id: string;
   with<A extends ComponentClass[], T extends BaseType = {}>(
     ...items: A
   ): EntityClass<T & KeyedByType<A>>;
@@ -38,8 +37,6 @@ export interface EntityClass<
 }
 
 export class Entity<T extends BaseType = {}> {
-  public static id: string = getID();
-
   public static with<T, A extends ComponentClass[]>(
     ...components: A
   ): EntityClass<T & KeyedByType<A>> {

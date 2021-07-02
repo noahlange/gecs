@@ -2,7 +2,7 @@ import type { ComponentClass, Entity, EntityClass } from '../ecs';
 import type { BaseDataType, BaseType, QueryStep } from '../types';
 
 import { getID } from '../ids';
-import { isEntityClass, match } from '../utils';
+import { match } from '../utils';
 import { EntityIndex } from './EntityIndex';
 import { Query } from './Query';
 import { QueryBuilder } from './QueryBuilder';
@@ -28,7 +28,6 @@ export class Manager {
 
   protected getEntityKey(entity: Entity): bigint {
     return this.registry.add(
-      (entity.constructor as EntityClass).id,
       ...entity.items.map(e => e.type),
       ...Array.from(entity.tags).map(t => this.getTagKey(t))
     );
@@ -44,10 +43,8 @@ export class Manager {
     return this.queries[id] as Query<T, E>;
   }
 
-  public register(...items: (ComponentClass | EntityClass)[]): void {
-    this.registry.add(
-      ...items.map(item => (isEntityClass(item) ? item.id : item.type))
-    );
+  public register(...items: ComponentClass[]): void {
+    this.registry.add(...items.map(item => item.type));
   }
 
   /**

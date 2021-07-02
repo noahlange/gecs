@@ -1,3 +1,4 @@
+import type { SerializeOptions } from '../lib/Serializer';
 import type { BaseDataType, BaseType, Serialized } from '../types';
 import type { Component, ComponentClass } from './Component';
 import type { Entity, EntityClass } from './Entity';
@@ -30,7 +31,7 @@ export class Context<T extends {} = {}> {
   protected locked: boolean = false;
 
   public state: T;
-  public registrations: Registrations = { entities: {}, components: {} };
+  public registrations: Registrations = { components: {}, entities: {} };
   public manager: Manager = new Manager();
 
   public get items(): (SystemClass<T> | SystemFunction<T>)[] {
@@ -46,6 +47,7 @@ export class Context<T extends {} = {}> {
     if (!this.locked) {
       this.locked = true;
       await this.pipeline.tick?.(delta, time);
+      this.manager.tick();
       this.locked = false;
     } else {
       if (process.env.NODE_ENV === 'development') {
@@ -60,13 +62,14 @@ export class Context<T extends {} = {}> {
     this.manager.tick();
   }
 
-  public save(): Serialized {
-    const s = new Serializer(this.manager);
-    return s.serialize();
+  public save(options?: SerializeOptions): Serialized {
+    const s = new Serializer(this);
+    return s.serialize(options);
   }
 
-  public register(...items: (ComponentClass | EntityClass)[]): void {
-    for (const item of items) {
+  public register(items: Record<string, ComponentClass | EntityClass>): void {
+    const registrations: ComponentClass[] = [];
+    for (const item of Object.values(items)) {
       if (isEntityClass(item)) {
         const key =
           item.name === anonymous
@@ -77,9 +80,10 @@ export class Context<T extends {} = {}> {
         this.registrations.entities[key] = item;
       } else {
         this.registrations.components[item.type] = item;
+        registrations.push(item);
       }
     }
-    this.manager.register(...items);
+    this.manager.register(...registrations);
   }
 
   /**

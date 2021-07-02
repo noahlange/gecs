@@ -1,4 +1,5 @@
 import type { Context } from '../ecs/Context';
+import type { EntityClass } from '../ecs/Entity';
 import type { $AnyEvil, $AnyOK, Serialized } from '../types';
 
 import { Entity } from '../ecs/Entity';
@@ -98,18 +99,28 @@ export class Deserializer {
     return res;
   }
 
-  public deserialize(save: Serialized): void {
-    this.stack = [];
-    const { entities, components } = this.ctx.registrations;
+  protected deserializeEntities(save: Serialized): void {
+    const { components, entities } = this.ctx.registrations;
+    const toRegister: Record<string, EntityClass> = {};
+    const toRecreate = [];
 
     for (const { id, tags, type, $ } of save.entities) {
       // if the entity class hasn't been registered or doesn't exist, we'll recreate the prefab manually.
       if (!(type in entities)) {
-        const EntityClass = Entity.with(
+        const types = type.split('|');
+        if (types.some(t => !components[t])) {
+          const names = types.filter(c => !components[c]);
+          if (/\|/.test(type)) {
+            console.warn(`Missing components: ${names.join(', ')}`);
+          } else {
+            console.warn(`Missing entities/components: ${names.join(', ')}`);
+          }
+          continue;
+        }
+
+        entities[type] = toRegister[type] = Entity.with(
           ...type.split('|').map(c => components[c])
         );
-        this.ctx.register(EntityClass);
-        entities[type] = EntityClass;
       }
 
       // now that we're confident that the entity class exists, we're going to populate data for `ctx.create()`
@@ -117,19 +128,29 @@ export class Deserializer {
         this.deserializeValue(['$', key], id, $[key])
       );
 
-      // ...and instantiate
-      const e = this.ctx.create(entities[type], data, tags);
+      toRecreate.push({ id, entity: entities[type], data, tags });
+    }
+
+    // register components
+    this.ctx.register(toRegister);
+
+    // ...and instantiate
+    for (const { id, entity, data, tags } of toRecreate) {
+      // track the entity ID and a reference so we can repopulate refs later, if needed
+      const e = (this.entities[id] = this.ctx.create(entity, data, tags));
       // @ts-ignore: we _do_ want it to be read-only, but this is a special case
       e.id = id;
-
-      // track the entity ID and a reference so we can repopulate refs later, if needed
-      this.entities[id] = e;
     }
 
     // now that we've recreated all our entities, we can properly swap in references
-    this.recreateEntityReferences();
-
     this.stack = [];
+    this.recreateEntityReferences();
+    this.stack = [];
+  }
+
+  public deserialize(save: Serialized): void {
+    this.ctx.state = save.state;
+    this.deserializeEntities(save);
   }
 
   public constructor(ctx: Context<any>) {

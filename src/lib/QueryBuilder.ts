@@ -169,8 +169,8 @@ export class QueryBuilder<
     return this.query.first();
   }
 
-  public *[Symbol.iterator](): Iterator<C> {
-    yield* this.query;
+  public [Symbol.iterator](): Iterator<C> {
+    return this.query[Symbol.iterator]();
   }
 
   public constructor(manager: Manager) {

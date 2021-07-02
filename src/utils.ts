@@ -17,7 +17,7 @@ export function isEntityClass(
   return !('type' in e);
 }
 
-const ctors: { [key: string]: Set<ComponentClass> | undefined } = {};
+const ctors: Map<EntityClass, ComponentClass[]> = new Map();
 
 /**
  * Helper function to create new container class constructors with typed `$`s.
@@ -29,22 +29,23 @@ export function useWithComponent<
   A extends ComponentClass[] = []
 >(Constructor: EntityClass<T>, ...items: A): EntityClass<T & KeyedByType<A>> {
   // we're tracking entity class => component classes, allowing us to extend existing component sets.
-  const [id, curr] = [getID(), ctors[Constructor.id] ?? []];
+  const curr = ctors.get(Constructor) ?? [];
   // we need to give each entity its own constructor
-  const res = class extends Constructor {
-    public static readonly id = id;
-  };
+  const _a = class extends Constructor {};
 
   // and we need to define this here because no other configuration permits
   // `items` to be accessible on the prototype while being not being subject to
   // changes in other items of the same type (via `.slice()` in the entity constructor)
-  Object.defineProperty(res.prototype, 'items', {
-    value: Array.from((ctors[id] = new Set([...curr, ...items]))),
+  const value = [...curr, ...items];
+  ctors.set(_a, value);
+
+  Object.defineProperty(_a.prototype, 'items', {
+    value: value.slice(),
     writable: true
   });
 
   // type system abuse
-  return (res as unknown) as EntityClass<T & KeyedByType<A>>;
+  return (_a as unknown) as EntityClass<T & KeyedByType<A>>;
 }
 
 export function useWithSystem<T>(
@@ -60,11 +61,19 @@ export function useWithSystem<T>(
 }
 
 export function union(...values: bigint[]): bigint {
-  return values.reduce((a, b) => a | b, 0n);
+  let res: bigint = 0n;
+  for (const val of values) {
+    res |= val;
+  }
+  return res;
 }
 
 export function intersect(...values: bigint[]): bigint {
-  return values.reduce((a, b) => a & b, 0n);
+  let res: bigint = 0n;
+  for (const val of values) {
+    res &= val;
+  }
+  return res;
 }
 
 export const match = {
