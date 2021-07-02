@@ -88,7 +88,8 @@ export interface QueryState {
 export class QueryBuilder<
   T extends BaseType = {},
   C extends Entity<T> = Entity<T>
-> implements BaseQueryBuilder<T> {
+> implements BaseQueryBuilder<T>
+{
   protected key: string = '';
   protected state!: QueryState;
   protected resolved: Query<T, C> | null = null;
@@ -130,12 +131,12 @@ export class QueryBuilder<
     components: ComponentQueryFns<T, C>;
     tags: TagQueryFns<T, C>;
   } = {
-    components: ({
+    components: {
       all: this.component(Constraint.ALL),
       any: this.component(Constraint.ANY),
       some: this.component(Constraint.SOME),
       none: this.component(Constraint.NONE)
-    } as $AnyEvil) as ComponentQueryFns<T, C>,
+    } as $AnyEvil as ComponentQueryFns<T, C>,
     tags: {
       all: this.tag(Constraint.ALL),
       any: this.tag(Constraint.ANY),

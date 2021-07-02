@@ -45,7 +45,7 @@ export function useWithComponent<
   });
 
   // type system abuse
-  return (_a as unknown) as EntityClass<T & KeyedByType<A>>;
+  return _a as unknown as EntityClass<T & KeyedByType<A>>;
 }
 
 export function useWithSystem<T>(

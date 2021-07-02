@@ -12,7 +12,6 @@ module.exports = {
     'prettier',
     'plugin:prettier/recommended',
     'plugin:@typescript-eslint/eslint-recommended',
-    'prettier/@typescript-eslint',
     'plugin:import/errors',
     'plugin:import/typescript'
   ],

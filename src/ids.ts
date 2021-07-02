@@ -4,7 +4,7 @@ export interface IdentifierGenerator {
   (): string;
 }
 
-let gen: IdentifierGenerator = (): string => nanoid(6);
+let gen: IdentifierGenerator = (): string => nanoid();
 
 /**
  * Set the string ID generation function.

@@ -50,9 +50,7 @@ export class Context<T extends {} = {}> {
       this.manager.tick();
       this.locked = false;
     } else {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Tick duration exceeds tick rate.');
-      }
+      console.warn('Tick duration exceeds tick rate.');
     }
   }
 

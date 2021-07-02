@@ -1,25 +1,12 @@
-# tecs
+# gecs
 
-**tecs** (_tecks_) is an experimental [entity-component-system](https://en.wikipedia.org/wiki/Entity_component_system) framework thing written in [TypeScript](https://www.typescriptlang.org).
+**gecs** ('g' as in 'gecko,' not as in 'GIF') is an experimental, generic-abusing [entity-component-system](https://en.wikipedia.org/wiki/Entity_component_system) framework thing written in [TypeScript](https://www.typescriptlang.org).
 
 ## Installation
 
-(There isn't an NPM package because it's _way_ too soon for that.)
-
-If you'd like to fiddle with the library itself:
-
 ```
-git clone https://github.com/noahlange/tecs.git && cd tecs
-npm install && npm start
+npm i gecs
 ```
-
-If you want to mess around with a demo, there's an [example repository](https://github.com/noahlange/tecs-example) here. Adding tecs to a new/existing project is easy, due to NPM's handling of GitHub repo packages.
-
-```
-npm i noahlange/tecs
-```
-
-Note that if you update the package with `npm update`, you'll need to run `npm rebuild` to regenerate the JS output.
 
 ## Running the benchmarks
 
@@ -52,7 +39,7 @@ export class Sprite extends Component {
 By passing a series of component classes to the entity's static `with()` method, you can declaratively define the structure of your entity. The static `type` property of each component class serves as the key by which the component can be accessed from its containing entity.
 
 ```ts
-import { Component, Entity } from 'tecs';
+import { Component, Entity } from 'gecs';
 
 export class Foo extends Component {
   // this component is accessed via `foobly`
@@ -70,7 +57,7 @@ export class Bar extends Component {
 These component instances are accessed via the `$` property.
 
 ```ts
-import { Entity } from 'tecs';
+import { Entity } from 'gecs';
 import { Foo, Bar } from './components';
 
 const MyEntity = Entity.with(Foo, Bar);
@@ -141,7 +128,7 @@ And if you need to type-cast a generic entity type to an instance of a specific 
 At its core, a system is a function or object that performs one or more closely-related tasks.
 
 ```ts
-import type { Context } from 'tecs';
+import type { Context } from 'gecs';
 import { Position, Velocity } from './components';
 
 export function movement(ctx: Context): void {
@@ -152,10 +139,10 @@ export function movement(ctx: Context): void {
 }
 ```
 
-**tecs** supports both stateful object-oriented systems and stateless functional systems. If you need to take advantage of object persistence or invoke system lifecycle methods, then a stateful system is your best option.
+**gecs** supports both stateful object-oriented systems and stateless functional systems. If you need to take advantage of object persistence or invoke system lifecycle methods, then a stateful system is your best option.
 
 ```ts
-import { System } from 'tecs';
+import { System } from 'gecs';
 import { InputManager } from 'my-magical-library';
 
 import { Position, Clickable } from './components';
@@ -184,7 +171,7 @@ An example implementation of a simple PIXI.js renderer:
 
 ```typescript
 import * as PIXI from 'pixi.js';
-import { System } from 'tecs';
+import { System } from 'gecs';
 
 import { Sprite, Position, Player } from './components';
 
@@ -230,7 +217,7 @@ class Renderer extends System {
 
 ### System composition
 
-**tecs** offers three system composition functions that allow you to structure your game's system flow without forcing you to wrap systems in complex branching logic.
+**gecs** offers three system composition functions that allow you to structure your game's system flow without forcing you to wrap systems in complex branching logic.
 
 The `sequence()` and `parallel()` functions accept an array of systems or system functions and return another system "wrapping" the ones passed in.
 
@@ -239,7 +226,7 @@ The `sequence()` and `parallel()` functions accept an array of systems or system
 - Systems passed to the `parallel()` helper run simultaneously. If these systems execute synchronously, the helper has no effect. If not, the system will wait until all returned promises have been resolved before moving on.
 
 ```ts
-import { parallel, sequence, conditional } from 'tecs';
+import { parallel, sequence, conditional } from 'gecs';
 import { SimA, SimB, SimC } from './sims';
 import { setup, teardown } from './misc';
 
@@ -258,7 +245,7 @@ const ifSimulating = conditional(
 
 ### Caveats
 
-**tecs** is not thread-safe and offers no guarantees of anything beyond "these will run one at a time in this order" and "nothing else will happen until these are done." The specifics of handling locks, mutexes, shared memory arrays and how to wrangle WebWorkers are likewise beyond the purview of this README.
+**gecs** is not thread-safe and offers no guarantees of anything beyond "these will run one at a time in this order" and "nothing else will happen until these are done." The specifics of handling locks, mutexes, shared memory arrays and how to wrangle WebWorkers are likewise beyond the purview of this README.
 
 ## Contexts
 
@@ -267,7 +254,7 @@ The relationship between the `Context` and its `Systems` mirrors that of an `Ent
 You can optionally define the type of a Context's a `state`.
 
 ```typescript
-import { Context, Entity } from 'tecs';
+import { Context, Entity } from 'gecs';
 
 import { A, B, C, D } from './systems';
 
@@ -304,8 +291,6 @@ Queries consist of one or more "steps," each corresponding to a different type o
 ```typescript
 const q1 = ctx.$.components(A, B);
 const q2 = ctx.$.tags('one', 'two', 'three');
-// entity constraints unsupported in the new API
-const q3 = ctx.$.entities(MyEntity);
 ```
 
 Steps are executed sequentially. The result of a query is the intersection of each step's results.
@@ -408,7 +393,7 @@ You can write custom `toJSON()` methods to return only a subset of each componen
 ### Save
 
 ```typescript
-import { Context, Serializer } from 'tecs';
+import { Context, Serializer } from 'gecs';
 import { Tag } from './misc';
 
 // create and start the context
@@ -465,7 +450,7 @@ class Health extends Component {
 Serialization has one caveat: you must manually register all components types and entity constructors using `extends` before invoking `ctx.load()`. Composed entity classes don't need to be registered.
 
 ```typescript
-import { Context } from 'tecs';
+import { Context } from 'gecs';
 import { Components, Entities } from './lib';
 
 // instantiate new context
