@@ -2,15 +2,13 @@
 
 **gecs** ('g' as in 'gecko,' not as in 'GIF') is an experimental, generic-abusing [entity-component-system](https://en.wikipedia.org/wiki/Entity_component_system) framework thing written in [TypeScript](https://www.typescriptlang.org).
 
+Examples are available in the [gecs-example](https://github.com/noahlange/gecs-example) repository.
+
 ## Installation
 
 ```
 npm i gecs
 ```
-
-## Running the benchmarks
-
-First, with a fresh install and having already run `build`, run <kbd>npm run bench:master</kbd> to generate baseline results. Once you've made some changes, run <kbd>npm run bench</kbd> to generate a "working" benchmark file and compare to the baseline.
 
 ## Entities & Components
 
@@ -470,6 +468,10 @@ await ctx.start();
 ```
 
 ---
+
+## Running the benchmarks
+
+First, with a fresh install and having already run `build`, run <kbd>npm run bench:master</kbd> to generate baseline results. Once you've made some changes, run <kbd>npm run bench</kbd> to generate a "working" benchmark file and compare to the baseline.
 
 ## Questions/Statements & Answers/Responses
 
