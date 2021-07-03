@@ -1,5 +1,8 @@
 # gecs
 
+![CodeQL](https://github.com/noahlange/gecs/actions/workflows/codeql-analysis.yml/badge.svg)
+[![Code Coverage](https://coveralls.io/repos/github/noahlange/gecs/badge.svg)](https://coveralls.io/github/noahlange/gecs)
+
 **gecs** ('g' as in 'gecko,' not as in 'GIF') is an experimental, generic-abusing [entity-component-system](https://en.wikipedia.org/wiki/Entity_component_system) framework thing written in [TypeScript](https://www.typescriptlang.org).
 
 Examples are available in the [gecs-example](https://github.com/noahlange/gecs-example) repository.
