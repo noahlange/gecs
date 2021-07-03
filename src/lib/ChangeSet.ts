@@ -41,7 +41,7 @@ export class ChangeSet {
     this.onChange?.();
   }
 
-  public delete(...items: string[]): boolean {
+  public remove(...items: string[]): boolean {
     let changed = false;
 
     for (const item of items) {
@@ -55,10 +55,6 @@ export class ChangeSet {
       this.onChange?.();
     }
     return true;
-  }
-
-  public remove(...items: string[]): void {
-    this.delete(...items);
   }
 
   public constructor(items: string[], onChange?: () => void) {

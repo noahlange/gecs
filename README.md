@@ -121,6 +121,44 @@ function usingSpritePosition(entity: SpritePositionEntity): void {
 
 And if you need to type-cast a generic entity type to an instance of a specific class with a compatible component set, you can use `instanceof` to [narrow the type](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#instanceof-narrowing) accordingly.
 
+### Modifying entities
+
+An entity's components and tags can be added/removed using the `.components` and `.tags` properties.
+
+```typescript
+entity.components.add(ComponentA, aData);
+entity.components.has(A, B, C);
+entity.components.remove(D, E, F);
+
+entity.components.all(); // same as Array.from(entity.components)
+
+for (const component of entity.components) {
+  // do stuff
+}
+```
+
+A major footgun here is that the types of entities with removed components will not change, so unless you're paying close attention, you may find yourself accessing a non-existent component.
+
+```typescript
+for (const entity of ctx.$.components(A, B)) {
+  entity.components.remove(B); // 💣
+  entity.$.b.foo = '???'; // 💥
+}
+```
+
+`entity.tags` has an API broadly similar to JS's vanilla `Set`s. The primary difference is that methods that would ordinarily accept only a single argument can take spread arguments.
+
+```typescript
+entity.tags.add('a', 'b');
+entity.tags.has('c', 'd');
+entity.tags.all(); // same as Array.from(entity.tags)
+entity.tags.remove('e', 'f');
+
+for (const tag of entity.tags) {
+  // do stuff
+}
+```
+
 ## Systems
 
 At its core, a system is a function or object that performs one or more closely-related tasks.
@@ -177,7 +215,7 @@ class Renderer extends System {
   protected sprites: Record<string, { path: string; sprite: PIXI.Sprite }> = {};
 
   protected $ = {
-    sprites: this.ctx.$.components(Sprite).some.components(Position)
+    sprites: this.ctx.$.components(Sprite).components.some(Position)
   };
 
   public tick(delta: number, time?: number): void {

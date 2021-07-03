@@ -23,6 +23,8 @@ export interface EntityComponents {
     data?: PartialValueByType<C>
   ) => void;
   remove: (...components: ComponentClass[]) => void;
+  delete: (...components: ComponentClass[]) => void;
+  [Symbol.iterator](): Generator<Component>;
 }
 
 export interface EntityClass<
@@ -65,7 +67,11 @@ export class Entity<T extends BaseType = {}> {
     all: this.allComponents.bind(this),
     has: this.hasComponents.bind(this),
     add: this.addComponent.bind(this),
-    remove: this.removeComponents.bind(this)
+    remove: this.removeComponents.bind(this),
+    delete: this.removeComponents.bind(this),
+    [Symbol.iterator]: function* () {
+      yield* this.all();
+    }
   };
 
   /**

@@ -2,7 +2,7 @@ import { describe, expect, test } from '@jest/globals';
 
 import { Manager } from '../lib';
 import { A, B, C } from './helpers/components';
-import { WithAB, WithABC } from './helpers/entities';
+import { WithA, WithAB, WithABC } from './helpers/entities';
 
 describe('creating entities', () => {
   const em = new Manager();
@@ -52,7 +52,7 @@ describe('component bindings', () => {
   });
 });
 
-describe('component helpers', () => {
+describe('has/is helpers', () => {
   const em = new Manager();
   const entity = em.create(WithAB, {}, ['MY_TAG']);
   test('has() returns true if all components are present', () => {
@@ -66,8 +66,8 @@ describe('component helpers', () => {
   });
 });
 
-describe('removing components', () => {
-  test("removing one entity's components should not affect other entities with the same prototype", () => {
+describe('modifying components', () => {
+  test('removing a component should not affect other entities with the same prototype', () => {
     const em = new Manager();
     const [a, b] = [em.create(WithAB), em.create(WithAB)];
     // out of the box, same items
@@ -76,5 +76,40 @@ describe('removing components', () => {
     // a loses a component, b doesn't
     expect(a.items).not.toContain(B);
     expect(b.items).toContain(B);
+  });
+
+  test('adding a component should not affect other entities with the same prototype', () => {
+    const em = new Manager();
+    const [a, b] = [em.create(WithA), em.create(WithA)];
+    // out of the box, same items
+    expect(a.items).toEqual(b.items);
+    a.components.add(B);
+    // a loses a component, b doesn't
+    expect(a.items).toContain(B);
+    expect(b.items).not.toContain(B);
+  });
+
+  test('has()', () => {
+    const em = new Manager();
+    const a = em.create(WithAB);
+
+    expect(a.has(A)).toBe(true);
+    expect(a.has(C)).toBe(false);
+  });
+
+  test('all(), iterating', () => {
+    const em = new Manager();
+    const a = em.create(WithAB);
+
+    const all = a.components.all();
+    const iterated = Array.from(a.components);
+
+    for (const item of all) {
+      expect(iterated).toContain(item);
+    }
+
+    for (const item of iterated) {
+      expect(all).toContain(item);
+    }
   });
 });
