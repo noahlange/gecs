@@ -181,10 +181,7 @@ export type EntityType<
 export type QueryType<
   R extends ComponentClass[] = [],
   O extends ComponentClass[] = []
-> = BaseQueryBuilder<
-  U.Merge<KeyedByType<R> & PartialByType<O>>,
-  EntityType<R, O>
->;
+> = BaseQueryBuilder<U.Merge<KeyedByType<R> & PartialByType<O>>>;
 
 /**
  * Catch-all types for serialization/deserialization.

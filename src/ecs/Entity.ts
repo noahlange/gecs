@@ -78,7 +78,9 @@ export class Entity<T extends BaseType = {}> {
   /**
    * Shorthand for `entity.components.has()`.
    */
-  public has: (...components: ComponentClass[]) => boolean;
+  public has: <C extends ComponentClass[]>(
+    ...components: C
+  ) => this is Entity<T & KeyedByType<C>>;
   public is: (...tags: string[]) => boolean;
 
   /**

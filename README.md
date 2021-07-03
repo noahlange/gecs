@@ -114,6 +114,7 @@ function usingSpritePosition(entity: SpritePositionEntity): void {
 
   if (entity.has(Foo)) {
     // the `has()` type guard ensures the presence of the component Foo
+    // entity.components.has() does _not_ act as a type guard
   }
 
   if (entity.is('BAR')) {

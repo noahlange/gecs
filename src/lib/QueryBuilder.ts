@@ -12,72 +12,45 @@ import type { U } from 'ts-toolbelt';
 
 import { Constraint } from '../types';
 
-export interface BaseQueryBuilder<
-  T extends BaseType = {},
-  C extends Entity<T> = Entity<T>
-> {
+export interface BaseQueryBuilder<T extends BaseType = {}> {
   get(): Entity<T>[];
   first(): Entity<T> | null;
   [Symbol.iterator](): Iterator<Entity<T>>;
-  components: ComponentQueryBuilder<T, C>;
-  tags: TagQueryBuilder<T, C>;
+  components: ComponentQueryBuilder<T>;
+  tags: TagQueryBuilder<T>;
 }
 
-interface ComponentQueryBuilder<
-  T extends BaseType = {},
-  C extends Entity<T> = Entity<T>
-> extends ComponentQueryFns<T, C> {
+interface ComponentQueryBuilder<T extends BaseType = {}>
+  extends ComponentQueryFns<T> {
   <A extends ComponentClass[]>(...components: A): QueryBuilder<
-    U.Merge<T & KeyedByType<A>>,
-    C & Entity<U.Merge<T & KeyedByType<A>>>
+    U.Merge<T & KeyedByType<A>>
   >;
 }
 
-interface TagQueryBuilder<
-  T extends BaseType = {},
-  C extends Entity<T> = Entity<T>
-> extends TagQueryFns<T, C> {
-  (...tags: string[]): QueryBuilder<T, C>;
+interface TagQueryBuilder<T extends BaseType = {}> extends TagQueryFns<T> {
+  (...tags: string[]): QueryBuilder<T>;
 }
 
-interface ComponentQueryFns<
-  T extends BaseType = {},
-  C extends Entity<T> = Entity<T>
-> {
+interface ComponentQueryFns<T extends BaseType = {}> {
   all<A extends ComponentClass[]>(
     ...components: A
-  ): QueryBuilder<
-    U.Merge<T & KeyedByType<A>>,
-    C & Entity<U.Merge<T & KeyedByType<A>>>
-  >;
+  ): QueryBuilder<U.Merge<T & KeyedByType<A>>>;
   any<A extends ComponentClass[]>(
     ...components: A
-  ): QueryBuilder<
-    U.Merge<T & PartialByType<A>>,
-    C & Entity<U.Merge<T & KeyedByType<A>>>
-  >;
+  ): QueryBuilder<U.Merge<T & PartialByType<A>>>;
   some<A extends ComponentClass[]>(
     ...components: A
-  ): QueryBuilder<
-    U.Merge<T & PartialByType<A>>,
-    C & Entity<U.Merge<T & KeyedByType<A>>>
-  >;
+  ): QueryBuilder<U.Merge<T & PartialByType<A>>>;
   none<A extends ComponentClass[]>(
     ...components: A
-  ): QueryBuilder<
-    U.Merge<T & NeverByType<A>>,
-    C & Entity<U.Merge<T & KeyedByType<A>>>
-  >;
+  ): QueryBuilder<U.Merge<T & NeverByType<A>>>;
 }
 
-interface TagQueryFns<
-  T extends BaseType = {},
-  C extends Entity<T> = Entity<T>
-> {
-  all(...tags: string[]): QueryBuilder<T, C>;
-  any(...tags: string[]): QueryBuilder<T, C>;
-  none(...tags: string[]): QueryBuilder<T, C>;
-  some(...tags: string[]): QueryBuilder<T, C>;
+interface TagQueryFns<T extends BaseType = {}> {
+  all(...tags: string[]): QueryBuilder<T>;
+  any(...tags: string[]): QueryBuilder<T>;
+  none(...tags: string[]): QueryBuilder<T>;
+  some(...tags: string[]): QueryBuilder<T>;
 }
 
 export interface QueryState {
@@ -85,14 +58,12 @@ export interface QueryState {
   ids: string[];
 }
 
-export class QueryBuilder<
-  T extends BaseType = {},
-  C extends Entity<T> = Entity<T>
-> implements BaseQueryBuilder<T>
+export class QueryBuilder<T extends BaseType = {}>
+  implements BaseQueryBuilder<T>
 {
   protected key: string = '';
   protected state!: QueryState;
-  protected resolved: Query<T, C> | null = null;
+  protected resolved: Query<T> | null = null;
   protected criteria: QueryStep[] = [];
   protected manager: Manager;
 
@@ -128,15 +99,15 @@ export class QueryBuilder<
   }
 
   protected handle: {
-    components: ComponentQueryFns<T, C>;
-    tags: TagQueryFns<T, C>;
+    components: ComponentQueryFns<T>;
+    tags: TagQueryFns<T>;
   } = {
     components: {
       all: this.component(Constraint.ALL),
       any: this.component(Constraint.ANY),
       some: this.component(Constraint.SOME),
       none: this.component(Constraint.NONE)
-    } as $AnyEvil as ComponentQueryFns<T, C>,
+    } as $AnyEvil as ComponentQueryFns<T>,
     tags: {
       all: this.tag(Constraint.ALL),
       any: this.tag(Constraint.ANY),
@@ -145,32 +116,32 @@ export class QueryBuilder<
     }
   };
 
-  public readonly components: ComponentQueryBuilder<T, C> = Object.assign(
+  public readonly components: ComponentQueryBuilder<T> = Object.assign(
     this.handle.components.all,
     this.handle.components
   );
 
-  public readonly tags: TagQueryBuilder<T, C> = Object.assign(
+  public readonly tags: TagQueryBuilder<T> = Object.assign(
     this.handle.tags.all,
     this.handle.tags
   );
 
-  public get query(): Query<T, C> {
-    return (this.resolved ??= this.manager.getQuery<T, C>(
+  public get query(): Query<T, Entity<T>> {
+    return (this.resolved ??= this.manager.getQuery<T, Entity<T>>(
       this.criteria,
       this.key
     ));
   }
 
-  public get(): C[] {
+  public get(): Entity<T>[] {
     return this.query.get();
   }
 
-  public first(): C | null {
+  public first(): Entity<T> | null {
     return this.query.first();
   }
 
-  public [Symbol.iterator](): Iterator<C> {
+  public [Symbol.iterator](): Iterator<Entity<T>> {
     return this.query[Symbol.iterator]();
   }
 
