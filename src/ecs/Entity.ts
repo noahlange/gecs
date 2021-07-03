@@ -77,18 +77,8 @@ export class Entity<T extends BaseType = {}> {
   /**
    * Shorthand for `entity.components.has()`.
    */
-  public has<C extends ComponentClass[]>(
-    ...Components: C
-  ): this is Entity<T & KeyedByType<C>> {
-    return Components.every(C => C.type in this.$);
-  }
-
-  /**
-   * Shorthand for `entity.tags.has()`.
-   */
-  public is(...tags: string[]): boolean {
-    return this.tags.has(...tags);
-  }
+  public has: (...components: ComponentClass[]) => boolean;
+  public is: (...tags: string[]) => boolean;
 
   /**
    * Destroy existing references and mark the entity for destruction + re-indexing.
@@ -164,6 +154,8 @@ export class Entity<T extends BaseType = {}> {
   ) {
     this.manager = manager;
     this.tags = new ChangeSet(tags, () => this.manager.indexEntity(this));
+    this.has = this.components.has.bind(this);
+    this.is = this.tags.has.bind(this.tags);
     this.$ = this.getBindings(data);
     this.items = this.items.slice();
   }

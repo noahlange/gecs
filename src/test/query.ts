@@ -245,3 +245,10 @@ describe('indexing', () => {
     expect(q.get()).toHaveLength(1);
   });
 });
+
+describe('methods', () => {
+  test('first() should return null if no results are found', () => {
+    const em = new Manager();
+    expect(em.$.components(C).first()).toBeNull();
+  });
+});

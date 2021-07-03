@@ -43,10 +43,6 @@ export class Query<
   protected status: QueryStatus = QueryStatus.PENDING;
 
   protected reducer = (targets: Targets, step: QueryStep): Targets => {
-    if (step.constraint === Constraint.SOME) {
-      return targets;
-    }
-
     const ids = step.ids
       .map(i => {
         const res = this.manager.getID(i);
@@ -57,8 +53,9 @@ export class Query<
       // filter out unresolved items
       .filter(i => i !== null) as bigint[];
 
-    targets[step.constraint] = targets[step.constraint]
-      ? union(targets[step.constraint]!, ...ids)
+    const constraint = step.constraint as TagsExceptSome;
+    targets[constraint] = targets[constraint]
+      ? union(targets[constraint], ...ids)
       : union(...ids);
 
     return targets;
@@ -148,12 +145,8 @@ export class Query<
       this.attempts++;
       this.init();
       if (this.unresolved.size === 0) {
-        let key = 0n;
         this.status = QueryStatus.RESOLVED;
-        for (const t of Object.values(this.targets)) {
-          key |= t ?? 0n;
-        }
-        this.key = key;
+        this.key = union(...Object.values(this.targets));
         this.refresh();
       }
     }

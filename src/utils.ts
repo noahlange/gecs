@@ -60,18 +60,10 @@ export function useWithSystem<T>(
   };
 }
 
-export function union(...values: bigint[]): bigint {
+export function union(...values: (bigint | null)[]): bigint {
   let res: bigint = 0n;
   for (const val of values) {
-    res |= val;
-  }
-  return res;
-}
-
-export function intersect(...values: bigint[]): bigint {
-  let res: bigint = 0n;
-  for (const val of values) {
-    res &= val;
+    res |= val ?? 0n;
   }
   return res;
 }
@@ -87,18 +79,6 @@ export const match = {
     return !toMatch || !(toMatch & target);
   }
 };
-
-/**
- * Group entities by key.
- */
-export function groupByKey(entities: Set<Entity>): Map<bigint, Entity[]> {
-  return Array.from(entities).reduce((a, b) => {
-    const arr = a.get(b.key) ?? [];
-    arr.push(b);
-    a.set(b.key, arr);
-    return a;
-  }, new Map<bigint, Entity[]>());
-}
 
 /**
  * Determine if a system-like function is the constructor of a stateful system

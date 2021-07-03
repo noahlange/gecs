@@ -17,11 +17,9 @@ class SystemA extends System<ContextState> {
   }
 }
 
-class SystemB extends System<ContextState> {
-  public async tick(): Promise<void> {
-    await wait();
-    this.ctx.state.value += 1;
-  }
+async function SystemB(ctx: Context<ContextState>): Promise<void> {
+  await wait();
+  ctx.state.value += 1;
 }
 
 class SystemC extends System<ContextState> {
@@ -30,10 +28,8 @@ class SystemC extends System<ContextState> {
   }
 }
 
-class SystemD extends System<ContextState> {
-  public async tick(): Promise<void> {
-    this.ctx.state.value /= 2;
-  }
+async function SystemD(ctx: Context<ContextState>): Promise<void> {
+  ctx.state.value /= 2;
 }
 
 class MyContext extends Context.with<ContextState>(
