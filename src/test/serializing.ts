@@ -65,18 +65,23 @@ describe('save and load', () => {
 
   test('reattaches entity instances', async () => {
     const [ctx1, ctx2] = [setup(), setup()];
-    for (let i = 0; i < 5; i++) {
-      const e = ctx1.create(E.WithRef);
-      e.$.ref = e;
-    }
 
+    const a = ctx1.create(E.WithRef);
+    const b = ctx1.create(E.WithA);
+    a.$.ref = b;
+
+    await ctx1.tick(0, 0);
     const saved = ctx1.save();
 
     ctx2.load(saved);
     await ctx2.tick(0, 0);
 
-    for (const entity of ctx2.$.components(C.Ref)) {
-      expect(entity.$.ref).toBe(entity);
-    }
+    const a2 = ctx2.$.components(C.Ref).first();
+    const b2 = ctx2.$.components(C.A).first();
+
+    expect(a2).not.toBeNull();
+    expect(b2).not.toBeNull();
+
+    expect(a2?.$.ref).toBe(b2);
   });
 });
