@@ -38,13 +38,14 @@
     "types/**/*"
   ],
   "scripts": {
-    "test": "jest --coverage",
     "start": "tsc --watch",
     "build": "npx tsc && npx tsc --project tsconfig.prod.json",
+    "precommit": "npm-run-all dev:types dev:test dev:lint dev:pretty",
+    "dev:types": "tsc --noEmit",
+    "dev:test": "jest --coverage",
+    "dev:lint": "eslint 'src/**/*.{js,ts}' --fix ",
+    "dev:pretty": "prettier 'src/**/*.{js,ts}' --write",
     "bench": "npm-run-all build bench:working bench:compare",
-    "lint": "eslint 'src/**/*.{js,ts}' --fix ",
-    "pretty": "prettier 'src/**/*.{js,ts}' --write",
-    "precommit": "npm-run-all build test lint pretty",
     "bench:working": "node benchmarks > \"coverage/working\"",
     "bench:master": "node benchmarks > \"coverage/master\"",
     "bench:compare": "nanobench-compare \"coverage/working\" \"coverage/master\"",

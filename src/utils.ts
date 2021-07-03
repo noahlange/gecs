@@ -2,7 +2,6 @@
 import type {
   ComponentClass,
   ContextClass,
-  Entity,
   EntityClass,
   SystemClass
 } from './ecs';
