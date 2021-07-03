@@ -2,7 +2,7 @@ import type { Serialized } from '../types';
 
 import { describe, expect, test } from '@jest/globals';
 
-import { Context } from '../ecs';
+import { Context, Entity } from '../ecs';
 import * as C from './helpers/components';
 import * as E from './helpers/entities';
 import { withTick } from './helpers/utils';
@@ -28,16 +28,35 @@ describe('save and load', () => {
     expect(() => ctx.load(res)).not.toThrow();
   });
 
+  test('recreates bigints', async () => {
+    const ctx1 = setup();
+
+    await withTick(ctx1, () => {
+      const WithBigInt = Entity.with(C.D);
+      const e = ctx1.create(WithBigInt);
+      e.$.d.value = 12345n;
+    });
+
+    const saved = ctx1.save();
+
+    const ctx2 = setup();
+
+    await withTick(ctx2, () => ctx2.load(saved));
+    const e = ctx2.$.components(C.D).first();
+
+    expect(e).not.toBeNull();
+    expect(e?.$.d.value).toEqual(12345n);
+  });
+
   test('saves composed entities', async () => {
     const [ctx1, ctx2] = [setup(), setup()];
 
     await withTick(ctx1, () => {
       for (let i = 0; i < 5; i++) {
         ctx1.create(E.cWithAB);
+        ctx1.tick(0, 0);
       }
     });
-
-    ctx1.manager.tick();
 
     const saved = ctx1.save();
 
@@ -50,31 +69,34 @@ describe('save and load', () => {
     }
   });
 
-  test('idempotent serializations', () => {
+  test('idempotent serializations', async () => {
     const [ctx1, ctx2] = [setup(), setup()];
-    for (let i = 0; i < 5; i++) {
-      ctx1.create(E.cWithAB);
-    }
+
+    await withTick(ctx1, () => {
+      for (let i = 0; i < 5; i++) {
+        ctx1.create(E.cWithAB);
+      }
+    });
 
     const save1 = ctx1.save();
-    ctx2.load(save1);
-    const save2 = ctx2.save();
+    await withTick(ctx2, () => ctx2.load(save1));
 
+    const save2 = ctx2.save();
     expect(save1).toEqual(save2);
   });
 
   test('reattaches entity instances', async () => {
     const [ctx1, ctx2] = [setup(), setup()];
 
-    const a = ctx1.create(E.WithRef);
-    const b = ctx1.create(E.WithA);
-    a.$.ref = b;
+    await withTick(ctx1, () => {
+      const a = ctx1.create(E.WithRef);
+      const b = ctx1.create(E.WithA);
+      a.$.ref = b;
+    });
 
-    await ctx1.tick(0, 0);
     const saved = ctx1.save();
 
-    ctx2.load(saved);
-    await ctx2.tick(0, 0);
+    await withTick(ctx2, () => ctx2.load(saved));
 
     const a2 = ctx2.$.components(C.Ref).first();
     const b2 = ctx2.$.components(C.A).first();
@@ -82,6 +104,6 @@ describe('save and load', () => {
     expect(a2).not.toBeNull();
     expect(b2).not.toBeNull();
 
-    expect(a2?.$.ref).toBe(b2);
+    expect(a2!.$.ref).toBe(b2);
   });
 });

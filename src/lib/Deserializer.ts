@@ -45,12 +45,12 @@ export class Deserializer {
       // get a reference to the newly-recreated entity
       for (const [path, ref] of paths) {
         // ...and assign it
-        this.set(entity, path, this.entities[ref]);
+        this.set(entity.$, path, this.entities[ref]);
       }
     }
   }
 
-  protected deserializeValue(
+  protected deserializeInPlace(
     path: string[],
     id: string,
     value: $AnyOK
@@ -64,16 +64,20 @@ export class Deserializer {
         if (Array.isArray(value)) {
           res = value.map((item, i) => {
             const next = path.concat([i + '']);
-            return this.deserializeValue(next, id, item);
+            return this.deserializeInPlace(next, id, item);
           });
         } else if (value) {
           // iterate through the object...
           for (const key of Object.getOwnPropertyNames(value)) {
             // getting our value and an extended path
-            const [next, nextPath] = [value[key], path.concat([key])];
+            const [next, nextPath] = [value[key], [...path, key]];
             if (!stack.includes(next)) {
-              // ensure we aren't going to below the stack with a circular reference before attempting to deserialize
-              res = next ? this.deserializeValue(nextPath, id, next) : next;
+              // ensure we aren't going to blow the stack with a circular reference before attempting to deserialize
+              this.set(
+                res as object,
+                [key],
+                next ? this.deserializeInPlace(nextPath, id, next) : next
+              );
             }
           }
         }
@@ -86,6 +90,7 @@ export class Deserializer {
           const paths = refs[id] ?? [];
           paths.push([path, ref]);
           refs[id] = paths;
+          res = null;
         }
         // recreate BigInts if necessary
         if (/^[0-9]+n$/.test(value)) {
@@ -94,6 +99,7 @@ export class Deserializer {
         // otherwise, it's just a bog-standard string
         break;
       }
+      // fall through for everything else: booleans, numbers, nulls, etc.
     }
     stack.pop();
     return res;
@@ -124,11 +130,11 @@ export class Deserializer {
       }
 
       // now that we're confident that the entity class exists, we're going to populate data for `ctx.create()`
-      const data = Object.getOwnPropertyNames($).map(key =>
-        this.deserializeValue(['$', key], id, $[key])
-      );
 
-      toRecreate.push({ id, entity: entities[type], data, tags });
+      for (const key of Object.getOwnPropertyNames($)) {
+        $[key] = this.deserializeInPlace([key], id, $[key]);
+      }
+      toRecreate.push({ id, entity: entities[type], data: $, tags });
     }
 
     // register components

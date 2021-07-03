@@ -19,6 +19,11 @@ export class C extends Component {
   public value: boolean = true;
 }
 
+export class D extends Component {
+  public static readonly type = 'd';
+  public value: bigint = 0n;
+}
+
 export class Ref extends EntityRef<Entity> {
   public static readonly type = 'ref';
 }

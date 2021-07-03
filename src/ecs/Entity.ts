@@ -1,6 +1,7 @@
 import type { Manager } from '../lib';
 import type {
   $AnyEvil,
+  $AnyOK,
   BaseDataType,
   BaseType,
   KeyedByType,
@@ -102,11 +103,12 @@ export class Entity<T extends BaseType = {}> {
           get: () => item.ref,
           set: (entity: Ref<EntityRef> | null): void => {
             item.ref = entity;
-            item.ref?.referenced.add(item);
+            entity?.referenced.add(item);
           }
         });
-        item.ref = data[type] ?? null;
-        item.ref?.referenced.add(item);
+
+        // since defineProperty throws everything out the window, I think this is unavoidable.
+        (bindings[type] as $AnyOK) = data[type] ?? null;
       } else {
         bindings[type] = Object.assign(item, data[type] ?? {}) as T[keyof T];
       }

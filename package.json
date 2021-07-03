@@ -40,7 +40,7 @@
   "scripts": {
     "start": "tsc --watch",
     "build": "npx tsc && npx tsc --project tsconfig.prod.json",
-    "precommit": "npm-run-all dev:types dev:test dev:lint dev:pretty",
+    "dev": "npm-run-all dev:*",
     "dev:types": "tsc --noEmit",
     "dev:test": "jest --coverage",
     "dev:lint": "eslint 'src/**/*.{js,ts}' --fix ",
