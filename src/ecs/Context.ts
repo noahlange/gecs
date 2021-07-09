@@ -115,8 +115,15 @@ export class Context<T extends Plugins<T>> {
 
   protected getPlugins(): T {
     const res = {} as T;
+
     for (const Plugin of this.items) {
-      res[Plugin.type as keyof T] = new Plugin(this) as T[keyof T];
+      const plugin = new Plugin(this);
+      this.register(
+        Object.values(plugin.$?.entities ?? {}),
+        Object.values(plugin.$?.components ?? {}),
+        plugin.$?.tags ?? []
+      );
+      res[Plugin.type as keyof T] = plugin as T[keyof T];
     }
     return res;
   }
@@ -137,8 +144,8 @@ export class Context<T extends Plugins<T>> {
   }
 
   public constructor() {
+    this.manager = new Manager();
     this.game = this.getPlugins();
     this.system = this.getSystem();
-    this.manager = new Manager();
   }
 }

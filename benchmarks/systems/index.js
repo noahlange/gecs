@@ -1,5 +1,5 @@
 const bench = require('nanobench');
-const { Context, Component, Entity } = require('../../lib');
+const { Context, Component, Entity, Plugin } = require('../../lib');
 
 class Position extends Component {
   static type = 'position';
@@ -15,24 +15,31 @@ class Velocity extends Component {
 
 const Moveable = Entity.with(Velocity, Position);
 
-const Ctx = Context.with(
-  ctx => {
-    for (const entity of ctx.$.components(Velocity)) {
-      entity.$.velocity.dx += 0.01;
-      entity.$.velocity.dy -= 0.01;
-    }
-  },
-  ctx => {
-    for (const entity of ctx.$.components(Position)) {
-      entity.$.position.x += entity.$.velocity.dx;
-      entity.$.position.y += entity.$.velocity.dy;
-    }
-  }
-);
+class MovePlugin extends Plugin {
+  static type = 'move';
+  $ = {
+    entities: [Moveable],
+    components: [Velocity, Position],
+    systems: [
+      ctx => {
+        for (const entity of ctx.$.components(Velocity)) {
+          entity.$.velocity.dx += 0.01;
+          entity.$.velocity.dy -= 0.01;
+        }
+      },
+      ctx => {
+        for (const entity of ctx.$.components(Position)) {
+          entity.$.position.x += entity.$.velocity.dx;
+          entity.$.position.y += entity.$.velocity.dy;
+        }
+      }
+    ]
+  };
+}
 
 function getContext() {
+  const Ctx = Context.with(MovePlugin);
   const ctx = new Ctx();
-  ctx.register([Moveable], [Velocity, Position]);
   return ctx;
 }
 
@@ -43,6 +50,7 @@ bench(`simple movement, 100 items`, async b => {
   for (let x = 0; x < 10 ** 2; x++) {
     ctx.create(Moveable);
   }
+  ctx.manager.tick();
 
   b.start();
   for (let i = 0; i < 1000; i++) {
@@ -58,6 +66,7 @@ bench(`simple movement, 1000 items`, async b => {
   for (let x = 0; x < 10 ** 3; x++) {
     ctx.create(Moveable);
   }
+  ctx.manager.tick();
 
   b.start();
   for (let i = 0; i < 1000; i++) {
@@ -73,6 +82,7 @@ bench(`simple movement, 10000 items`, async b => {
   for (let x = 0; x < 10 ** 4; x++) {
     ctx.create(Moveable);
   }
+  ctx.manager.tick();
 
   b.start();
   for (let i = 0; i < 1000; i++) {
