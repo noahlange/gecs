@@ -1,4 +1,4 @@
-import type { SystemType } from '../../types';
+import type { Plugins, SystemType } from '../../types';
 import type { SystemClass, SystemLike } from '../System';
 
 import { isSystemConstructor } from '../../utils';
@@ -8,10 +8,9 @@ import { System } from '../System';
  * Return a system composed of multiple systems to be run one after another,
  * pausing to resolve if necessary.
  */
-export function sequence<T extends {} = {}>(
+export function sequence<T extends Plugins<T>>(
   ...Systems: SystemType<T>[]
 ): SystemClass<T> {
-  const sorted = Systems.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
   return class SequenceSystem extends System<any> {
     public pipeline: SystemLike[] = [];
 
@@ -30,7 +29,7 @@ export function sequence<T extends {} = {}>(
     }
 
     public async start(): Promise<void> {
-      this.pipeline = sorted.map(System => {
+      this.pipeline = Systems.map(System => {
         return isSystemConstructor(System)
           ? new System(this.ctx)
           : { tick: (dt, ts) => System(this.ctx, dt, ts) };

@@ -10,9 +10,8 @@ import type {
 } from '../types';
 import type { Component, ComponentClass } from './Component';
 
-import { getID } from '../ids';
 import { ChangeSet } from '../lib';
-import { useWithComponent } from '../utils';
+import { getID, useWithComponent } from '../utils';
 import { EntityRef } from './EntityRef';
 
 export interface EntityComponents {

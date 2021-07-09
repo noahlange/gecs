@@ -1,12 +1,15 @@
+import type { OfOrPromiseOf } from '../../types';
+
 interface Tickable {
-  tick(...args: any[]): void | Promise<void>;
+  tick(...args: any[]): OfOrPromiseOf<void>;
 }
 
-export async function withTick(
+export async function withTick<T>(
   tickable: Tickable,
-  callback: () => unknown | Promise<unknown>
-): Promise<void> {
+  callback: () => OfOrPromiseOf<T>
+): Promise<T> {
   await tickable.tick();
-  await callback();
+  const res = await callback();
   await tickable.tick();
+  return res;
 }

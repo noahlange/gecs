@@ -8,7 +8,11 @@ for (const count of [1, 10, 50, 100]) {
       const ctx = setup(count, cmp);
       const saved = ctx.serialize();
       const ctx2 = new Context();
-      ctx2.register(...register);
+      ctx2.register(
+        require('../helpers/entities'),
+        require('../helpers/components'),
+        require('../helpers/tags')
+      );
 
       b.start();
       ctx2.deserialize(saved);

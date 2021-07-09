@@ -1,21 +1,17 @@
+/* eslint-disable max-classes-per-file */
 import type { Serialized } from '../types';
 
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, jest, test } from '@jest/globals';
 
-import { Context, Entity } from '../ecs';
+import { Component, Entity } from '../ecs';
 import * as C from './helpers/components';
 import * as E from './helpers/entities';
+import { getContext } from './helpers/setup';
 import { withTick } from './helpers/utils';
-
-function setup(): Context {
-  const ctx = new Context({});
-  ctx.register({ ...C, ...E });
-  return ctx;
-}
 
 describe('save and load', () => {
   test("basics: doesn't explode", () => {
-    const ctx = setup();
+    const ctx = getContext();
     for (let i = 0; i < 5; i++) {
       ctx.create(E.WithA);
       ctx.create(E.cWithAB);
@@ -28,8 +24,35 @@ describe('save and load', () => {
     expect(() => ctx.load(res)).not.toThrow();
   });
 
+  test('recreates nested values', async () => {
+    class E extends Component {
+      public static readonly type = 'e';
+      public a = { b: { c: { d: 3 } } };
+    }
+
+    const ctx1 = getContext();
+    ctx1.register([], [E]);
+
+    await withTick(ctx1, () => {
+      const WithBigInt = Entity.with(E);
+      const e = ctx1.create(WithBigInt);
+      e.$.e.a.b.c.d = 6;
+    });
+
+    const saved = ctx1.save();
+
+    const ctx2 = getContext();
+    ctx2.register([], [E]);
+
+    await withTick(ctx2, () => ctx2.load(saved));
+    const e = ctx2.$.components(E).first();
+
+    expect(e).not.toBeNull();
+    expect(e?.$.e.a.b.c.d).toEqual(6);
+  });
+
   test('recreates bigints', async () => {
-    const ctx1 = setup();
+    const ctx1 = getContext();
 
     await withTick(ctx1, () => {
       const WithBigInt = Entity.with(C.D);
@@ -39,7 +62,7 @@ describe('save and load', () => {
 
     const saved = ctx1.save();
 
-    const ctx2 = setup();
+    const ctx2 = getContext();
 
     await withTick(ctx2, () => ctx2.load(saved));
     const e = ctx2.$.components(C.D).first();
@@ -49,7 +72,7 @@ describe('save and load', () => {
   });
 
   test('saves composed entities', async () => {
-    const [ctx1, ctx2] = [setup(), setup()];
+    const [ctx1, ctx2] = [getContext(), getContext()];
 
     await withTick(ctx1, () => {
       for (let i = 0; i < 5; i++) {
@@ -70,7 +93,7 @@ describe('save and load', () => {
   });
 
   test('idempotent serializations', async () => {
-    const [ctx1, ctx2] = [setup(), setup()];
+    const [ctx1, ctx2] = [getContext(), getContext()];
 
     await withTick(ctx1, () => {
       for (let i = 0; i < 5; i++) {
@@ -86,7 +109,7 @@ describe('save and load', () => {
   });
 
   test('reattaches entity instances', async () => {
-    const [ctx1, ctx2] = [setup(), setup()];
+    const [ctx1, ctx2] = [getContext(), getContext()];
 
     await withTick(ctx1, () => {
       const a = ctx1.create(E.WithRef);
@@ -106,4 +129,23 @@ describe('save and load', () => {
 
     expect(a2!.$.ref).toBe(b2);
   });
+});
+
+test('warn when attempting to recreate unregistered components', async () => {
+  class E extends Component {
+    public static readonly type = 'e';
+    public a = { b: { c: { d: 3 } } };
+  }
+
+  const [ctx1, ctx2] = [getContext(), getContext()];
+
+  await withTick(ctx1, () => {
+    ctx1.register([], [E], []);
+    ctx1.create(Entity.with(E));
+  });
+
+  const spy = jest.spyOn(console, 'warn').mockImplementation(() => void 0);
+  ctx2.load(ctx1.save());
+  expect(console.warn).toHaveBeenCalledWith('Missing entities/components: e');
+  spy.mockRestore();
 });

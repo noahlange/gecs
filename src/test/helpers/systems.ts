@@ -11,19 +11,19 @@ export class SystemA extends System {
 export class SystemB extends System {
   public static readonly type = 'b';
 
-  public booted: boolean = false;
+  public isBooted: boolean = false;
   public start(): void {
     console.log(SystemB.type);
-    this.booted = true;
+    this.isBooted = true;
   }
 }
 
 export class SystemC extends System {
   public static readonly type = 'c';
 
-  public booted: boolean = false;
+  public isBooted: boolean = false;
   public async start(): Promise<void> {
     console.log(SystemC.type);
-    this.booted = true;
+    this.isBooted = true;
   }
 }

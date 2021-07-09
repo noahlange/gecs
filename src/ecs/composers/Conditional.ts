@@ -1,18 +1,18 @@
-import type { SystemType } from '../../types';
+import type { Plugins, SystemType } from '../../types';
 import type { Context } from '../Context';
 import type { SystemClass, SystemLike } from '../System';
 
 import { System } from '../System';
 import { sequence } from './Sequence';
 
-interface ConditionPredicate<T> {
+interface ConditionPredicate<T extends Plugins<T>> {
   (context: Context<T>): boolean;
 }
 
 /**
  * Given a predicate and arbitrary number of systems, return a single system that executes only when `predicate` returns truthy.
  */
-export function conditional<T extends {} = {}>(
+export function conditional<T extends Plugins<T>>(
   predicate: ConditionPredicate<T>,
   ...systems: SystemType<T>[]
 ): SystemClass<T> {

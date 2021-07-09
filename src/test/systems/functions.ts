@@ -1,26 +1,30 @@
 import { describe, expect, test } from '@jest/globals';
 
 import { Context } from '../../ecs';
+import { Plugin } from '../../lib';
 
-interface ContextState {
-  value: number;
+class StatelessPlugin extends Plugin<{ state: StatelessPlugin }> {
+  public static readonly type = 'state';
+  public value = 0;
+  public $ = {
+    systems: [
+      () => {
+        this.value += 1;
+      },
+      () => {
+        this.value += 2;
+      }
+    ]
+  };
 }
 
-const systemA = (ctx: Context<ContextState>): void => {
-  ctx.state.value += 1;
-};
-
-const systemB = (ctx: Context<ContextState>): void => {
-  ctx.state.value += 2;
-};
-
-class MyContext extends Context.with<ContextState>(systemA, systemB) {}
+const MyContext = Context.with(StatelessPlugin);
 
 describe('stateless function systems', () => {
   test('should execute properly', async () => {
-    const world = new MyContext({ value: 0 });
+    const world = new MyContext();
     await world.start();
 
-    expect(world.state.value).toBe(3);
+    expect(world.game.state.value).toBe(3);
   });
 });

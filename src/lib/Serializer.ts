@@ -1,5 +1,6 @@
 import type { Context } from '../ecs';
 import type {
+  Plugins,
   Serialized,
   SerializedEntity,
   SomeDictionary,
@@ -14,7 +15,7 @@ export interface SerializeOptions {
   entityFilter?: (entity: Entity) => boolean;
 }
 
-export class Serializer<T extends {} = {}> {
+export class Serializer<T extends Plugins<T>> {
   // make sure we aren't recursing infinitely through circular references
   protected stack: unknown[] = [];
   protected ctx: Context<T>;
@@ -109,9 +110,8 @@ export class Serializer<T extends {} = {}> {
   /**
    * Convert the context into a structure we can stringify and save to disk
    */
-  public serialize(options: SerializeOptions = {}): Serialized<T> {
+  public serialize(options: SerializeOptions = {}): Serialized {
     return {
-      state: this.ctx.state,
       entities: this.serializeEntities(options)
     };
   }

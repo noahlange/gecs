@@ -1,6 +1,5 @@
 const bench = require('nanobench');
 const { Context, Component, Entity } = require('../../lib');
-const { Test1, Test2, Test3 } = require('../helpers/components');
 
 class Position extends Component {
   static type = 'position';
@@ -31,8 +30,14 @@ const Ctx = Context.with(
   }
 );
 
-bench(`simple movement, 100 items`, async b => {
+function getContext() {
   const ctx = new Ctx();
+  ctx.register([Moveable], [Velocity, Position]);
+  return ctx;
+}
+
+bench(`simple movement, 100 items`, async b => {
+  const ctx = getContext();
   await ctx.start();
 
   for (let x = 0; x < 10 ** 2; x++) {
@@ -47,7 +52,7 @@ bench(`simple movement, 100 items`, async b => {
 });
 
 bench(`simple movement, 1000 items`, async b => {
-  const ctx = new Ctx();
+  const ctx = getContext();
   await ctx.start();
 
   for (let x = 0; x < 10 ** 3; x++) {
@@ -62,7 +67,7 @@ bench(`simple movement, 1000 items`, async b => {
 });
 
 bench(`simple movement, 10000 items`, async b => {
-  const ctx = new Ctx();
+  const ctx = getContext();
   await ctx.start();
 
   for (let x = 0; x < 10 ** 4; x++) {

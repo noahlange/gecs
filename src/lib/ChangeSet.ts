@@ -1,6 +1,7 @@
 /**
- * Rudimentary string set with a change callback.
+ * Rudimentary string set supporting a change callback. Marginally more efficient than an actual Set.
  */
+
 export class ChangeSet {
   protected onChange?: () => void;
   protected items: Record<string, unknown> = {};

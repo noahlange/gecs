@@ -79,12 +79,11 @@ export class QueryBuilder<T extends BaseType = {}>
     return this;
   }
 
-  protected tag(tag: Constraint) {
+  protected tag(tag: Constraint): (...items: string[]) => this {
     return (...items: string[]) => {
-      for (let i = 0; i < items.length; i++) {
-        const t = this.manager.getTagKey(items[i]);
-        t && this.state.ids.push(t);
-      }
+      const tags = this.manager.registrations.tags;
+      // get generated ID
+      this.state.ids.push(...items.map(i => tags[i]));
       this.state.tag = tag;
       return this.reset();
     };

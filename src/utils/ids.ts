@@ -4,20 +4,22 @@ export interface IdentifierGenerator {
   (): string;
 }
 
-let gen: IdentifierGenerator = (): string => nanoid();
+const generator: Record<string, IdentifierGenerator> = {
+  fn: (): string => nanoid()
+};
 
 /**
  * Set the string ID generation function.
  */
 export function setID(fn: IdentifierGenerator): void {
-  gen = fn;
+  generator.fn = fn;
 }
 
 /**
  * Return a new string ID.
  */
 export function getID(): string {
-  return gen();
+  return generator.fn();
 }
 
 /**

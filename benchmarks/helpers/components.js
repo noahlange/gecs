@@ -18,4 +18,17 @@ class Test3 extends Component {
   d = 6;
 }
 
-module.exports = { Test1, Test2, Test3 };
+class Complex1 extends Component {
+  static type = 'complex1';
+  data = { a: { b: { c: 2 } } };
+}
+class Complex2 extends Component {
+  static type = 'complex2';
+  data = { d: { e: [{ f: 'g' }] } };
+}
+class Complex3 extends Component {
+  static type = 'complex3';
+  data = { foo: {}, bar: [{ bar: 'baz' }] };
+}
+
+module.exports = { Test1, Test2, Test3, Complex1, Complex2, Complex3 };

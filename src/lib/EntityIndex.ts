@@ -8,6 +8,7 @@ export class EntityIndex {
     for (const set of this.map.values()) {
       res.push(...set);
     }
+    // dedupe, because entities may exist in multiple sets
     return Array.from(new Set(res));
   }
 
@@ -44,6 +45,10 @@ export class EntityIndex {
     const value = this.map.get(key);
     if (value) {
       value.delete(entity);
+      // prune if it's empty
+      if (!value.size) {
+        this.map.delete(key);
+      }
     }
   }
 }

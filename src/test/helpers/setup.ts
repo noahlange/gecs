@@ -1,13 +1,28 @@
 import type { Entity } from '../../ecs';
+import type { Manager } from '../../lib';
 
-import { Manager } from '../../lib';
+import { Context } from '../../ecs';
+import * as C from './components';
 import { WithA, WithABC, WithAC, WithB } from './entities';
+import * as E from './entities';
 import { withTick } from './utils';
 
-export async function setup(): Promise<{ em: Manager; ids: string[] }> {
-  const em = new Manager();
+export function getContext(): Context<{}> {
+  const ctx = new Context();
+  const tags = ['a', 'b', 'c', 'MY_TAG', 'OTHER_TAG'];
+  ctx.register(Object.values(E), Object.values(C), tags);
+  return ctx;
+}
+
+export async function setup(): Promise<{
+  ctx: Context<{}>;
+  em: Manager;
+  ids: string[];
+}> {
+  const ctx = getContext();
   const entities: Entity[] = [];
   const count = 5;
+  const em = ctx.manager;
 
   await withTick(em, () => {
     for (let i = 0; i < count; i++) {
@@ -20,5 +35,5 @@ export async function setup(): Promise<{ em: Manager; ids: string[] }> {
     }
   });
 
-  return { em, ids: entities.map(e => e.id) };
+  return { ctx, em, ids: entities.map(e => e.id) };
 }

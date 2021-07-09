@@ -2,10 +2,9 @@ import type { Entity } from '../ecs';
 
 import { describe, expect, test } from '@jest/globals';
 
-import { Manager } from '../lib/Manager';
 import { A, B, C } from './helpers/components';
 import { WithA, WithAB } from './helpers/entities';
-import { setup } from './helpers/setup';
+import { getContext, setup } from './helpers/setup';
 import { withTick } from './helpers/utils';
 
 describe('basic types', () => {
@@ -14,7 +13,6 @@ describe('basic types', () => {
   test('select by component', async () => {
     const { em } = await setup();
     const hasA = em.$.components.all(A);
-
     expect(hasA.get()).toHaveLength(count * 3);
   });
 
@@ -86,7 +84,8 @@ describe('tag queries', () => {
   });
 
   test('newly-added tags', async () => {
-    const em = new Manager();
+    const ctx = getContext();
+    const em = ctx.manager;
     const q = em.$.components(A).tags('a');
     const entities: Entity[] = [];
 
@@ -108,7 +107,8 @@ describe('tag queries', () => {
   });
 
   test('newly-removed tags', async () => {
-    const em = new Manager();
+    const ctx = getContext();
+    const em = ctx.manager;
     const q = em.$.components(A).tags('a');
     const entities: Entity[] = [];
 
@@ -167,88 +167,89 @@ describe('entity queries', () => {
 
 describe('first()', () => {
   test('first() should return a single entity', async () => {
-    const em = new Manager();
+    const ctx = getContext();
     let a: WithA | null = null;
-    await withTick(em, () => {
-      a = em.create(WithA, {}, ['a']);
+    await withTick(ctx, () => {
+      a = ctx.create(WithA, {}, ['a']);
     });
 
-    expect(em.$.components(A).first()).toBe(a);
+    expect(ctx.$.components(A).first()).toBe(a);
   });
 });
 
 describe('caching', () => {
   test("make sure a restricted result set doesn't inadvertently filter larger result sets", async () => {
-    const em = new Manager();
+    const ctx = getContext();
 
-    await withTick(em, () => {
-      em.create(WithA, {}, ['a', 'b', 'c']);
-      em.create(WithAB, {});
+    await withTick(ctx, () => {
+      ctx.create(WithA, {}, ['a', 'b', 'c']);
+      ctx.create(WithAB, {});
     });
 
-    const a = em.$.tags('a').components(A);
-    const b = em.$.components(A);
+    const a = ctx.$.tags('a').components(A);
+    const b = ctx.$.components(A);
 
     expect(a.get()).toHaveLength(1);
     expect(b.get()).toHaveLength(2);
   });
 
   test('created entities should be added to cached result sets', async () => {
-    const em = new Manager();
-    const q = em.$.components(A);
+    const ctx = getContext();
+    const q = ctx.$.components(A);
 
-    await withTick(em, () => em.create(WithA));
+    await withTick(ctx, () => ctx.create(WithA));
     expect(q.get()).toHaveLength(1);
 
-    await withTick(em, () => em.create(WithAB));
+    await withTick(ctx, () => ctx.create(WithAB));
     expect(q.get()).toHaveLength(2);
   });
 
   test('destroyed entities should disappear from cached result sets', async () => {
-    const em = new Manager();
-    const q = em.$.components(A);
+    const ctx = getContext();
+    const q = ctx.$.components(A);
     let ab: Entity | null = null;
 
-    await withTick(em, () => {
-      em.create(WithA);
-      ab = em.create(WithAB);
+    await withTick(ctx, () => {
+      ctx.create(WithA);
+      ab = ctx.create(WithAB);
     });
     expect(q.get()).toHaveLength(2);
 
-    await withTick(em, () => ab?.destroy());
+    await withTick(ctx, () => ab?.destroy());
     expect(q.get()).toHaveLength(1);
   });
 });
 
 describe('indexing', () => {
   test('entities with added components should appear in new result sets', async () => {
-    const em = new Manager();
-    const q = em.$.components(B);
-    const a = em.create(WithA);
+    const ctx = getContext();
+    const q = ctx.$.components(B);
+    const a = ctx.create(WithA);
 
-    await withTick(em, () => em.create(WithAB));
+    await withTick(ctx, () => ctx.create(WithAB));
     expect(q.get()).toHaveLength(1);
 
-    await withTick(em, () => a.components.add(B));
+    await withTick(ctx, () => a.components.add(B));
     expect(q.get()).toHaveLength(2);
   });
 
   test('entities with removed components should disappear from result sets', async () => {
-    const em = new Manager();
-    const q = em.$.components(A);
-    const ab = em.create(WithAB);
+    const ctx = getContext();
 
-    await withTick(em, () => em.create(WithA));
+    const q = ctx.$.components(A);
+    const ab = ctx.create(WithAB);
+
+    await withTick(ctx, () => ctx.create(WithA));
     expect(q.get()).toHaveLength(2);
 
-    await withTick(em, () => ab.components.remove(A));
+    await withTick(ctx, () => ab.components.remove(A));
     expect(q.get()).toHaveLength(1);
   });
 });
 
 describe('methods', () => {
   test('first() should return null if no results are found', () => {
-    const em = new Manager();
-    expect(em.$.components(C).first()).toBeNull();
+    const ctx = getContext();
+    expect(ctx.$.components(C).first()).toBeNull();
   });
 });
