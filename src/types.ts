@@ -15,9 +15,9 @@ export const anonymous = '_a';
 export const eid = '$id$';
 
 export const Phase = {
-  PRE_START: 100,
-  ON_START: 200,
-  POST_START: 300,
+  PRE_LOAD: 100,
+  ON_LOAD: 200,
+  POST_LOAD: 300,
   PRE_UPDATE: 400,
   ON_UPDATE: 500,
   POST_UPDATE: 600,

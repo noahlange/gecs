@@ -21,14 +21,14 @@ describe('system phases', () => {
     class PluginA extends Plugin {
       public static readonly type = 'a';
       public $ = {
-        systems: [phase(Phase.ON_START, () => calls.push('a'))]
+        systems: [phase(Phase.ON_LOAD, () => calls.push('a'))]
       };
     }
 
     class PluginB extends Plugin {
       public static readonly type = 'b';
       public $ = {
-        systems: [phase(Phase.ON_START, () => calls.push('b'))]
+        systems: [phase(Phase.ON_LOAD, () => calls.push('b'))]
       };
     }
 

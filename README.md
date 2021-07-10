@@ -34,19 +34,19 @@ The systems, entities, components and tags provided by a plugin are automaticall
 import { Plugin, Phase, phase } from 'gecs';
 import type { PluginData } from 'gecs';
 
-import * as components from './components';
-import * as entities from './entities';
+import { A, B, C } from './components';
+import { WithA, WithB, WithC } from './entities';
 
 export default class StatePlugin extends Plugin {
   public static readonly type = 'state';
 
-  // entities, components and tags to register on start
+  // entities, components, tags and systems to register on start
   public $: PluginData = {
-    components,
-    entities,
-    tags: [],
+    components: [A, B, C],
+    entities: [WithA, WithB, WithC],
+    tags: ['one', 'two', 'three'],
     systems: [
-      phase(Phase.ON_START, ctx => {
+      phase(Phase.ON_LOAD, ctx => {
         // to be executed at the beginning of the tick
       }),
       phase(Phase.ON_UPDATE, ctx => {
@@ -54,6 +54,37 @@ export default class StatePlugin extends Plugin {
       })
     ]
   };
+}
+```
+
+### Dependencies
+
+By declaring plugin dependencies in your plugin type definitions, you can have typed access to plugins on `game.$`. Transitive dependencies are automatically included—declaring a dependency will give you access to _its_ dependencies as well.
+
+```typescript
+import type { PluginDeps, ComponentClass, EntityClass } from 'gecs';
+
+import { Plugin, sequence } from 'gecs';
+
+import StatePlugin from './plugins/state';
+
+import { SystemA, SystemB, SystemC } from './systems';
+
+class FooPlugin extends Plugin<PluginDeps<[typeof StatePlugin]>> {
+  public static readonly type = 'foo';
+}
+
+class BarPlugin extends Plugin<PluginDeps<[typeof FooPlugin]>> {
+  public static readonly type = 'bar';
+
+  public $ = {
+    systems: [sequence(SystemA, SystemB, SystemC)]
+  };
+
+  public start() {
+    this.ctx.game.foo instanceof FooPlugin; // true
+    this.ctx.game.state instanceof StatePlugin; // true
+  }
 }
 ```
 
@@ -66,18 +97,24 @@ import { Phase as DefaultPhases, phase } from 'gecs';
 
 export const Phase = { ...DefaultPhases, MY_CUSTOM_PHASE: 299 };
 
-export default phase(Phase.MY_CUSTOM_PHASE, ctx => {
-  // to be executed during my custom phase
-});
+export default phase(
+  Phase.MY_CUSTOM_PHASE,
+  ctx => {
+    // to be executed during my custom phase
+  },
+  ctx => {
+    // to be executed after the previous system
+  }
+);
 ```
 
-There are three main phases—`START`, `UPDATE` and `RENDER`—each broken into `PRE`, `ON` and `POST` sub-phases.
+There are three main phases—`LOAD`, `UPDATE` and `RENDER`—each broken into `PRE`, `ON` and `POST` sub-phases.
 
 | Phase         | Priority | Description                                |
 | :------------ | :------: | :----------------------------------------- |
-| `PRE_START`   |   100    | perform setup, clean-up from previous tick |
-| `ON_START`    |   200    | load data, input                           |
-| `POST_START`  |   300    | post-process input                         |
+| `PRE_LOAD`    |   100    | perform setup, clean-up from previous tick |
+| `ON_LOAD`     |   200    | load data, input                           |
+| `POST_LOAD`   |   300    | post-process input                         |
 | `PRE_UPDATE`  |   400    | prepare game logic                         |
 | `ON_UPDATE`   |   500    | execute game logic                         |
 | `POST_UPDATE` |   600    | apply necessary corrections                |
@@ -207,7 +244,6 @@ An entity's components and tags can be added/removed using the `.components` and
 entity.components.add(ComponentA, aData);
 entity.components.has(A, B, C);
 entity.components.remove(D, E, F);
-
 entity.components.all(); // same as Array.from(entity.components)
 
 for (const component of entity.components) {
@@ -466,36 +502,6 @@ function MySystem(ctx: Context) {
   // and use normally
   for (const abc of $.abc) {
     // ...
-  }
-}
-```
-
-### Dependencies
-
-By declaring plugin dependencies in your plugin type definitions, you can have typed access to plugins on `game.$`. Transitive dependencies are automatically included—declaring a dependency will give you access to _its_ dependencies as well.
-
-```typescript
-import type { DepsType, ComponentClass, EntityClass } from 'gecs';
-
-import { Plugin, sequence } from 'gecs';
-
-import StatePlugin from './plugins/state';
-import { SystemA, SystemB, SystemC } from './systems';
-
-class FooPlugin extends Plugin<DepsType<[typeof StatePlugin]>> {
-  public static readonly type = 'foo';
-}
-
-class BarPlugin extends Plugin<DepsType<[typeof FooPlugin]>> {
-  public static readonly type = 'bar';
-
-  public $ = {
-    systems: [sequence(SystemA, SystemB, SystemC)]
-  };
-
-  public start() {
-    this.ctx.game.foo instanceof FooPlugin; // true
-    this.ctx.game.state instanceof StatePlugin; // true
   }
 }
 ```

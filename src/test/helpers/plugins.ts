@@ -73,7 +73,7 @@ export class PhaseState extends Plugin {
   public $ = {
     systems: [
       phase(
-        Phase.ON_START,
+        Phase.ON_LOAD,
         sequence(
           () => (this.value += 1),
           () => (this.value += 1)
