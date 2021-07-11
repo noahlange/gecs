@@ -1,12 +1,12 @@
 import type { Context } from '../ecs/Context';
 import type { EntityClass } from '../ecs/Entity';
-import type { $AnyEvil, $AnyOK, Serialized } from '../types';
+import type { $AnyEvil, $AnyOK, Plugins, Serialized } from '../types';
 
 import { Entity } from '../ecs/Entity';
 import { eid } from '../types';
 
-export class Deserializer {
-  protected ctx: Context;
+export class Deserializer<T extends Plugins<T>> {
+  protected ctx: Context<T>;
   protected stack: unknown[] = [];
 
   /**
@@ -106,7 +106,7 @@ export class Deserializer {
   }
 
   protected deserializeEntities(save: Serialized): void {
-    const { components, entities } = this.ctx.registrations;
+    const { components, entities } = this.ctx.manager.registrations;
     const toRegister: Record<string, EntityClass> = {};
     const toRecreate = [];
 
@@ -114,16 +114,11 @@ export class Deserializer {
       // if the entity class hasn't been registered or doesn't exist, we'll recreate the prefab manually.
       if (!(type in entities)) {
         const types = type.split('|');
-        if (types.some(t => !components[t])) {
-          const names = types.filter(c => !components[c]);
-          if (/\|/.test(type)) {
-            console.warn(`Missing components: ${names.join(', ')}`);
-          } else {
-            console.warn(`Missing entities/components: ${names.join(', ')}`);
-          }
+        const missing = types.filter(c => !components[c]);
+        if (missing.length) {
+          console.warn(`Missing entities/components: ${missing.join(', ')}`);
           continue;
         }
-
         entities[type] = toRegister[type] = Entity.with(
           ...type.split('|').map(c => components[c])
         );
@@ -138,7 +133,7 @@ export class Deserializer {
     }
 
     // register components
-    this.ctx.register(toRegister);
+    this.ctx.register(Object.values(toRegister));
 
     // ...and instantiate
     for (const { id, entity, data, tags } of toRecreate) {
@@ -155,11 +150,10 @@ export class Deserializer {
   }
 
   public deserialize(save: Serialized): void {
-    this.ctx.state = save.state;
     this.deserializeEntities(save);
   }
 
-  public constructor(ctx: Context<any>) {
+  public constructor(ctx: Context<T>) {
     this.ctx = ctx;
   }
 }

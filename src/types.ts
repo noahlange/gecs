@@ -7,19 +7,38 @@ import type {
 } from './ecs';
 import type { EntityRef } from './ecs/EntityRef';
 import type { SystemFunction } from './ecs/System';
-import type { BaseQueryBuilder } from './lib/QueryBuilder';
+import type { BaseQueryBuilder, PluginClass } from './lib';
 import type { U } from 'ts-toolbelt';
 
 // There's certainly a better way to handle this, but it appears to behave consistently enough—at least in Chrome...?
 export const anonymous = '_a';
 export const eid = '$id$';
 
+export const Phase = {
+  PRE_LOAD: 100,
+  ON_LOAD: 200,
+  POST_LOAD: 300,
+  PRE_UPDATE: 400,
+  ON_UPDATE: 500,
+  POST_UPDATE: 600,
+  PRE_RENDER: 700,
+  ON_RENDER: 800,
+  POST_RENDER: 900
+} as const;
+
+export interface PluginData<T> {
+  entities?: EntityClass[] | Record<string, EntityClass>;
+  components?: ComponentClass[] | Record<string, ComponentClass>;
+  tags?: string[];
+  systems?: SystemType<T>[];
+}
+
 /**
  * Utility types
  */
 
 /**
- * avoidable `any`s that should be revisited and fixed.
+ * avoidable `any`s that should be revisited and addressed.
  */
 export type $AnyEvil = any;
 
@@ -36,6 +55,13 @@ export type OfOrArrayOf<T> = T | T[];
 export type OfOrPromiseOf<T> = T | Promise<T>;
 
 /**
+ * Partial<T>, but recursive.
+ */
+export type DeepPartial<T> = {
+  [K in keyof T]?: Partial<T[K]>;
+};
+
+/**
  * Data types for components and entities.
  */
 export interface BaseType<T extends Component = {}> {
@@ -45,15 +71,18 @@ export interface BaseType<T extends Component = {}> {
 export type BaseDataType<T extends BaseType> = {
   [K in keyof T]?: T[K] extends EntityRef
     ? Ref<T[K]> | null
-    : PartialComponentData<T[K]>;
+    : DeepPartial<T[K]>;
 };
 
+/**
+ * Bare-bones data for an entity's components.
+ */
 export type DataType<T> = T extends EntityClass<infer D>
   ? BaseDataType<D>
   : never;
 
-export type PartialComponentData<T> = {
-  [K in Exclude<keyof T, 'container'>]?: Partial<T[K]>;
+export type Plugins<T extends Plugins<T>> = {
+  [K in keyof T]: T[K];
 };
 
 /**
@@ -134,7 +163,7 @@ export type NeverByType<A extends WithStaticType[]> = U.Merge<
 export type PartialValueByType<A extends WithStaticType> =
   InstanceType<A> extends EntityRef<infer R>
     ? R | null
-    : PartialComponentData<InstanceType<A>>;
+    : DeepPartial<InstanceType<A>>;
 
 /**
  * Given an EntityRef, returns the type of the entity.
@@ -164,9 +193,11 @@ export interface QueryStep {
 }
 
 /**
- * An arbitrary (stateless or stateful) system with a Context state type of C.
+ * An arbitrary (stateless or stateful) system with context plugins of type T.
  */
-export type SystemType<C = {}> = SystemClass<C> | SystemFunction<C>;
+export type SystemType<T extends Plugins<T>> =
+  | SystemClass<T>
+  | SystemFunction<T>;
 
 /**
  * An entity with required components and/or optional components
@@ -183,6 +214,16 @@ export type QueryType<
   O extends ComponentClass[] = []
 > = BaseQueryBuilder<U.Merge<KeyedByType<R> & PartialByType<O>>>;
 
+/**
+ * A collection of plugins (and their dependencies).
+ */
+export type PluginDeps<A extends PluginClass<any>[]> = U.Merge<
+  A extends (infer T)[]
+    ? T extends PluginClass<infer R>
+      ? U.Merge<R & { [K in T['type']]: InstanceType<T> }>
+      : never
+    : never
+>;
 /**
  * Catch-all types for serialization/deserialization.
  */
@@ -201,7 +242,6 @@ export interface SerializedEntity {
   $: Record<string, unknown>;
 }
 
-export interface Serialized<T extends {} = {}> {
-  state: T;
+export interface Serialized {
   entities: SerializedEntity[];
 }

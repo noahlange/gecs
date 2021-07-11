@@ -13,6 +13,117 @@ Examples are available in the [gecs-example](https://github.com/noahlange/gecs-e
 npm i gecs
 ```
 
+## Context & Plugins
+
+The top-level organizational unit is the Plugin. The game's Context consists of one or more Plugins, each of which provides specific functionality. Each Plugin exports a (static, readonly) `type` property which, like with entities/components, is used as the access key on the context's `game` property.
+
+```typescript
+import { Context } from 'gecs';
+import StatePlugin from './plugins/state';
+
+const MyContext = Context.with(StatePlugin);
+
+const myContext = new MyContext();
+
+myContext.game.state instanceof StatePlugin; // true
+```
+
+The systems, entities, components and tags provided by a plugin are automatically registered when the Context's `start` method is invoked.
+
+```typescript
+import { Plugin, Phase, phase } from 'gecs';
+import type { PluginData } from 'gecs';
+
+import { A, B, C } from './components';
+import { WithA, WithB, WithC } from './entities';
+
+export default class StatePlugin extends Plugin {
+  public static readonly type = 'state';
+
+  // entities, components, tags and systems to register on start
+  public $: PluginData = {
+    components: [A, B, C],
+    entities: [WithA, WithB, WithC],
+    tags: ['one', 'two', 'three'],
+    systems: [
+      phase(Phase.ON_LOAD, ctx => {
+        // to be executed at the beginning of the tick
+      }),
+      phase(Phase.ON_UPDATE, ctx => {
+        // to be executed during the update phase
+      })
+    ]
+  };
+}
+```
+
+### Dependencies
+
+By declaring plugin dependencies in your plugin type definitions, you can have typed access to plugins on `game.$`. Transitive dependencies are automatically included—declaring a dependency will give you access to _its_ dependencies as well.
+
+```typescript
+import type { PluginDeps, ComponentClass, EntityClass } from 'gecs';
+
+import { Plugin, sequence } from 'gecs';
+
+import StatePlugin from './plugins/state';
+
+import { SystemA, SystemB, SystemC } from './systems';
+
+class FooPlugin extends Plugin<PluginDeps<[typeof StatePlugin]>> {
+  public static readonly type = 'foo';
+}
+
+class BarPlugin extends Plugin<PluginDeps<[typeof FooPlugin]>> {
+  public static readonly type = 'bar';
+
+  public $ = {
+    systems: [sequence(SystemA, SystemB, SystemC)]
+  };
+
+  public start() {
+    this.ctx.game.foo instanceof FooPlugin; // true
+    this.ctx.game.state instanceof StatePlugin; // true
+  }
+}
+```
+
+### Phases
+
+By specifying a static (numeric) `phase` property on a system, or using the `phase()` system composition helper, you can group systems together into different portions of the tick. Ties between systems in different plugins are executed in order of plugin registration.
+
+```typescript
+import { Phase as DefaultPhases, phase } from 'gecs';
+
+export const Phase = { ...DefaultPhases, MY_CUSTOM_PHASE: 299 };
+
+export default phase(
+  Phase.MY_CUSTOM_PHASE,
+  ctx => {
+    // to be executed during my custom phase
+  },
+  ctx => {
+    // to be executed after the previous system
+  }
+);
+```
+
+There are three main phases—`LOAD`, `UPDATE` and `RENDER`—each broken into `PRE`, `ON` and `POST` sub-phases.
+
+| Phase         | Priority | Description                                |
+| :------------ | :------: | :----------------------------------------- |
+| `PRE_LOAD`    |   100    | perform setup, clean-up from previous tick |
+| `ON_LOAD`     |   200    | load data, input                           |
+| `POST_LOAD`   |   300    | post-process input                         |
+| `PRE_UPDATE`  |   400    | prepare game logic                         |
+| `ON_UPDATE`   |   500    | execute game logic                         |
+| `POST_UPDATE` |   600    | apply necessary corrections                |
+| `PRE_RENDER`  |   700    | prepare for rendering                      |
+| `ON_RENDER`   |   800    | render                                     |
+| `POST_RENDER` |   900    | clean up, tear down                        |
+
+When the context's (async) `start()` method is invoked, each of the context's systems is booted in the order it was passed to `with()`. Each time `tick()` is called, the context invokes the `tick()` method of each of its systems (again, in order).
+
 ## Entities & Components
 
 An Entity is a loose wrapper around an arbitrary collection of Components.
@@ -133,7 +244,6 @@ An entity's components and tags can be added/removed using the `.components` and
 entity.components.add(ComponentA, aData);
 entity.components.has(A, B, C);
 entity.components.remove(D, E, F);
-
 entity.components.all(); // same as Array.from(entity.components)
 
 for (const component of entity.components) {
@@ -265,6 +375,8 @@ The `sequence()` and `parallel()` functions accept an array of systems or system
 
 - Systems passed to the `parallel()` helper run simultaneously. If these systems execute synchronously, the helper has no effect. If not, the system will wait until all returned promises have been resolved before moving on.
 
+The precise mechanism by which an async system runs asynchronously (e.g., web worker, child process, etc.), is up to the developer.
+
 ```ts
 import { parallel, sequence, conditional } from 'gecs';
 import { SimA, SimB, SimC } from './sims';
@@ -286,32 +398,6 @@ const ifSimulating = conditional(
 ### Caveats
 
 **gecs** is not thread-safe and offers no guarantees of anything beyond "these will run one at a time in this order" and "nothing else will happen until these are done." The specifics of handling locks, mutexes, shared memory arrays and how to wrangle WebWorkers are likewise beyond the purview of this README.
-
-## Contexts
-
-The relationship between the `Context` and its `Systems` mirrors that of an `Entity` and its `Components`. Like an entity is created `with()` components, a context is created `with()` systems.
-
-You can optionally define the type of a Context's a `state`.
-
-```typescript
-import { Context, Entity } from 'gecs';
-
-import { A, B, C, D } from './systems';
-
-interface MyContextState {
-  foo: number;
-}
-
-// run A, B, C and D in order
-const MyContext1 = Context.with<MyContextState>(A, B, C, D);
-
-// run A, followed by B+C in parallel and then followed by D.
-const MyContext2 = Context.with(A, parallel(B, C), D);
-```
-
-The precise mechanism by which an async system runs asynchronously (e.g., web worker, child process, etc.), is up to the developer.
-
-When the context's (async) `start()` method is invoked, each of the context's systems is booted in the order it was passed to `with()`. Each time `tick()` is called, the context invokes the `tick()` method of each of its systems (again, in order).
 
 ## Queries
 
@@ -365,6 +451,8 @@ ctx.$
 ### Execution
 
 You can invoke a query's `first()` or `get()` methods to access its result set. The query instance also has a `[Symbol.iterator]` method, so you can iterate directly over the result set with `for-of` or collect it with `Array.from()`.
+
+Queries are lazily-executed: they won't attempt to fetch any results until an execution method is accessed.
 
 ```typescript
 const query = ctx.$.components(A, B);
@@ -420,7 +508,7 @@ function MySystem(ctx: Context) {
 
 ## Saving & Loading
 
-Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward. _By default_, the output is a bulky POJO—~2000 entities runs me about 650 KB. There are a few strategies you can use to reduce the size of this output:
+Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward. The output is a bulky POJO—in a purely naïve dump, ~2000 entities runs me about 650 KB. There are a number of strategies you can use to reduce the size of this output: entity filtering, custom component serialization and output compression.
 
 ### Entity filtering
 
@@ -448,12 +536,6 @@ const { state, entities, queries } = ctx.save({
 console.log(state === ctx.state); // true
 console.log(entities.some(e => e.tags.includes(Tag.TO_SERIALIZE))); // false
 ```
-
-#### Compression
-
-Compressing the original 650KB payload output with [Brotli](https://www.npmjs.com/package/brotli) brings it down to less than 20 KB (about 3% of the original size).
-
-If you're working in the browser and can't load WebAssembly for one reason or another, [pako](https://github.com/nodeca/pako) is a great, marginally less effective (about 4% of the original size) alternative.
 
 #### Custom serialization
 
@@ -484,6 +566,12 @@ class Health extends Component {
   }
 }
 ```
+
+#### Compression
+
+Compressing the original 650KB payload output with [Brotli](https://www.npmjs.com/package/brotli) brings it down to less than 20 KB (about 3% of the original size).
+
+If you're working in the browser and can't load WebAssembly for one reason or another, [pako](https://github.com/nodeca/pako) is a great, marginally less effective (about 4% of the original size) alternative.
 
 ### Load
 
@@ -526,7 +614,7 @@ First, with a fresh install and having already run `build`, run <kbd>npm run ben
 That being said, _particularly_ awesome performance has never been a primary design goal—so long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance improvements.
 
 **Q/S**: Real-world example?  
-**A/R**: Using a naïve culling implementation and PIXI for rendering, a 256×256 map from [FLARE](https://github.com/flareteam/flare-game) runs at about 2ms/frame with ~50MB memory usage.
+**A/R**: Using a naïve culling implementation and PIXI for rendering, a 256×256 map from [FLARE](https://github.com/flareteam/flare-game) runs at 3-5ms/frame with ~75MB memory usage.
 
 **Q/S**: After reading the code, I am shocked, _shocked_ to find that this is less type-safe than I would have ever thought possible.  
 **A/R**: This is correct. Unfortunately, this library and its design are more about ergonomics and my feelings than bulletproof type-safety.

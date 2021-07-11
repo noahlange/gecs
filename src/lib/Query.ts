@@ -2,9 +2,8 @@ import type { Entity } from '../ecs';
 import type { BaseType, QueryStep } from '../types';
 import type { Manager } from './Manager';
 
-import { getID } from '../ids';
 import { Constraint } from '../types';
-import { match, union } from '../utils';
+import { getID, match, union } from '../utils';
 
 type TagsExceptSome = Exclude<Constraint, Constraint.SOME>;
 type Targets = { [key in TagsExceptSome]: bigint | null };
@@ -15,44 +14,27 @@ const fns = {
   [Constraint.ANY]: match.any
 };
 
-enum QueryStatus {
-  PENDING = 0,
-  RESOLVED = 1,
-  FAILED = 2
-}
-
 export class Query<
   T extends BaseType = BaseType,
   E extends Entity<T> = Entity<T>
 > {
   public readonly id = getID();
-  public key: bigint = 0n;
-  public destroyed: boolean = false;
+  public key: bigint | null = null;
 
-  /**
-   * Unidentified query items (i.e., without a bitmask).
-   */
-  protected unresolved: Set<string> = new Set();
   protected results: Set<E> = new Set();
   protected tags: Set<TagsExceptSome> = new Set();
+
+  /**
+   * A mapping of bigint keys to whether or not they're valid matches. If we've already determined a key does not match, we don't want to check it again every tick. Because we do need to differentiate true/false from nullish, we're using a Map instead of a Set.
+   */
   protected keys: Map<bigint, boolean> = new Map();
   protected steps: QueryStep[];
-
   protected manager: Manager;
-  protected attempts: number = 0;
-  protected status: QueryStatus = QueryStatus.PENDING;
+  protected executed: boolean = false;
 
   protected reducer = (targets: Targets, step: QueryStep): Targets => {
-    const ids = step.ids
-      .map(i => {
-        const res = this.manager.getID(i);
-        // if we aren't able to find a reference in the registry, mark it unresolved
-        res === null ? this.unresolved.add(i) : this.unresolved.delete(i);
-        return res;
-      })
-      // filter out unresolved items
-      .filter(i => i !== null) as bigint[];
-
+    // we've already thrown if an ID hasn't been resolved
+    const ids = step.ids.map(i => this.manager.getID(i)!);
     const constraint = step.constraint as TagsExceptSome;
     targets[constraint] = targets[constraint]
       ? union(targets[constraint], ...ids)
@@ -88,13 +70,12 @@ export class Query<
     for (const tag of this.tags) {
       this.targets = targets[tag].reduce(this.reducer, this.targets);
     }
+
+    this.key = union(...Object.values(this.targets));
   }
 
   /**
-   * The number of unique bitmasks for all entities will always be less than
-   * (or equal to) the total number of entities. So instead of iterating over
-   * entities, we'll find each matching unique bitmask and return the entities
-   * corresponding to those bitmasks.
+   * Assuming we're pruning the index regularly, the number of unique bitmasks for all entities will always be less than (or equal to) the total number of entities. So instead of iterating over entities, we'll find each matching unique bitmask and return the entities corresponding to those bitmasks.
    */
   protected filter(mask: bigint): boolean {
     let res = this.keys.get(mask) ?? null;
@@ -112,7 +93,11 @@ export class Query<
     return res;
   }
 
+  /**
+   * Forcibly reload the query. This is pretty expensive.
+   */
   public refresh(): void {
+    this.executed = true;
     const matches = this.manager.index.keys().filter(key => this.filter(key));
     this.results = new Set(this.manager.index.get(matches)) as Set<E>;
   }
@@ -130,34 +115,12 @@ export class Query<
     }
   }
 
-  public destroy(): void {
-    this.destroyed = true;
-  }
-
-  protected resolve(): void {
-    if (this.attempts >= 10) {
-      this.status = QueryStatus.FAILED;
-      const items = Array.from(this.unresolved).join('", "');
-      console.warn(
-        `Failed to resolve "${items}" after 10 attempts. Pre-register or manually invoke \`.refresh()\` to reload.`
-      );
-    } else {
-      this.attempts++;
-      this.init();
-      if (this.unresolved.size === 0) {
-        this.status = QueryStatus.RESOLVED;
-        this.key = union(...Object.values(this.targets));
-        this.refresh();
-      }
-    }
-  }
-
   /**
    * Iterate through search results.
    */
   public *[Symbol.iterator](): IterableIterator<E> {
-    if (this.status === QueryStatus.PENDING) {
-      this.resolve();
+    if (!this.executed) {
+      this.refresh();
     }
     yield* this.results;
   }
@@ -181,8 +144,8 @@ export class Query<
 
   public constructor(entities: Manager, steps: QueryStep[]) {
     this.manager = entities;
-    this.steps = steps
-      // .some() only changes the type signature
-      .filter(step => step.constraint !== Constraint.SOME);
+    // .some() only changes the type signature
+    this.steps = steps.filter(step => step.constraint !== Constraint.SOME);
+    this.init();
   }
 }

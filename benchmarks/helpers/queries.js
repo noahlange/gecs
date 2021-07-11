@@ -1,11 +1,16 @@
-const { Manager } = require('../../lib');
+const { Manager, Context } = require('../../lib');
 const { E1, E2, E3 } = require('./entities');
 const entities = [E1, E2, E3];
+
+const e = Object.values(require('./entities'));
+const c = Object.values(require('./components'));
 
 function setup(create, components) {
   const E = entities[components - 1];
 
   const em = new Manager();
+  em.register(e, c, require('./tags'));
+
   for (let i = 0; i < create * 1000; i++) {
     const data = { test1: { a: 4, b: 5 } };
     if (components > 1) {
@@ -24,6 +29,7 @@ function setupComplex(create, components) {
   const E = entities[components - 1];
 
   const em = new Manager();
+  em.register(e, c, require('./tags'));
   for (let i = 0; i < create * 1000; i++) {
     em.create(
       E,
@@ -45,6 +51,7 @@ function setupTags(create, tags) {
     tags.push(`tag-${i + 1}`);
   }
   const em = new Manager();
+  em.register(e, c, require('./tags'));
   for (let i = 0; i < create * 1000; i++) {
     em.create(E1, { test1: { a: 4, b: 5 } }, tagList);
   }

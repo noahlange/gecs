@@ -1,4 +1,4 @@
-import type { SystemType } from '../../types';
+import type { Plugins, SystemType } from '../../types';
 import type { SystemClass, SystemLike } from '../System';
 
 import { isSystemConstructor } from '../../utils';
@@ -18,10 +18,10 @@ async function run<T>(items: T[], fn: Runner<T>): Promise<void> {
  * Return a single system composed of multiple systems to be run in parallel,
  * resolving once all systems have been resolved.
  */
-export function parallel<T extends {} = {}>(
+export function parallel<T extends Plugins<T>>(
   ...Systems: SystemType<T>[]
 ): SystemClass<T> {
-  return class ParallelSystem extends System<any> {
+  return class ParallelSystem extends System<T> {
     public pipeline: SystemLike[] = [];
 
     public async tick(dt: number, ts: number): Promise<void> {

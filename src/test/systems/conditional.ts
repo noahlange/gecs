@@ -1,33 +1,14 @@
 import { describe, expect, test } from '@jest/globals';
 
 import { Context } from '../../ecs';
-import { conditional, sequence } from '../../ecs/composers';
-
-interface ContextState {
-  value: number;
-}
-
-const a = conditional<ContextState>(
-  ctx => ctx.state.value === 0,
-  sequence(ctx => (ctx.state.value += 25))
-);
-
-const b = conditional<ContextState>(
-  ctx => ctx.state.value === 0,
-  sequence(ctx => (ctx.state.value += 250))
-);
-
-const c = conditional<ContextState>(
-  ctx => ctx.state.value > 0,
-  ctx => (ctx.state.value += 100)
-);
+import { ConditionalState } from '../helpers/plugins';
 
 describe('conditional systems', () => {
-  const MyContext = class extends Context.with<ContextState>(a, b, c) {};
+  const MyContext = Context.with(ConditionalState);
 
   test('should only run when a condition evaluates to true', async () => {
-    const world = new MyContext({ value: 0 });
-    await world.start();
-    expect(world.state.value).toBe(125);
+    const ctx = new MyContext();
+    await ctx.start();
+    expect(ctx.game.state.value).toBe(125);
   });
 });

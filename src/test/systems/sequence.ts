@@ -1,27 +1,14 @@
 import { describe, expect, test } from '@jest/globals';
 
 import { Context } from '../../ecs';
-import { sequence } from '../../ecs/composers';
+import { SequenceState } from '../helpers/plugins';
 
-interface ContextState {
-  value: number;
-}
-
-const system = sequence(
-  (ctx: Context<ContextState>) => {
-    ctx.state.value += 3;
-  },
-  (ctx: Context<ContextState>) => {
-    ctx.state.value **= 2;
-  }
-);
-
-class MyContext extends Context.with<ContextState>(system) {}
+const MyContext = Context.with(SequenceState);
 
 describe('sequences of systems', () => {
   test('should execute sequentially', async () => {
-    const world = new MyContext({ value: 0 });
-    await world.start();
-    expect(world.state.value).toBe(9);
+    const ctx = new MyContext();
+    await ctx.start();
+    expect(ctx.game.state.value).toBe(9);
   });
 });

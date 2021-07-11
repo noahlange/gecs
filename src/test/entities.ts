@@ -3,6 +3,7 @@ import { describe, expect, test } from '@jest/globals';
 import { Manager } from '../lib';
 import { A, B, C } from './helpers/components';
 import { WithA, WithAB, WithABC } from './helpers/entities';
+import { withTick } from './helpers/utils';
 
 describe('creating entities', () => {
   const em = new Manager();
@@ -87,6 +88,28 @@ describe('modifying components', () => {
     // a loses a component, b doesn't
     expect(a.items).toContain(B);
     expect(b.items).not.toContain(B);
+  });
+
+  test('adding an duplicate component should be a no-op', async () => {
+    const em = new Manager();
+    const a = await withTick(em, () => {
+      return em.create(WithA, { a: { value: '2' } });
+    });
+
+    a.components.add(A, { value: '5' });
+    expect(a.$.a.value).toBe('2');
+    // @ts-expect-error
+    expect(em.toIndex.size).toBe(0);
+  });
+
+  test('removing a nonexistent component should be a no-op', async () => {
+    const em = new Manager();
+    const a = await withTick(em, () => {
+      return em.create(WithA, { a: { value: '2' } });
+    });
+    a.components.remove(B);
+    // @ts-expect-error
+    expect(em.toIndex.size).toBe(0);
   });
 
   test('has()', () => {
