@@ -28,7 +28,7 @@ export const Phase = {
 
 export interface PluginData<T> {
   entities?: EntityClass[] | Record<string, EntityClass>;
-  components?: ComponentClass[] | Record<string, ComponentClass[]>;
+  components?: ComponentClass[] | Record<string, ComponentClass>;
   tags?: string[];
   systems?: SystemType<T>[];
 }

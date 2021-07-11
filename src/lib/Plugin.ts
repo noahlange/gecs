@@ -1,6 +1,6 @@
 /* eslint-disable max-classes-per-file */
 import type { Context } from '../ecs';
-import type { PluginData, Plugins } from '../types';
+import type { OfOrPromiseOf, PluginData, Plugins } from '../types';
 
 export interface PluginClass<T extends Plugins<T>> {
   readonly type: string;
@@ -14,7 +14,8 @@ export class Plugin<T extends Plugins<T> = {}> {
 
   public $?: PluginData<T>;
 
-  public start?(): unknown | Promise<unknown>;
+  public start?(): OfOrPromiseOf<unknown>;
+  public stop?(): OfOrPromiseOf<unknown>;
 
   public constructor(ctx: Context<T>) {
     this.ctx = ctx;

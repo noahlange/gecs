@@ -16,14 +16,14 @@ import { Phase } from '../types';
 import { useWithPlugins } from '../utils/useWith';
 import { sequence } from './composers';
 
-export interface ContextClass<T extends Plugins<T>> {
+export interface ContextClass<T extends Plugins<T> = Plugins<{}>> {
   with<A extends PluginClass<T>[]>(
     ...args: A
   ): ContextClass<T & KeyedByType<A>>;
   new (): Context<T>;
 }
 
-export class Context<T extends Plugins<T>> {
+export class Context<T extends Plugins<T> = Plugins<{}>> {
   public static with<A extends PluginClass<any>[] = []>(
     ...args: A
   ): ContextClass<KeyedByType<A>> {
@@ -40,11 +40,6 @@ export class Context<T extends Plugins<T>> {
   public get items(): PluginClass<T>[] {
     return [];
   }
-
-  /**
-   * Custom setup logic to be implemented as deemed necessary.
-   */
-  public init?(): Promise<void> | void;
 
   public async tick(delta: number, time: number): Promise<void> {
     if (!this.isLocked) {
@@ -92,6 +87,9 @@ export class Context<T extends Plugins<T>> {
    * Kickstart the Context and its systems.
    */
   public async start(): Promise<void> {
+    for (const plugin of Object.values(this.game)) {
+      await (plugin as Plugin).start?.();
+    }
     await this.system.start?.();
     this.manager.tick();
     await this.tick(0, 0);
@@ -99,6 +97,9 @@ export class Context<T extends Plugins<T>> {
 
   public async stop(): Promise<void> {
     await this.system.stop?.();
+    for (const plugin of Object.values(this.game)) {
+      await (plugin as Plugin).stop?.();
+    }
   }
 
   public create<C extends BaseType<Component>>(
