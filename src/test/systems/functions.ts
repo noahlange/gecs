@@ -25,6 +25,6 @@ describe('stateless function systems', () => {
     const world = new MyContext();
     await world.start();
 
-    expect(world.game.state.value).toBe(3);
+    expect(world.$.state.value).toBe(3);
   });
 });

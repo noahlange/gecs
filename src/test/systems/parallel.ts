@@ -10,6 +10,6 @@ describe('parallel systems', () => {
   test('should, by default, execute systems sequentially', async () => {
     const ctx = new MyContext();
     await ctx.start();
-    expect(ctx.game.state.value).toBe(3);
+    expect(ctx.$.state.value).toBe(3);
   });
 });

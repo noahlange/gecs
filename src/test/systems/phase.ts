@@ -12,7 +12,7 @@ describe('system phases', () => {
   test('sort systems ascending', async () => {
     const ctx = new (Context.with(PhaseState))();
     await ctx.start();
-    expect(ctx.game.phase.value).toBe(3);
+    expect(ctx.$.phase.value).toBe(3);
   });
 
   test('ties go in order of plugin registration', async () => {

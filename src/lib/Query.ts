@@ -5,8 +5,8 @@ import type { Manager } from './Manager';
 import { Constraint } from '../types';
 import { getID, match, union } from '../utils';
 
-type TagsExceptSome = Exclude<Constraint, Constraint.SOME>;
-type Targets = { [key in TagsExceptSome]: bigint | null };
+type ConstraintsExceptSome = Exclude<Constraint, Constraint.SOME>;
+type Targets = { [key in ConstraintsExceptSome]: bigint | null };
 
 const fns = {
   [Constraint.NONE]: match.none,
@@ -22,7 +22,7 @@ export class Query<
   public key: bigint | null = null;
 
   protected results: Set<E> = new Set();
-  protected tags: Set<TagsExceptSome> = new Set();
+  protected constraints: Set<ConstraintsExceptSome> = new Set();
 
   /**
    * A mapping of bigint keys to whether or not they're valid matches. If we've already determined a key does not match, we don't want to check it again every tick. Because we do need to differentiate true/false from nullish, we're using a Map instead of a Set.
@@ -34,16 +34,16 @@ export class Query<
 
   protected reducer = (targets: Targets, step: QueryStep): Targets => {
     // we've already thrown if an ID hasn't been resolved
-    const ids = step.ids.map(i => this.manager.getID(i)!);
-    const constraint = step.constraint as TagsExceptSome;
+    const constraint = step.constraint as ConstraintsExceptSome;
+    const id = this.manager.getID(...step.ids);
     targets[constraint] = targets[constraint]
-      ? union(targets[constraint], ...ids)
-      : union(...ids);
+      ? union(targets[constraint], id)
+      : id;
 
     return targets;
   };
 
-  protected targets: Record<TagsExceptSome, bigint | null> = {
+  protected targets: Record<ConstraintsExceptSome, bigint | null> = {
     [Constraint.ANY]: null,
     [Constraint.ALL]: null,
     [Constraint.NONE]: null
@@ -54,7 +54,7 @@ export class Query<
    * bigints used for entity matching during the filtering process.
    */
   protected init(): void {
-    const targets: Record<TagsExceptSome, QueryStep[]> = {
+    const targets: Record<ConstraintsExceptSome, QueryStep[]> = {
       [Constraint.ALL]: [],
       [Constraint.ANY]: [],
       [Constraint.NONE]: []
@@ -62,13 +62,13 @@ export class Query<
 
     for (const step of this.steps) {
       if (step.constraint !== Constraint.SOME) {
-        this.tags.add(step.constraint);
+        this.constraints.add(step.constraint);
         targets[step.constraint].push(step);
       }
     }
 
-    for (const tag of this.tags) {
-      this.targets = targets[tag].reduce(this.reducer, this.targets);
+    for (const constraint of this.constraints) {
+      this.targets = targets[constraint].reduce(this.reducer, this.targets);
     }
 
     this.key = union(...Object.values(this.targets));
@@ -81,7 +81,7 @@ export class Query<
     let res = this.keys.get(mask) ?? null;
     if (res === null) {
       res = true;
-      for (const tag of this.tags) {
+      for (const tag of this.constraints) {
         const target = this.targets[tag];
         if (!target || !fns[tag](target, mask)) {
           res = false;

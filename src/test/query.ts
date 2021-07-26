@@ -173,7 +173,7 @@ describe('first()', () => {
       a = ctx.create(WithA, {}, ['a']);
     });
 
-    expect(ctx.$.components(A).first()).toBe(a);
+    expect(ctx.query.components(A).first()).toBe(a);
   });
 });
 
@@ -186,8 +186,8 @@ describe('caching', () => {
       ctx.create(WithAB, {});
     });
 
-    const a = ctx.$.tags('a').components(A);
-    const b = ctx.$.components(A);
+    const a = ctx.query.tags('a').components(A);
+    const b = ctx.query.components(A);
 
     expect(a.get()).toHaveLength(1);
     expect(b.get()).toHaveLength(2);
@@ -195,7 +195,7 @@ describe('caching', () => {
 
   test('created entities should be added to cached result sets', async () => {
     const ctx = getContext();
-    const q = ctx.$.components(A);
+    const q = ctx.query.components(A);
 
     await withTick(ctx, () => ctx.create(WithA));
     expect(q.get()).toHaveLength(1);
@@ -206,7 +206,7 @@ describe('caching', () => {
 
   test('destroyed entities should disappear from cached result sets', async () => {
     const ctx = getContext();
-    const q = ctx.$.components(A);
+    const q = ctx.query.components(A);
     let ab: Entity | null = null;
 
     await withTick(ctx, () => {
@@ -223,7 +223,7 @@ describe('caching', () => {
 describe('indexing', () => {
   test('entities with added components should appear in new result sets', async () => {
     const ctx = getContext();
-    const q = ctx.$.components(B);
+    const q = ctx.query.components(B);
     const a = ctx.create(WithA);
 
     await withTick(ctx, () => ctx.create(WithAB));
@@ -236,7 +236,7 @@ describe('indexing', () => {
   test('entities with removed components should disappear from result sets', async () => {
     const ctx = getContext();
 
-    const q = ctx.$.components(A);
+    const q = ctx.query.components(A);
     const ab = ctx.create(WithAB);
 
     await withTick(ctx, () => ctx.create(WithA));
@@ -250,6 +250,6 @@ describe('indexing', () => {
 describe('methods', () => {
   test('first() should return null if no results are found', () => {
     const ctx = getContext();
-    expect(ctx.$.components(C).first()).toBeNull();
+    expect(ctx.query.components(C).first()).toBeNull();
   });
 });

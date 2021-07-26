@@ -34,7 +34,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
   protected isLocked: boolean = false;
   protected system: System<T>;
 
-  public game!: T;
+  public $!: T;
   public manager: Manager;
 
   public get items(): PluginClass<T>[] {
@@ -87,7 +87,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
    * Kickstart the Context and its systems.
    */
   public async start(): Promise<void> {
-    for (const plugin of Object.values(this.game)) {
+    for (const plugin of Object.values(this.$)) {
       await (plugin as Plugin).start?.();
     }
     await this.system.start?.();
@@ -97,7 +97,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
 
   public async stop(): Promise<void> {
     await this.system.stop?.();
-    for (const plugin of Object.values(this.game)) {
+    for (const plugin of Object.values(this.$)) {
       await (plugin as Plugin).stop?.();
     }
   }
@@ -110,7 +110,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
     return this.manager.create(EntityConstructor, data, tags);
   }
 
-  public get $(): QueryBuilder {
+  public get query(): QueryBuilder {
     return new QueryBuilder(this.manager);
   }
 
@@ -132,7 +132,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
   protected getSystem(): System<T> {
     const defaultPhase = Phase.POST_UPDATE - 1;
     const systems: SystemType<T>[] = Object.values(this.items)
-      .map(item => this.game[item.type as keyof T] as Plugin<T>)
+      .map(item => this.$[item.type as keyof T] as Plugin<T>)
       .filter(p => p.$?.systems?.length)
       .reduce(
         (s: SystemType<T>[], p) =>
@@ -146,7 +146,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
 
   public constructor() {
     this.manager = new Manager();
-    this.game = this.getPlugins();
+    this.$ = this.getPlugins();
     this.system = this.getSystem();
   }
 }

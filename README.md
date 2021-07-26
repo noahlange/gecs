@@ -254,7 +254,7 @@ for (const component of entity.components) {
 A major footgun here is that the types of entities with removed components will not change, so unless you're paying close attention, you may find yourself accessing a non-existent component.
 
 ```typescript
-for (const entity of ctx.$.components(A, B)) {
+for (const entity of ctx.query.components(A, B)) {
   entity.components.remove(B); // 💣
   entity.$.b.foo = '???'; // 💥
 }
@@ -282,7 +282,7 @@ import type { Context } from 'gecs';
 import { Position, Velocity } from './components';
 
 export function movement(ctx: Context): void {
-  for (const { $ } of ctx.$.components(Position, Velocity)) {
+  for (const { $ } of ctx.query.components(Position, Velocity)) {
     $.position.x += $.velocity.dx;
     $.position.y += $.velocity.dy;
   }
@@ -303,7 +303,7 @@ export class ClickPositionSystem extends System {
   public tick() {
     if (this.input.isMouseDown()) {
       const { x, y } = this.input.getMousePosition();
-      for (const { $ } of this.ctx.$.components(Position, Clickable)) {
+      for (const { $ } of this.ctx.query.components(Position, Clickable)) {
         if ($.position.x === x && $.position.y === y) {
           alert('Clicked!');
         }
@@ -329,7 +329,7 @@ class Renderer extends System {
   protected sprites: Record<string, { path: string; sprite: PIXI.Sprite }> = {};
 
   protected $ = {
-    sprites: this.ctx.$.components(Sprite).components.some(Position)
+    sprites: this.ctx.query.components(Sprite).components.some(Position)
   };
 
   public tick(delta: number, time?: number): void {
@@ -404,7 +404,7 @@ const ifSimulating = conditional(
 Queries return collections of entities based on the user's criteria. Query results are typed exactly like an ordinary entity, so you'll have (typed) access to each of the components you've requested in your query—but nothing more.
 
 ```ts
-const q = ctx.$.components
+const q = ctx.query.components
   .all(A, B, C)
   .components.some(D, E, F)
   .tags.any('1', '2', '3');
@@ -415,14 +415,14 @@ const q = ctx.$.components
 Queries consist of one or more "steps," each corresponding to a different type of query— components, tags or entities.
 
 ```typescript
-const q1 = ctx.$.components(A, B);
-const q2 = ctx.$.tags('one', 'two', 'three');
+const q1 = ctx.query.components(A, B);
+const q2 = ctx.query.tags('one', 'two', 'three');
 ```
 
 Steps are executed sequentially. The result of a query is the intersection of each step's results.
 
 ```typescript
-ctx.$.components
+ctx.query.components
   .some(A, B) // (A | B)
   .tags.all('one', 'two'); //  & ('one' & 'two')
 ```
@@ -431,12 +431,12 @@ Query steps can be modified with `.all`, `.any` and `.none` to perform basic boo
 
 ```typescript
 // the "all" is implicit if a modifier is omitted
-ctx.$.components(A, B); // A & B
-ctx.$.components.all(A, B); // A & B
+ctx.query.components(A, B); // A & B
+ctx.query.components.all(A, B); // A & B
 
-ctx.$.components.any(A, B); // (A | B) | (A & B)
-ctx.$.components.some(A, B); // A? | B?
-ctx.$.components.none(A, B); // !(A | B)
+ctx.query.components.any(A, B); // (A | B) | (A & B)
+ctx.query.components.some(A, B); // A? | B?
+ctx.query.components.none(A, B); // !(A | B)
 ```
 
 Naturally, these can be chained:
@@ -455,7 +455,7 @@ You can invoke a query's `first()` or `get()` methods to access its result set. 
 Queries are lazily-executed: they won't attempt to fetch any results until an execution method is accessed.
 
 ```typescript
-const query = ctx.$.components(A, B);
+const query = ctx.query.components(A, B);
 
 // instance methods
 const first = query.first(); // (A & B) | null
@@ -477,7 +477,7 @@ Once a query is executed for the first time, any subsequent query with the same 
 ```typescript
 class MySystem extends System {
   public $ = {
-    abc: this.ctx.$.components(A, B, C)
+    abc: this.ctx.query.components(A, B, C)
   };
 
   public tick() {

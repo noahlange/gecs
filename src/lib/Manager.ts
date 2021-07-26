@@ -172,8 +172,8 @@ export class Manager {
   /**
    * Return the bigint identifier of a component or tag.
    */
-  public getID(name: string): bigint | null {
-    return this.registry.getID(name);
+  public getID(...names: string[]): bigint | null {
+    return this.registry.getID(...names);
   }
 
   /**
