@@ -16,14 +16,9 @@ interface Registrations {
 
 export class Manager {
   /**
-   * Map tags and components to bigints for bitmask searches.
+   * Maps bigint identifiers to result sets.
    */
-  protected registry = new Registry();
-
-  /**
-   * Cached queries, indexed by string key (basically a concatenation of query components).
-   */
-  protected queries: Record<string, Query> = {};
+  public index = new EntityIndex();
 
   /**
    * A mapping of tag literals to tag IDs. These IDs are mapped in turn to bigints for querying.
@@ -33,6 +28,16 @@ export class Manager {
     entities: {},
     components: {}
   };
+
+  /**
+   * Map tags and components to bigints for bitmask searches.
+   */
+  protected registry = new Registry();
+
+  /**
+   * Cached queries, indexed by string key (basically a concatenation of query components).
+   */
+  protected queries: Record<string, Query> = {};
 
   /**
    * A set of entities marked for destruction by the end of a system tick—these
@@ -49,24 +54,10 @@ export class Manager {
   protected toIndex: Map<Entity, bigint> = new Map();
 
   /**
-   * Maps bigint identifiers to result sets.
-   */
-  public index = new EntityIndex();
-
-  /**
    * Return a new QueryBuilder instance.
    */
-  public get $(): QueryBuilder {
+  public get query(): QueryBuilder {
     return new QueryBuilder(this);
-  }
-
-  /**
-   * Given an entity, return its bigint key (union of all components/tags)
-   */
-  protected getEntityKey(entity: Entity): bigint {
-    const tags = this.registrations.tags;
-    const arr = Array.from(entity.tags).map(t => tags[t]);
-    return this.registry.add(...entity.items.map(e => e.type), ...arr);
   }
 
   /**
@@ -183,6 +174,13 @@ export class Manager {
     this.toDestroy.add(entity);
   }
 
+  public stop(): void {
+    this.queries = {};
+    this.index = new EntityIndex();
+    this.toDestroy.clear();
+    this.toIndex.clear();
+  }
+
   /**
    * Create an entity with a given constructor, optionally with entity data and a list of tags.
    * @returns the newly created entity
@@ -195,5 +193,14 @@ export class Manager {
     const entity = new Entity(this, data, tags);
     this.indexEntity(entity);
     return entity;
+  }
+
+  /**
+   * Given an entity, return its bigint key (union of all components/tags)
+   */
+  protected getEntityKey(entity: Entity): bigint {
+    const tags = this.registrations.tags;
+    const arr = Array.from(entity.tags).map(t => tags[t]);
+    return this.registry.add(...entity.items.map(e => e.type), ...arr);
   }
 }

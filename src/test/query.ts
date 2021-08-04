@@ -12,13 +12,13 @@ describe('basic types', () => {
 
   test('select by component', async () => {
     const { em } = await setup();
-    const hasA = em.$.components.all(A);
+    const hasA = em.query.components.all(A);
     expect(hasA.get()).toHaveLength(count * 3);
   });
 
   test('select by tag', async () => {
     const { em } = await setup();
-    const withABTags = em.$.tags.any('a', 'b');
+    const withABTags = em.query.tags.any('a', 'b');
     expect(withABTags.get()).toHaveLength(count * 4);
   });
 });
@@ -28,13 +28,13 @@ describe('implicit queries', () => {
 
   test('select by component', async () => {
     const { em } = await setup();
-    const hasA = em.$.components(A).get();
+    const hasA = em.query.components(A).get();
     expect(hasA).toHaveLength(count * 3);
   });
 
   test('select by tag', async () => {
     const { em } = await setup();
-    const withABTags = em.$.tags('a', 'b').get();
+    const withABTags = em.query.tags('a', 'b').get();
     expect(withABTags).toHaveLength(count * 1);
   });
 });
@@ -44,26 +44,26 @@ describe('basic query modifiers', () => {
   test('.components.all()', async () => {
     const { em } = await setup();
 
-    const hasA = em.$.components(A);
+    const hasA = em.query.components(A);
     expect(hasA.get()).toHaveLength(count * 3);
 
-    const hasAB = em.$.components(A, B);
+    const hasAB = em.query.components(A, B);
     expect(hasAB.get()).toHaveLength(count * 1);
   });
 
   test('.components.any()', async () => {
     const { em } = await setup();
 
-    const hasABC = em.$.components.any(A, B, C);
+    const hasABC = em.query.components.any(A, B, C);
     expect(hasABC.get()).toHaveLength(count * 4);
 
-    const hasC = em.$.components.any(C);
+    const hasC = em.query.components.any(C);
     expect(hasC.get()).toHaveLength(count * 2);
   });
 
   test('.components.none()', async () => {
     const { em } = await setup();
-    const noA = em.$.components.none(A);
+    const noA = em.query.components.none(A);
     expect(noA.get()).toHaveLength(count); // i.e., WithB
   });
 });
@@ -73,20 +73,20 @@ describe('tag queries', () => {
 
   test('.tags.all()', async () => {
     const { em } = await setup();
-    expect(em.$.tags.all('a').get()).toHaveLength(count * 3);
-    expect(em.$.tags.all('c').get()).toHaveLength(count * 2);
+    expect(em.query.tags.all('a').get()).toHaveLength(count * 3);
+    expect(em.query.tags.all('c').get()).toHaveLength(count * 2);
   });
 
   test('.tags.none()', async () => {
     const { em } = await setup();
-    expect(em.$.tags.none('a').get()).toHaveLength(count);
-    expect(em.$.tags.none('a', 'b').get()).toHaveLength(0);
+    expect(em.query.tags.none('a').get()).toHaveLength(count);
+    expect(em.query.tags.none('a', 'b').get()).toHaveLength(0);
   });
 
   test('newly-added tags', async () => {
     const ctx = getContext();
     const em = ctx.manager;
-    const q = em.$.components(A).tags('a');
+    const q = em.query.components(A).tags('a');
     const entities: Entity[] = [];
 
     await withTick(em, () => {
@@ -109,7 +109,7 @@ describe('tag queries', () => {
   test('newly-removed tags', async () => {
     const ctx = getContext();
     const em = ctx.manager;
-    const q = em.$.components(A).tags('a');
+    const q = em.query.components(A).tags('a');
     const entities: Entity[] = [];
 
     await withTick(em, () => {
@@ -134,7 +134,7 @@ describe('complex queries', () => {
   const count = 5;
   test('components + tags', async () => {
     const { em } = await setup();
-    const q = em.$.components.all(A).components.some(B).tags.none('c');
+    const q = em.query.components.all(A).components.some(B).tags.none('c');
     expect(q.get()).toHaveLength(count);
   });
 });
@@ -144,23 +144,23 @@ describe('entity queries', () => {
 
   test('return with specified components', async () => {
     const { em } = await setup();
-    const hasA = em.$.components(A);
-    const hasB = em.$.components(B);
+    const hasA = em.query.components(A);
+    const hasB = em.query.components(B);
     expect(hasA.get()).toHaveLength(count * 3);
     expect(hasB.get()).toHaveLength(count * 2);
   });
 
   test('return without specified components', async () => {
     const { em } = await setup();
-    const noA = em.$.components.none(A);
-    const noB = em.$.components.none(A, B);
+    const noA = em.query.components.none(A);
+    const noB = em.query.components.none(A, B);
     expect(noA.get()).toHaveLength(count);
     expect(noB.get()).toHaveLength(0);
   });
 
   test('chained queries', async () => {
     const { em } = await setup();
-    const q = em.$.components(A).components.none(B);
+    const q = em.query.components(A).components.none(B);
     expect(q.get()).toHaveLength(count * 2);
   });
 });

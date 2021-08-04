@@ -7,8 +7,8 @@ export interface SystemClass<T extends Plugins<T>> {
 }
 
 export interface SystemFunction<T extends Plugins<T>> {
-  phase?: number;
   (ctx: Context<T>, delta: number, ts: number): OfOrPromiseOf<unknown>;
+  phase?: number;
 }
 
 export interface SystemLike {
@@ -18,11 +18,11 @@ export interface SystemLike {
 }
 
 export class System<T extends Plugins<T> = {}> {
+  public ctx: Context<T>;
+
   public tick?(delta: number, ts: number): OfOrPromiseOf<unknown>;
   public start?(): OfOrPromiseOf<unknown>;
   public stop?(): OfOrPromiseOf<unknown>;
-
-  public ctx: Context<T>;
 
   public constructor(ctx: Context<T>) {
     this.ctx = ctx;

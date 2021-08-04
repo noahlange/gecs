@@ -17,10 +17,10 @@ import { useWithPlugins } from '../utils/useWith';
 import { sequence } from './composers';
 
 export interface ContextClass<T extends Plugins<T> = Plugins<{}>> {
+  new (): Context<T>;
   with<A extends PluginClass<T>[]>(
     ...args: A
   ): ContextClass<T & KeyedByType<A>>;
-  new (): Context<T>;
 }
 
 export class Context<T extends Plugins<T> = Plugins<{}>> {
@@ -30,12 +30,12 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
     return useWithPlugins(...args) as ContextClass<KeyedByType<A>>;
   }
 
+  public $!: T;
+  public manager: Manager;
+
   // binary semaphore to prevent overlapping tick() calls
   protected isLocked: boolean = false;
   protected system: System<T>;
-
-  public $!: T;
-  public manager: Manager;
 
   public get items(): PluginClass<T>[] {
     return [];
@@ -100,6 +100,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
     for (const plugin of Object.values(this.$)) {
       await (plugin as Plugin).stop?.();
     }
+    this.manager.stop();
   }
 
   public create<C extends BaseType<Component>>(
