@@ -5,11 +5,11 @@ const entities = [E1, E2, E3];
 const e = Object.values(require('./entities'));
 const c = Object.values(require('./components'));
 
-function setup(create, components) {
+async function setup(create, components) {
   const E = entities[components - 1];
+  const ctx = new Context();
 
-  const em = new Manager();
-  em.register(e, c, require('./tags'));
+  ctx.register(e, c, require('./tags'));
 
   for (let i = 0; i < create * 1000; i++) {
     const data = { test1: { a: 4, b: 5 } };
@@ -19,19 +19,20 @@ function setup(create, components) {
     if (components > 2) {
       data.test3 = { e: 8, f: 9 };
     }
-    em.create(E, data);
+    ctx.create(E, data);
   }
-  em.tick();
-  return em;
+
+  await ctx.tick();
+  return ctx;
 }
 
-function setupComplex(create, components) {
+async function setupComplex(create, components) {
   const E = entities[components - 1];
 
-  const em = new Manager();
-  em.register(e, c, require('./tags'));
+  const ctx = new Context();
+  ctx.register(e, c, require('./tags'));
   for (let i = 0; i < create * 1000; i++) {
-    em.create(
+    ctx.create(
       E,
       {
         test1: { a: 4, b: 5 },
@@ -41,22 +42,22 @@ function setupComplex(create, components) {
       ['one', 'two', 'three']
     );
   }
-  em.tick();
-  return em;
+  await ctx.tick();
+  return ctx;
 }
 
-function setupTags(create, tags) {
+async function setupTags(create, tags) {
   const tagList = [];
+  const ctx = new Context();
   for (let i = 0; i < tags.length; i++) {
     tags.push(`tag-${i + 1}`);
   }
-  const em = new Manager();
-  em.register(e, c, require('./tags'));
+  ctx.register(e, c, require('./tags'));
   for (let i = 0; i < create * 1000; i++) {
-    em.create(E1, { test1: { a: 4, b: 5 } }, tagList);
+    ctx.create(E1, { test1: { a: 4, b: 5 } }, tagList);
   }
-  em.tick();
-  return em;
+  await ctx.tick();
+  return ctx;
 }
 
 module.exports = {

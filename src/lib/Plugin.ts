@@ -10,9 +10,8 @@ export interface PluginClass<T extends Plugins<T>> {
 export class Plugin<T extends Plugins<T> = {}> {
   public static readonly type: string;
 
-  protected ctx: Context<T>;
-
   public $?: PluginData<T>;
+  protected ctx: Context<T>;
 
   public start?(): OfOrPromiseOf<unknown>;
   public stop?(): OfOrPromiseOf<unknown>;

@@ -19,7 +19,8 @@ export class Registry {
     return union(...res);
   }
 
-  public getID(key: string): bigint | null {
-    return this.registry[key] ?? null;
+  public getID(...keys: string[]): bigint | null {
+    const res = union(...keys.map(key => this.registry[key] ?? 0n));
+    return res === 0n ? null : res;
   }
 }

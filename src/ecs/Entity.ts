@@ -32,10 +32,10 @@ export interface EntityClass<
   E extends Entity<T> = Entity<T>
 > {
   data?: BaseDataType<T>;
+  new (manager: Manager, data?: BaseDataType<T>, tags?: string[]): E;
   with<A extends ComponentClass[], T extends BaseType = {}>(
     ...items: A
   ): EntityClass<T & KeyedByType<A>>;
-  new (manager: Manager, data?: BaseDataType<T>, tags?: string[]): E;
 }
 
 export class Entity<T extends BaseType = {}> {
@@ -44,9 +44,6 @@ export class Entity<T extends BaseType = {}> {
   ): EntityClass<T & KeyedByType<A>> {
     return useWithComponent<T & KeyedByType<A>, A>(this, ...components);
   }
-
-  protected readonly manager: Manager;
-  protected readonly referenced: Set<EntityRef> = new Set();
 
   /**
    * A BigInt that corresponds to a combination of tags and components. We execute queries by comparing queries' keys to each entity's key.
@@ -81,6 +78,9 @@ export class Entity<T extends BaseType = {}> {
     ...components: C
   ) => this is Entity<T & KeyedByType<C>>;
   public is: (...tags: string[]) => boolean;
+
+  protected readonly manager: Manager;
+  protected readonly referenced: Set<EntityRef> = new Set();
 
   /**
    * Destroy existing references and mark the entity for destruction + re-indexing.

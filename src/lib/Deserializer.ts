@@ -21,6 +21,10 @@ export class Deserializer<T extends Plugins<T>> {
   protected refs: Record<string, [string[], string][]> = {};
   protected entities: Record<string, Entity> = {};
 
+  public deserialize(save: Serialized): void {
+    this.deserializeEntities(save);
+  }
+
   /**
    * Given an object, array of string path segments and an arbitrary value,
    * assign the value. Basically a naïve implementation of lodash's `_.set()`
@@ -147,10 +151,6 @@ export class Deserializer<T extends Plugins<T>> {
     this.stack = [];
     this.recreateEntityReferences();
     this.stack = [];
-  }
-
-  public deserialize(save: Serialized): void {
-    this.deserializeEntities(save);
   }
 
   public constructor(ctx: Context<T>) {

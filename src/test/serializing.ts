@@ -45,7 +45,7 @@ describe('save and load', () => {
     ctx2.register([], [E]);
 
     await withTick(ctx2, () => ctx2.load(saved));
-    const e = ctx2.$.components(E).first();
+    const e = ctx2.query.components(E).first();
 
     expect(e).not.toBeNull();
     expect(e?.$.e.a.b.c.d).toEqual(6);
@@ -65,7 +65,7 @@ describe('save and load', () => {
     const ctx2 = getContext();
 
     await withTick(ctx2, () => ctx2.load(saved));
-    const e = ctx2.$.components(C.D).first();
+    const e = ctx2.query.components(C.D).first();
 
     expect(e).not.toBeNull();
     expect(e?.$.d.value).toEqual(12345n);
@@ -85,9 +85,9 @@ describe('save and load', () => {
 
     await withTick(ctx2, () => ctx2.load(saved));
 
-    expect(Array.from(ctx2.$.components(C.A, C.B))).toHaveLength(5);
+    expect(Array.from(ctx2.query.components(C.A, C.B))).toHaveLength(5);
 
-    for (const entity of ctx2.$.components(C.A, C.B)) {
+    for (const entity of ctx2.query.components(C.A, C.B)) {
       expect(entity).toBeInstanceOf(E.cWithAB);
     }
   });
@@ -121,8 +121,8 @@ describe('save and load', () => {
 
     await withTick(ctx2, () => ctx2.load(saved));
 
-    const a2 = ctx2.$.components(C.Ref).first();
-    const b2 = ctx2.$.components(C.A).first();
+    const a2 = ctx2.query.components(C.Ref).first();
+    const b2 = ctx2.query.components(C.A).first();
 
     expect(a2).not.toBeNull();
     expect(b2).not.toBeNull();

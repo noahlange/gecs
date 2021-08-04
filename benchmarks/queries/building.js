@@ -1,4 +1,5 @@
 const bench = require('nanobench');
+const { Context } = require('../../lib/ecs/Context');
 const { Manager } = require('../../lib/lib');
 const { Test1, Test2, Test3 } = require('../helpers/components');
 const { E1, E2, E3 } = require('../helpers/entities');
@@ -7,14 +8,15 @@ const components = [Test1, Test2, Test3];
 const entities = [E1, E2, E3];
 const tags = ['one', 'two', 'three'];
 
-function setupComplex(create, i) {
+async function setupComplex(create, i) {
   const E = entities[i - 1];
 
-  const em = new Manager();
-  em.register(entities, components, tags);
+  const ctx = new Context();
+
+  ctx.register(entities, components, tags);
 
   for (let i = 0; i < create * 1000; i++) {
-    em.create(
+    ctx.create(
       E,
       {
         test1: { a: 4, b: 5 },
@@ -24,25 +26,27 @@ function setupComplex(create, i) {
       ['one', 'two', 'three']
     );
   }
-  em.tick();
-  return em;
+  await ctx.tick();
+  return ctx;
 }
-
-const em = setupComplex(10, 1);
 
 for (let count = 1; count <= 3; count++) {
   const c = components.slice(0, count);
   const t = tags.slice(0, count);
 
-  bench(`building 1 step query - ${count} items`, b => {
+  bench(`building 1 step query - ${count} items`, async b => {
+    const ctx = await setupComplex(10, 1);
     b.start();
-    em.$.components(...c).query;
+    ctx.query.components(...c).query;
     b.end();
+    await ctx.stop();
   });
 
-  bench(`building 2 step query - ${count} items`, b => {
+  bench(`building 2 step query - ${count} items`, async b => {
+    const ctx = await setupComplex(10, 1);
     b.start();
-    em.$.components(...c).tags(...t).query;
+    ctx.query.components(...c).tags(...t).query;
     b.end();
+    await ctx.stop();
   });
 }

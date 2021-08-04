@@ -20,6 +20,15 @@ export class Serializer<T extends Plugins<T>> {
   protected stack: unknown[] = [];
   protected ctx: Context<T>;
 
+  /**
+   * Convert the context into a structure we can stringify and save to disk
+   */
+  public serialize(options: SerializeOptions = {}): Serialized {
+    return {
+      entities: this.serializeEntities(options)
+    };
+  }
+
   protected visit<O extends SomeDictionary = {}>(obj: O): SomeDictionary {
     const res: SomeDictionary = {};
     for (const key of Object.getOwnPropertyNames(obj)) {
@@ -105,15 +114,6 @@ export class Serializer<T extends Plugins<T>> {
 
     this.stack = [];
     return res;
-  }
-
-  /**
-   * Convert the context into a structure we can stringify and save to disk
-   */
-  public serialize(options: SerializeOptions = {}): Serialized {
-    return {
-      entities: this.serializeEntities(options)
-    };
   }
 
   public constructor(ctx: Context<T>) {

@@ -40,10 +40,32 @@ module.exports = {
     // consistency...
     '@typescript-eslint/consistent-type-definitions': [2, 'interface'],
     '@typescript-eslint/consistent-type-imports': [1],
+    '@typescript-eslint/member-ordering': [
+      1,
+      {
+        classes: [
+          'public-static-field',
+          'protected-static-field',
+          'private-static-field',
+          'public-static-method',
+          'protected-static-method',
+          'private-static-method',
+          'public-instance-field',
+          'protected-instance-field',
+          'private-instance-field',
+          'public-instance-method',
+          'protected-instance-method',
+          'private-instance-method',
+          'constructor'
+        ]
+      }
+    ],
     '@typescript-eslint/consistent-type-assertions': [
       2,
       { assertionStyle: 'as' }
     ],
+    'import/no-unresolved': [0],
+    'import/namespace': [0],
     'sort-imports': [0],
     'simple-import-sort/imports': [
       1,

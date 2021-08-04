@@ -22,13 +22,13 @@ class MovePlugin extends Plugin {
     components: [Velocity, Position],
     systems: [
       ctx => {
-        for (const entity of ctx.$.components(Velocity)) {
+        for (const entity of ctx.query.components(Velocity)) {
           entity.$.velocity.dx += 0.01;
           entity.$.velocity.dy -= 0.01;
         }
       },
       ctx => {
-        for (const entity of ctx.$.components(Position)) {
+        for (const entity of ctx.query.components(Position)) {
           entity.$.position.x += entity.$.velocity.dx;
           entity.$.position.y += entity.$.velocity.dy;
         }

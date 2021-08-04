@@ -5,8 +5,8 @@ import type { Manager } from './Manager';
 import { Constraint } from '../types';
 import { getID, match, union } from '../utils';
 
-type TagsExceptSome = Exclude<Constraint, Constraint.SOME>;
-type Targets = { [key in TagsExceptSome]: bigint | null };
+type ConstraintsExceptSome = Exclude<Constraint, Constraint.SOME>;
+type Targets = { [key in ConstraintsExceptSome]: bigint | null };
 
 const fns = {
   [Constraint.NONE]: match.none,
@@ -22,7 +22,7 @@ export class Query<
   public key: bigint | null = null;
 
   protected results: Set<E> = new Set();
-  protected tags: Set<TagsExceptSome> = new Set();
+  protected constraints: Set<ConstraintsExceptSome> = new Set();
 
   /**
    * A mapping of bigint keys to whether or not they're valid matches. If we've already determined a key does not match, we don't want to check it again every tick. Because we do need to differentiate true/false from nullish, we're using a Map instead of a Set.
@@ -32,66 +32,11 @@ export class Query<
   protected manager: Manager;
   protected executed: boolean = false;
 
-  protected reducer = (targets: Targets, step: QueryStep): Targets => {
-    // we've already thrown if an ID hasn't been resolved
-    const ids = step.ids.map(i => this.manager.getID(i)!);
-    const constraint = step.constraint as TagsExceptSome;
-    targets[constraint] = targets[constraint]
-      ? union(targets[constraint], ...ids)
-      : union(...ids);
-
-    return targets;
-  };
-
-  protected targets: Record<TagsExceptSome, bigint | null> = {
+  protected targets: Record<ConstraintsExceptSome, bigint | null> = {
     [Constraint.ANY]: null,
     [Constraint.ALL]: null,
     [Constraint.NONE]: null
   };
-
-  /**
-   * Some code only needs to run once (on instantiation)—this generates the
-   * bigints used for entity matching during the filtering process.
-   */
-  protected init(): void {
-    const targets: Record<TagsExceptSome, QueryStep[]> = {
-      [Constraint.ALL]: [],
-      [Constraint.ANY]: [],
-      [Constraint.NONE]: []
-    };
-
-    for (const step of this.steps) {
-      if (step.constraint !== Constraint.SOME) {
-        this.tags.add(step.constraint);
-        targets[step.constraint].push(step);
-      }
-    }
-
-    for (const tag of this.tags) {
-      this.targets = targets[tag].reduce(this.reducer, this.targets);
-    }
-
-    this.key = union(...Object.values(this.targets));
-  }
-
-  /**
-   * Assuming we're pruning the index regularly, the number of unique bitmasks for all entities will always be less than (or equal to) the total number of entities. So instead of iterating over entities, we'll find each matching unique bitmask and return the entities corresponding to those bitmasks.
-   */
-  protected filter(mask: bigint): boolean {
-    let res = this.keys.get(mask) ?? null;
-    if (res === null) {
-      res = true;
-      for (const tag of this.tags) {
-        const target = this.targets[tag];
-        if (!target || !fns[tag](target, mask)) {
-          res = false;
-          break;
-        }
-      }
-      this.keys.set(mask, res);
-    }
-    return res;
-  }
 
   /**
    * Forcibly reload the query. This is pretty expensive.
@@ -140,6 +85,61 @@ export class Query<
       return item;
     }
     return null;
+  }
+
+  protected reducer = (targets: Targets, step: QueryStep): Targets => {
+    // we've already thrown if an ID hasn't been resolved
+    const constraint = step.constraint as ConstraintsExceptSome;
+    const id = this.manager.getID(...step.ids);
+    targets[constraint] = targets[constraint]
+      ? union(targets[constraint], id)
+      : id;
+
+    return targets;
+  };
+
+  /**
+   * Some code only needs to run once (on instantiation)—this generates the
+   * bigints used for entity matching during the filtering process.
+   */
+  protected init(): void {
+    const targets: Record<ConstraintsExceptSome, QueryStep[]> = {
+      [Constraint.ALL]: [],
+      [Constraint.ANY]: [],
+      [Constraint.NONE]: []
+    };
+
+    for (const step of this.steps) {
+      if (step.constraint !== Constraint.SOME) {
+        this.constraints.add(step.constraint);
+        targets[step.constraint].push(step);
+      }
+    }
+
+    for (const constraint of this.constraints) {
+      this.targets = targets[constraint].reduce(this.reducer, this.targets);
+    }
+
+    this.key = union(...Object.values(this.targets));
+  }
+
+  /**
+   * Assuming we're pruning the index regularly, the number of unique bitmasks for all entities will always be less than (or equal to) the total number of entities. So instead of iterating over entities, we'll find each matching unique bitmask and return the entities corresponding to those bitmasks.
+   */
+  protected filter(mask: bigint): boolean {
+    let res = this.keys.get(mask) ?? null;
+    if (res === null) {
+      res = true;
+      for (const tag of this.constraints) {
+        const target = this.targets[tag];
+        if (!target || !fns[tag](target, mask)) {
+          res = false;
+          break;
+        }
+      }
+      this.keys.set(mask, res);
+    }
+    return res;
   }
 
   public constructor(entities: Manager, steps: QueryStep[]) {

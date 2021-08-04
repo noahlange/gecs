@@ -13,11 +13,11 @@ import type { U } from 'ts-toolbelt';
 import { Constraint } from '../types';
 
 export interface BaseQueryBuilder<T extends BaseType = {}> {
+  components: ComponentQueryBuilder<T>;
+  tags: TagQueryBuilder<T>;
   get(): Entity<T>[];
   first(): Entity<T> | null;
   [Symbol.iterator](): Iterator<Entity<T>>;
-  components: ComponentQueryBuilder<T>;
-  tags: TagQueryBuilder<T>;
 }
 
 interface ComponentQueryBuilder<T extends BaseType = {}>
@@ -61,11 +61,60 @@ export interface QueryState {
 export class QueryBuilder<T extends BaseType = {}>
   implements BaseQueryBuilder<T>
 {
+  protected handle: {
+    components: ComponentQueryFns<T>;
+    tags: TagQueryFns<T>;
+  } = {
+    components: {
+      all: this.component(Constraint.ALL),
+      any: this.component(Constraint.ANY),
+      some: this.component(Constraint.SOME),
+      none: this.component(Constraint.NONE)
+    } as $AnyEvil as ComponentQueryFns<T>,
+    tags: {
+      all: this.tag(Constraint.ALL),
+      any: this.tag(Constraint.ANY),
+      some: this.tag(Constraint.SOME),
+      none: this.tag(Constraint.NONE)
+    }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/member-ordering
+  public readonly components: ComponentQueryBuilder<T> = Object.assign(
+    this.handle.components.all,
+    this.handle.components
+  );
+
+  // eslint-disable-next-line @typescript-eslint/member-ordering
+  public readonly tags: TagQueryBuilder<T> = Object.assign(
+    this.handle.tags.all,
+    this.handle.tags
+  );
+
   protected key: string = '';
   protected state!: QueryState;
   protected resolved: Query<T> | null = null;
   protected criteria: QueryStep[] = [];
   protected manager: Manager;
+
+  public get query(): Query<T, Entity<T>> {
+    return (this.resolved ??= this.manager.getQuery<T, Entity<T>>(
+      this.criteria,
+      this.key
+    ));
+  }
+
+  public get(): Entity<T>[] {
+    return this.query.get();
+  }
+
+  public first(): Entity<T> | null {
+    return this.query.first();
+  }
+
+  public [Symbol.iterator](): Iterator<Entity<T>> {
+    return this.query[Symbol.iterator]();
+  }
 
   protected reset(): this {
     if (this.state) {
@@ -95,53 +144,6 @@ export class QueryBuilder<T extends BaseType = {}>
       this.state.tag = tag;
       return this.reset();
     };
-  }
-
-  protected handle: {
-    components: ComponentQueryFns<T>;
-    tags: TagQueryFns<T>;
-  } = {
-    components: {
-      all: this.component(Constraint.ALL),
-      any: this.component(Constraint.ANY),
-      some: this.component(Constraint.SOME),
-      none: this.component(Constraint.NONE)
-    } as $AnyEvil as ComponentQueryFns<T>,
-    tags: {
-      all: this.tag(Constraint.ALL),
-      any: this.tag(Constraint.ANY),
-      some: this.tag(Constraint.SOME),
-      none: this.tag(Constraint.NONE)
-    }
-  };
-
-  public readonly components: ComponentQueryBuilder<T> = Object.assign(
-    this.handle.components.all,
-    this.handle.components
-  );
-
-  public readonly tags: TagQueryBuilder<T> = Object.assign(
-    this.handle.tags.all,
-    this.handle.tags
-  );
-
-  public get query(): Query<T, Entity<T>> {
-    return (this.resolved ??= this.manager.getQuery<T, Entity<T>>(
-      this.criteria,
-      this.key
-    ));
-  }
-
-  public get(): Entity<T>[] {
-    return this.query.get();
-  }
-
-  public first(): Entity<T> | null {
-    return this.query.first();
-  }
-
-  public [Symbol.iterator](): Iterator<Entity<T>> {
-    return this.query[Symbol.iterator]();
   }
 
   public constructor(manager: Manager) {

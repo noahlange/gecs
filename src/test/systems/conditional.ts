@@ -9,6 +9,6 @@ describe('conditional systems', () => {
   test('should only run when a condition evaluates to true', async () => {
     const ctx = new MyContext();
     await ctx.start();
-    expect(ctx.game.state.value).toBe(125);
+    expect(ctx.$.state.value).toBe(125);
   });
 });
