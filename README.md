@@ -25,7 +25,7 @@ const MyContext = Context.with(StatePlugin);
 
 const myContext = new MyContext();
 
-myContext.game.state instanceof StatePlugin; // true
+myContext.$.state instanceof StatePlugin; // true
 ```
 
 The systems, entities, components and tags provided by a plugin are automatically registered when the Context's `start` method is invoked.
@@ -82,8 +82,8 @@ class BarPlugin extends Plugin<PluginDeps<[typeof FooPlugin]>> {
   };
 
   public start() {
-    this.ctx.game.foo instanceof FooPlugin; // true
-    this.ctx.game.state instanceof StatePlugin; // true
+    this.ctx.$.foo instanceof FooPlugin; // true
+    this.ctx.$.state instanceof StatePlugin; // true
   }
 }
 ```
@@ -442,7 +442,7 @@ ctx.query.components.none(A, B); // !(A | B)
 Naturally, these can be chained:
 
 ```typescript
-ctx.$
+ctx.query
   .components.all(A, B) // (A & B)
   .components.some(C);  // & C?
   .components.none(D);  // & !D
