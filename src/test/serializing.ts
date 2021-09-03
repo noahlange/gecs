@@ -3,7 +3,7 @@ import type { Serialized } from '../types';
 
 import { describe, expect, jest, test } from '@jest/globals';
 
-import { Component, Entity } from '../ecs';
+import { Component, Entity } from '../';
 import * as C from './helpers/components';
 import * as E from './helpers/entities';
 import { getContext } from './helpers/setup';

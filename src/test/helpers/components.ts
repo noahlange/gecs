@@ -1,8 +1,8 @@
 /* eslint-disable max-classes-per-file */
 
-import type { Entity } from '../../ecs';
+import type { Entity } from '../../';
 
-import { Component, EntityRef } from '../../ecs';
+import { Component, EntityRef } from '../../';
 
 export class A extends Component {
   public static readonly type = 'a';

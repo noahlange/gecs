@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { Context } from '../../ecs';
+import { Context } from '../../';
 import { SequenceState } from '../helpers/plugins';
 
 const MyContext = Context.with(SequenceState);

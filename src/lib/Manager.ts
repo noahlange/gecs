@@ -1,8 +1,9 @@
 import type { ComponentClass, Entity, EntityClass } from '../ecs';
-import type { BaseDataType, BaseType, QueryStep } from '../types';
+import type { BaseDataType, BaseType, Identifier, QueryStep } from '../types';
 
 import { anonymous } from '../types';
 import { getID, match } from '../utils';
+import { releaseID } from '../utils/ids';
 import { EntityIndex } from './EntityIndex';
 import { Query } from './Query';
 import { QueryBuilder } from './QueryBuilder';
@@ -11,7 +12,7 @@ import { Registry } from './Registry';
 interface Registrations {
   entities: Record<string, EntityClass>;
   components: Record<string, ComponentClass>;
-  tags: Record<string, string>;
+  tags: Record<string, Identifier>;
 }
 
 export class Manager {
@@ -19,6 +20,7 @@ export class Manager {
    * Maps bigint identifiers to result sets.
    */
   public index = new EntityIndex();
+  public keys: Record<Identifier, bigint> = {};
 
   /**
    * A mapping of tag literals to tag IDs. These IDs are mapped in turn to bigints for querying.
@@ -97,7 +99,9 @@ export class Manager {
     }
 
     for (const tag of tags) {
-      regs.tags[tag] = getID();
+      if (!(tag in regs.tags)) {
+        regs.tags[tag] = getID();
+      }
     }
 
     this.registry.add(
@@ -119,9 +123,9 @@ export class Manager {
    */
   public tick(): void {
     const added: Entity[] = [];
-    const removed: Entity[] = Array.from(this.toDestroy);
+    const removed: Entity[] = Array.from(this.toDestroy.values());
 
-    // get the union of every id modified over the course of the last tick
+    // get the union of every key modified over the course of the last tick
     let modified = 0n;
 
     for (const [entity, oldKey] of this.toIndex) {
@@ -140,7 +144,8 @@ export class Manager {
         }
 
         // entities need to be removed from queries and unindexed whether or not they continue to exist
-        removed.push(entity), this.index.remove(oldKey, entity);
+        removed.push(entity);
+        this.index.remove(oldKey, entity);
         // ...but only bother re-indexing it if it's going to exist next tick.
         if (!this.toDestroy.has(entity)) {
           this.index.append(entity.key, entity);
@@ -156,6 +161,11 @@ export class Manager {
       }
     }
 
+    for (const entity of this.toDestroy) {
+      this.index.remove(entity.key, entity);
+      releaseID(entity.id);
+    }
+
     // reset everything for the next tick
     this.toIndex.clear(), this.toDestroy.clear();
   }
@@ -163,7 +173,7 @@ export class Manager {
   /**
    * Return the bigint identifier of a component or tag.
    */
-  public getID(...names: string[]): bigint | null {
+  public getID(...names: Identifier[]): bigint | null {
     return this.registry.getID(...names);
   }
 

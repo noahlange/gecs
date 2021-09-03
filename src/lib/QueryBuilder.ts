@@ -2,6 +2,7 @@ import type { ComponentClass, Entity } from '../ecs';
 import type {
   $AnyEvil,
   BaseType,
+  Identifier,
   KeyedByType,
   NeverByType,
   PartialByType,
@@ -55,7 +56,7 @@ interface TagQueryFns<T extends BaseType = {}> {
 
 export interface QueryState {
   tag: Constraint | null;
-  ids: string[];
+  ids: Identifier[];
 }
 
 export class QueryBuilder<T extends BaseType = {}>
@@ -118,7 +119,7 @@ export class QueryBuilder<T extends BaseType = {}>
 
   protected reset(): this {
     if (this.state) {
-      this.key += this.state.tag + '|' + this.state.ids.join(',') + '::';
+      this.key += this.state.tag + '␞' + this.state.ids.join('␟') + '␝';
       this.criteria.push({
         constraint: this.state.tag ?? Constraint.ALL,
         ids: this.state.ids.slice()
@@ -130,9 +131,14 @@ export class QueryBuilder<T extends BaseType = {}>
 
   protected tag(tag: Constraint): (...items: string[]) => this {
     return (...items: string[]) => {
-      const tags = this.manager.registrations.tags;
       // get generated ID
-      this.state.ids.push(...items.map(i => tags[i]));
+      const tags = this.manager.registrations.tags;
+      const filtered = items.filter(t => !tags[t]);
+      if (filtered.length) {
+        this.manager.register([], [], filtered);
+      }
+
+      this.state.ids = items.map(i => tags[i]);
       this.state.tag = tag;
       return this.reset();
     };

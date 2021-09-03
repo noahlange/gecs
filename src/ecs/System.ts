@@ -1,7 +1,7 @@
 import type { OfOrPromiseOf, Plugins } from '../types';
 import type { Context } from './Context';
 
-export interface SystemClass<T extends Plugins<T>> {
+export interface SystemClass<T> {
   phase?: number;
   new (ctx: Context<T>): System<T>;
 }

@@ -1,5 +1,5 @@
 /* eslint-disable max-classes-per-file */
-import { System } from '../../ecs';
+import { System } from '../../';
 
 export class SystemA extends System {
   public static readonly type = 'a';

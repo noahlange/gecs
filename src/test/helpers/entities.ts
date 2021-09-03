@@ -1,5 +1,5 @@
 /* eslint-disable max-classes-per-file */
-import { Entity } from '../../ecs';
+import { Entity } from '../../';
 import { A, B, C, Ref } from './components';
 
 // object entities

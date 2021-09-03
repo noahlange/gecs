@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { Context } from '../../ecs';
+import { Context } from '../../';
 import { ConditionalState } from '../helpers/plugins';
 
 describe('conditional systems', () => {

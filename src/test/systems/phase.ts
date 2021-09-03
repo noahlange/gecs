@@ -1,11 +1,7 @@
 /* eslint-disable max-classes-per-file */
-
 import { describe, expect, test } from '@jest/globals';
 
-import { Context } from '../../ecs';
-import { phase } from '../../ecs/composers';
-import { Plugin } from '../../lib';
-import { Phase } from '../../types';
+import { Context, Phase, phase, Plugin } from '../../';
 import { PhaseState } from '../helpers/plugins';
 
 describe('system phases', () => {

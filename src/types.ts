@@ -47,6 +47,8 @@ export type $AnyEvil = any;
  */
 export type $AnyOK = any;
 
+export type Identifier = string | number;
+
 /**
  * Any value that can be serialized in JSON (along with bigints).
  */
@@ -188,7 +190,7 @@ export enum QueryStatus {
 }
 
 export interface QueryStep {
-  ids: string[];
+  ids: Identifier[];
   constraint: Constraint;
 }
 
@@ -236,7 +238,7 @@ export interface SomeDictionary {
 }
 
 export interface SerializedEntity {
-  id: string;
+  id: Identifier;
   type: string;
   tags: string[];
   $: Record<string, unknown>;

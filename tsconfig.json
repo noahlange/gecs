@@ -11,6 +11,7 @@
     "rootDir": "src",
     "outDir": "esm",
     "strict": true,
+    "experimentalDecorators": true,
     "inlineSourceMap": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,

@@ -1,6 +1,5 @@
 /* eslint-disable max-classes-per-file */
-import { conditional, parallel, phase, sequence } from '../../ecs/composers';
-import { Plugin } from '../../lib';
+import { conditional, parallel, phase, Plugin, sequence } from '../../';
 import { Phase } from '../../types';
 
 const wait = (): Promise<void> => new Promise(ok => setTimeout(ok, 10));

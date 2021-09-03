@@ -14,7 +14,7 @@ import type { System } from './System';
 import { Deserializer, Manager, QueryBuilder, Serializer } from '../lib';
 import { Phase } from '../types';
 import { useWithPlugins } from '../utils/useWith';
-import { sequence } from './composers';
+import { compose } from './composers';
 
 export interface ContextClass<T extends Plugins<T> = Plugins<{}>> {
   new (): Context<T>;
@@ -135,14 +135,14 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
     const systems: SystemType<T>[] = Object.values(this.items)
       .map(item => this.$[item.type as keyof T] as Plugin<T>)
       .filter(p => p.$?.systems?.length)
-      .reduce(
-        (s: SystemType<T>[], p) =>
-          s.concat((p.$?.systems ?? []) as SystemType<T>[]),
-        []
-      )
+      .reduce((s: SystemType<T>[], plugin) => {
+        const systems = plugin.$?.systems ?? [];
+        return s.concat(systems) as SystemType<T>[];
+      }, [])
+      .flatMap(system => system)
       .sort((a, b) => (a.phase ?? defaultPhase) - (b.phase ?? defaultPhase));
 
-    return new (sequence(...systems))(this) as System<T>;
+    return new (compose(...systems))(this) as System<T>;
   }
 
   public constructor() {

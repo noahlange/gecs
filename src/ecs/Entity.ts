@@ -4,6 +4,7 @@ import type {
   $AnyOK,
   BaseDataType,
   BaseType,
+  Identifier,
   KeyedByType,
   PartialValueByType,
   Ref
@@ -56,39 +57,49 @@ export class Entity<T extends BaseType = {}> {
    */
   public key: bigint = 0n;
   public readonly $: T;
-  public readonly id: string = getID();
+  public readonly id: Identifier = getID();
   public readonly tags: ChangeSet;
   public readonly items!: ComponentClass[];
 
-  public readonly components: EntityComponents = {
-    all: this.allComponents.bind(this),
-    has: this.hasComponents.bind(this),
-    add: this.addComponent.bind(this),
-    remove: this.removeComponents.bind(this),
-    delete: this.removeComponents.bind(this),
-    [Symbol.iterator]: function* () {
-      yield* this.all();
-    }
-  };
-
-  /**
-   * Shorthand for `entity.components.has()`.
-   */
-  public has: <C extends ComponentClass[]>(
-    ...components: C
-  ) => this is Entity<T & KeyedByType<C>>;
-  public is: (...tags: string[]) => boolean;
+  public get components(): EntityComponents {
+    return {
+      all: this.allComponents.bind(this),
+      has: this.has.bind(this),
+      add: this.addComponent.bind(this),
+      remove: this.removeComponents.bind(this),
+      delete: this.removeComponents.bind(this),
+      [Symbol.iterator]: function* () {
+        yield* this.all();
+      }
+    };
+  }
 
   protected readonly manager: Manager;
-  protected readonly referenced: Set<EntityRef> = new Set();
+  protected readonly refs: EntityRef[] = [];
+
+  public is(...tags: string[]): boolean {
+    return this.tags.has(...tags);
+  }
+
+  public has = <C extends ComponentClass[]>(
+    ...components: C
+  ): this is Entity<T & KeyedByType<C>> => {
+    return components.every(component => component.type in this.$);
+  };
 
   /**
    * Destroy existing references and mark the entity for destruction + re-indexing.
    */
   public destroy(): void {
-    for (const reference of this.referenced) {
-      reference.ref = null;
+    for (const reference of this.refs) {
+      if (reference.entity === this) {
+        reference.entity = null;
+      }
+      if (reference.ref === this) {
+        reference.ref = null;
+      }
     }
+    this.refs.splice(0, this.refs.length);
     this.manager.destroy(this);
   }
 
@@ -99,19 +110,23 @@ export class Entity<T extends BaseType = {}> {
       const [type, item] = [Item.type as keyof T, new Item()];
 
       if (item instanceof EntityRef) {
+        this.refs.push(item);
+        item.entity = this;
         // modifying an object like this renders refs significantly more expensive than ordinary components
         Object.defineProperty(bindings, type, {
           get: () => item.ref,
           set: (entity: Ref<EntityRef> | null): void => {
             item.ref = entity;
-            entity?.referenced.add(item);
+            entity?.refs.push(item);
           }
         });
 
         // since defineProperty throws everything out the window, I think this is unavoidable.
         (bindings[type] as $AnyOK) = data[type] ?? null;
       } else {
-        bindings[type] = Object.assign(item, data[type] ?? {}) as T[keyof T];
+        bindings[type] = (
+          data[type] ? Object.assign(item, data[type] ?? {}) : item
+        ) as T[keyof T];
       }
     }
     return bindings;
@@ -121,21 +136,21 @@ export class Entity<T extends BaseType = {}> {
     return Object.values(this.$);
   }
 
-  protected hasComponents<C extends ComponentClass[]>(
-    ...components: C
-  ): this is Entity<T & KeyedByType<C>> {
-    return components.every(component => component.type in this.$);
-  }
-
   protected addComponent<C extends ComponentClass>(
     ComponentConstructor: C,
     data?: PartialValueByType<C>
   ): void {
     const type = ComponentConstructor.type as string & keyof T;
-    if (!this.$[type]) {
+    if (!(type in this.$)) {
       // get the component in question
-      this.$[type] = new ComponentConstructor(data) as T[string & keyof T];
+      this.$[type] = (
+        data
+          ? Object.assign(new ComponentConstructor(), data)
+          : new ComponentConstructor()
+      ) as T[string & keyof T];
+
       this.items.push(ComponentConstructor);
+      // turns out indexing repeatedly is faster than doing a bool set/check
       this.manager.indexEntity(this);
     }
   }
@@ -157,9 +172,8 @@ export class Entity<T extends BaseType = {}> {
   ) {
     this.manager = manager;
     this.tags = new ChangeSet(tags, () => this.manager.indexEntity(this));
-    this.has = this.components.has.bind(this);
-    this.is = this.tags.has.bind(this.tags);
+    // we need a unique copy of this in case we modify its components later on
+    this.items = (this.items ?? []).slice();
     this.$ = this.getBindings(data);
-    this.items = this.items.slice();
   }
 }

@@ -37,14 +37,22 @@ import type { PluginData } from 'gecs';
 import { A, B, C } from './components';
 import { WithA, WithB, WithC } from './entities';
 
-export default class StatePlugin extends Plugin {
+// a pain—I'm trying to figure out a way to avoid having
+// to annotate both the Plugin and the PluginData
+interface ContextPlugins {
+  state: StatePlugin;
+}
+
+export default class StatePlugin extends Plugin<ContextPlugins> {
   public static readonly type = 'state';
 
   // entities, components, tags and systems to register on start
-  public $: PluginData = {
-    components: [A, B, C],
-    entities: [WithA, WithB, WithC],
+  public $: PluginData<ContextPlugins> = {
+    components: { A, B, C },
+    entities: { WithA, WithB, WithC },
+    // arbitrary string tags
     tags: ['one', 'two', 'three'],
+    // systems; either stateless function systems or stateful class-based
     systems: [
       phase(Phase.ON_LOAD, ctx => {
         // to be executed at the beginning of the tick
@@ -54,37 +62,6 @@ export default class StatePlugin extends Plugin {
       })
     ]
   };
-}
-```
-
-### Dependencies
-
-By declaring plugin dependencies in your plugin type definitions, you can have typed access to plugins on `game.$`. Transitive dependencies are automatically included—declaring a dependency will give you access to _its_ dependencies as well.
-
-```typescript
-import type { PluginDeps, ComponentClass, EntityClass } from 'gecs';
-
-import { Plugin, sequence } from 'gecs';
-
-import StatePlugin from './plugins/state';
-
-import { SystemA, SystemB, SystemC } from './systems';
-
-class FooPlugin extends Plugin<PluginDeps<[typeof StatePlugin]>> {
-  public static readonly type = 'foo';
-}
-
-class BarPlugin extends Plugin<PluginDeps<[typeof FooPlugin]>> {
-  public static readonly type = 'bar';
-
-  public $ = {
-    systems: [sequence(SystemA, SystemB, SystemC)]
-  };
-
-  public start() {
-    this.ctx.$.foo instanceof FooPlugin; // true
-    this.ctx.$.state instanceof StatePlugin; // true
-  }
 }
 ```
 
@@ -251,7 +228,7 @@ for (const component of entity.components) {
 }
 ```
 
-A major footgun here is that the types of entities with removed components will not change, so unless you're paying close attention, you may find yourself accessing a non-existent component.
+A major footgun here is that the types of entities with removed components will not change, so unless you're paying close attention, you may find yourself accessing a non-existent component. Of course, the entity won't appear in future queries with that component, so you only need to watch out for the duration of the system.
 
 ```typescript
 for (const entity of ctx.query.components(A, B)) {
@@ -606,15 +583,13 @@ First, with a fresh install and having already run `build`, run <kbd>npm run ben
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: Deceptively bad.
+**A/R**: Bad, with some caveats.
 
-**Q/S**: Wait, what?  
-**A/R**: Performs like garbage in micro-benchmarks (bottom 1-3 in [js-ecs-benchmarks](https://github.com/ddmills/js-ecs-benchmarks), depending on the task), but is as fast as or faster than ECSY in the [intersecting circles demo](https://ecsy.io/examples/#Intersecting%20circles).
-
-That being said, _particularly_ awesome performance has never been a primary design goal—so long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance improvements.
+**Q/S**: ???  
+**A/R**: Performs poorly against other ECS engines in microbenchmarks. That being said, _particularly_ awesome performance has never been a primary design goal (so long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance improvements) and I'm sure there's plenty of low-hanging fruit remaining for performance gains.
 
 **Q/S**: Real-world example?  
-**A/R**: Using a naïve culling implementation and PIXI for rendering, a 256×256 map from [FLARE](https://github.com/flareteam/flare-game) runs at 3-5ms/frame with ~75MB memory usage.
+**A/R**: Using a naïve culling implementation and PIXI for rendering, a 256×256 map from [FLARE](https://github.com/flareteam/flare-game) runs at 5ms/frame with ~40MB memory usage.
 
 **Q/S**: After reading the code, I am shocked, _shocked_ to find that this is less type-safe than I would have ever thought possible.  
 **A/R**: This is correct. Unfortunately, this library and its design are more about ergonomics and my feelings than bulletproof type-safety.

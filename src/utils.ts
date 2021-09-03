@@ -1,5 +1,4 @@
-/* eslint-disable max-classes-per-file */
-import type { SystemClass } from './ecs';
+import type { EntityClass, SystemClass } from './ecs';
 import type { Plugins, SystemType } from './types';
 
 /**
@@ -15,6 +14,29 @@ export function isSystemConstructor<T extends Plugins<T>>(
     system.prototype?.start
   );
 }
+
+export const debug = {
+  /**
+   * Helps track memory leaks by throwing upon `$` access once destroyed.
+   *
+   * ```ts
+   * @debug.leak
+   * class MyClass extends Entity.with(A, B, C) {
+   * }
+   * ```
+   */
+  leak: (constructor: EntityClass) => {
+    const destroy = constructor.prototype.destroy;
+    constructor.prototype.destroy = function () {
+      destroy.call(this);
+      Object.defineProperty(this, '$', {
+        get: () => {
+          throw new Error(`Memory leak detected: entity ${this.id}.`);
+        }
+      });
+    };
+  }
+};
 
 export * from './utils/bit';
 export * from './utils/useWith';

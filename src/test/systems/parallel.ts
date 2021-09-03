@@ -2,7 +2,7 @@
 
 import { describe, expect, test } from '@jest/globals';
 
-import { Context } from '../../ecs';
+import { Context } from '../../';
 import { ParallelState } from '../helpers/plugins';
 
 describe('parallel systems', () => {

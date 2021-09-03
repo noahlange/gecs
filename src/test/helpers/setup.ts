@@ -1,7 +1,7 @@
-import type { Entity } from '../../ecs';
-import type { Manager } from '../../lib';
+import type { Entity, Manager } from '../../';
+import type { Identifier } from '../../types';
 
-import { Context } from '../../ecs';
+import { Context } from '../../';
 import * as C from './components';
 import { WithA, WithABC, WithAC, WithB } from './entities';
 import * as E from './entities';
@@ -17,7 +17,7 @@ export function getContext(): Context<{}> {
 export async function setup(): Promise<{
   ctx: Context<{}>;
   em: Manager;
-  ids: string[];
+  ids: Identifier[];
 }> {
   const ctx = getContext();
   const entities: Entity[] = [];

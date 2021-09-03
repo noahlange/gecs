@@ -11,7 +11,7 @@ export class Plugin<T extends Plugins<T> = {}> {
   public static readonly type: string;
 
   public $?: PluginData<T>;
-  protected ctx: Context<T>;
+  protected ctx: Context<Plugins<T>>;
 
   public start?(): OfOrPromiseOf<unknown>;
   public stop?(): OfOrPromiseOf<unknown>;

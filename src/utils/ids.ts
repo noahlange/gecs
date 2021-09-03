@@ -1,11 +1,29 @@
-import { nanoid } from 'nanoid/non-secure';
+import type { Identifier } from '../types';
 
 export interface IdentifierGenerator {
-  (): string;
+  (): Identifier;
 }
 
+const ids: Identifier[] = [];
+
+function* intGenerator(): IterableIterator<number> {
+  let id = 1;
+  do {
+    yield id++;
+  } while (true);
+}
+
+export const intID = (): (() => number) => {
+  const gen = intGenerator();
+  return (): number => ids.shift() ?? gen.next().value;
+};
+
+export const releaseID = (id: Identifier): void => {
+  ids.push(id);
+};
+
 const generator: Record<string, IdentifierGenerator> = {
-  fn: (): string => nanoid()
+  fn: intID()
 };
 
 /**
@@ -18,7 +36,7 @@ export function setID(fn: IdentifierGenerator): void {
 /**
  * Return a new string ID.
  */
-export function getID(): string {
+export function getID(): Identifier {
   return generator.fn();
 }
 
@@ -26,7 +44,7 @@ export function getID(): string {
  * Return bigints increasing by powers of 2.
  * 0001 -> 0010 -> 0100 -> 1000, etc.
  */
-function* idGenerator(): IterableIterator<bigint> {
+function* bigintIDGenerator(): IterableIterator<bigint> {
   let id = 1n;
   do {
     yield 1n << id++;
@@ -36,7 +54,7 @@ function* idGenerator(): IterableIterator<bigint> {
 /**
  * Return a new bigint generation function.
  */
-export const intID = (): (() => bigint) => {
-  const gen = idGenerator();
+export const bigintID = (): (() => bigint) => {
+  const gen = bigintIDGenerator();
   return (): bigint => gen.next().value;
 };
