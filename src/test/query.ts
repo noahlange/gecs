@@ -2,6 +2,7 @@ import type { Entity } from '../ecs';
 
 import { describe, expect, test } from '@jest/globals';
 
+import { Manager } from '../';
 import { A, B, C } from './helpers/components';
 import { WithA, WithAB } from './helpers/entities';
 import { getContext, setup } from './helpers/setup';
@@ -251,5 +252,21 @@ describe('methods', () => {
   test('first() should return null if no results are found', () => {
     const ctx = getContext();
     expect(ctx.query.components(C).first()).toBeNull();
+  });
+});
+
+describe('background registration', () => {
+  test('unregistered tags should be registered at runtime', () => {
+    const em = new Manager();
+
+    em.register([], [], ['A']);
+
+    expect(em.registrations.tags['A']).not.toBeUndefined();
+    expect(em.registrations.tags['B']).toBeUndefined();
+
+    const q = em.query.tags.all('B');
+    q.get();
+
+    expect(em.registrations.tags['B']).not.toBeUndefined();
   });
 });
