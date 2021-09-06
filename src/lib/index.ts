@@ -10,4 +10,4 @@ export { Plugin } from './Plugin';
 
 export type { SerializeOptions } from './Serializer';
 export type { PluginClass } from './Plugin';
-export type { BaseQueryBuilder } from './QueryBuilder';
+export type { QueryBuilderBase } from './QueryBuilder';

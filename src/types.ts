@@ -7,7 +7,7 @@ import type {
 } from './ecs';
 import type { EntityRef } from './ecs/EntityRef';
 import type { SystemFunction } from './ecs/System';
-import type { BaseQueryBuilder, PluginClass } from './lib';
+import type { PluginClass, QueryBuilderBase } from './lib';
 import type { U } from 'ts-toolbelt';
 
 // There's certainly a better way to handle this, but it appears to behave consistently enough—at least in Chrome...?
@@ -182,13 +182,6 @@ export enum Constraint {
   NONE = 3
 }
 
-export enum QueryStatus {
-  NONE = 0,
-  PENDING = 1,
-  RESOLVED = 2,
-  FAILED = 3
-}
-
 export interface QueryStep {
   ids: Identifier[];
   constraint: Constraint;
@@ -214,7 +207,7 @@ export type EntityType<
 export type QueryType<
   R extends ComponentClass[] = [],
   O extends ComponentClass[] = []
-> = BaseQueryBuilder<U.Merge<KeyedByType<R> & PartialByType<O>>>;
+> = QueryBuilderBase<U.Merge<KeyedByType<R> & PartialByType<O>>>;
 
 /**
  * A collection of plugins (and their dependencies).

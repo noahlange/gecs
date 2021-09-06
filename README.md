@@ -306,7 +306,9 @@ class Renderer extends System {
   protected sprites: Record<string, { path: string; sprite: PIXI.Sprite }> = {};
 
   protected $ = {
-    sprites: this.ctx.query.components(Sprite).components.some(Position)
+    sprites: this.ctx.query
+      .all.components(Sprite)
+      .some.components(Position)
   };
 
   public tick(delta: number, time?: number): void {
@@ -381,10 +383,10 @@ const ifSimulating = conditional(
 Queries return collections of entities based on the user's criteria. Query results are typed exactly like an ordinary entity, so you'll have (typed) access to each of the components you've requested in your query—but nothing more.
 
 ```ts
-const q = ctx.query.components
-  .all(A, B, C)
-  .components.some(D, E, F)
-  .tags.any('1', '2', '3');
+const q = ctx.query
+  .all.components(A, B, C)
+  .some.components(D, E, F)
+  .any.tags('1', '2', '3');
 ```
 
 ### Building
@@ -399,9 +401,9 @@ const q2 = ctx.query.tags('one', 'two', 'three');
 Steps are executed sequentially. The result of a query is the intersection of each step's results.
 
 ```typescript
-ctx.query.components
-  .some(A, B) // (A | B)
-  .tags.all('one', 'two'); //  & ('one' & 'two')
+ctx.query
+  .some.components(A, B) // (A | B)
+  .all.tags('one', 'two'); //  & ('one' & 'two')
 ```
 
 Query steps can be modified with `.all`, `.any` and `.none` to perform basic boolean operations. `.none` has no effect on the query's type signature, but does have an effect on its results. `.some` expands the query result's type signature with additional optional (i.e., possibly undefined) components, but has no effect on the query's results.
@@ -409,20 +411,20 @@ Query steps can be modified with `.all`, `.any` and `.none` to perform basic boo
 ```typescript
 // the "all" is implicit if a modifier is omitted
 ctx.query.components(A, B); // A & B
-ctx.query.components.all(A, B); // A & B
+ctx.query.all.components(A, B); // A & B
 
-ctx.query.components.any(A, B); // (A | B) | (A & B)
-ctx.query.components.some(A, B); // A? | B?
-ctx.query.components.none(A, B); // !(A | B)
+ctx.query.any.components(A, B); // (A | B) | (A & B)
+ctx.query.some.components(A, B); // A? | B?
+ctx.query.none.components(A, B); // !(A | B)
 ```
 
 Naturally, these can be chained:
 
 ```typescript
 ctx.query
-  .components.all(A, B) // (A & B)
-  .components.some(C);  // & C?
-  .components.none(D);  // & !D
+  .all.components(A, B) // (A & B)
+  .some.components(C);  // & C?
+  .none.components(D);  // & !D
 ```
 
 ### Execution

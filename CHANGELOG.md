@@ -1,5 +1,9 @@
 # 1.0.0-alpha
 
+## 1.0.0-alpha.5
+
+- reverts query API from `noun.adjective()` to `adjective.noun()`
+
 ## 1.0.0-alpha.4
 
 - adds `debug.leak` decorator to help track entity leaks
