@@ -20,9 +20,9 @@ export function conditional<T extends Plugins<T>>(
       for (const system of this.systems) {
         if (predicate(this.ctx)) {
           await system.tick?.(dt, ts);
+          this.ctx.manager.tick();
         }
       }
-      this.ctx.manager.tick();
     }
 
     public async start(): Promise<void> {

@@ -167,7 +167,8 @@ export class Manager {
     }
 
     // reset everything for the next tick
-    this.toIndex.clear(), this.toDestroy.clear();
+    this.toIndex.clear();
+    this.toDestroy.clear();
   }
 
   /**

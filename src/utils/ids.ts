@@ -4,7 +4,8 @@ export interface IdentifierGenerator {
   (): Identifier;
 }
 
-const ids: Identifier[] = [];
+const released: Identifier[] = [];
+const reserved: Set<Identifier> = new Set();
 
 function* intGenerator(): IterableIterator<number> {
   let id = 1;
@@ -15,11 +16,18 @@ function* intGenerator(): IterableIterator<number> {
 
 export const intID = (): (() => number) => {
   const gen = intGenerator();
-  return (): number => ids.shift() ?? gen.next().value;
+  return (): number => released.shift() ?? gen.next().value;
 };
 
 export const releaseID = (id: Identifier): void => {
-  ids.push(id);
+  if (reserved.has(id)) {
+    reserved.delete(id);
+  }
+  released.push(id);
+};
+
+export const reserveID = (id: Identifier): void => {
+  reserved.add(id);
 };
 
 const generator: Record<string, IdentifierGenerator> = {
@@ -57,4 +65,11 @@ function* bigintIDGenerator(): IterableIterator<bigint> {
 export const bigintID = (): (() => bigint) => {
   const gen = bigintIDGenerator();
   return (): bigint => gen.next().value;
+};
+
+export const ids = {
+  release: releaseID,
+  reserve: reserveID,
+  set: setID,
+  get: getID
 };

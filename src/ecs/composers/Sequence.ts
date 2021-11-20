@@ -6,5 +6,5 @@ export function sequence<T extends Plugins<T>>(
   // "Oh, I'm a bad man."
   //   - Malcolm Reynolds
   //     - Noah Lange
-  return Systems.flatMap(s => s) as $AnyEvil as SystemType<T>;
+  return Systems.flat(1) as $AnyEvil as SystemType<T>;
 }

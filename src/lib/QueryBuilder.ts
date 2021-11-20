@@ -28,15 +28,15 @@ export interface QueryBuilderBase<T extends BaseType = {}>
 interface QueryBuilderAll<T extends BaseType = {}> {
   components<A extends ComponentClass[]>(
     ...components: A
-  ): QueryBuilderBase<U.Merge<T & KeyedByType<A>>>;
-  tags(...tags: string[]): QueryBuilderBase<T>;
+  ): QueryBuilder<U.Merge<T & KeyedByType<A>>>;
+  tags(...tags: string[]): QueryBuilder<T>;
 }
 
 interface QueryBuilderAny<T extends BaseType = {}> {
   components<A extends ComponentClass[]>(
     ...components: A
   ): QueryBuilder<U.Merge<T & PartialByType<A>>>;
-  tags(...tags: string[]): QueryBuilderBase<T>;
+  tags(...tags: string[]): QueryBuilder<T>;
 }
 
 export interface QueryState {
@@ -93,11 +93,9 @@ export class QueryBuilder<T extends BaseType = {}>
    */
   public components<A extends ComponentClass[]>(
     ...components: A
-  ): QueryBuilderBase<U.Merge<T & KeyedByType<A>>> {
+  ): QueryBuilder<U.Merge<T & KeyedByType<A>>> {
     this.state.ids.push(...components.map(c => c.type));
-    return this.reset() as unknown as QueryBuilderBase<
-      U.Merge<T & KeyedByType<A>>
-    >;
+    return this.reset() as unknown as QueryBuilder<U.Merge<T & KeyedByType<A>>>;
   }
 
   /**
