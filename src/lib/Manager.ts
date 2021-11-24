@@ -1,9 +1,14 @@
-import type { ComponentClass, Entity, EntityClass } from '../ecs';
-import type { BaseDataType, BaseType, Identifier, QueryStep } from '../types';
+import type { ComponentClass, Context, Entity, EntityClass } from '../ecs';
+import type {
+  $AnyEvil,
+  BaseDataType,
+  BaseType,
+  Identifier,
+  QueryStep
+} from '../types';
 
 import { anonymous } from '../types';
-import { getID, match } from '../utils';
-import { releaseID } from '../utils/ids';
+import { match } from '../utils';
 import { EntityIndex } from './EntityIndex';
 import { Query } from './Query';
 import { QueryBuilder } from './QueryBuilder';
@@ -35,6 +40,7 @@ export class Manager {
    * Map tags and components to bigints for bitmask searches.
    */
   protected registry = new Registry();
+  protected ctx: Context;
 
   /**
    * Cached queries, indexed by string key (basically a concatenation of query components).
@@ -56,13 +62,6 @@ export class Manager {
   protected toIndex: Map<Entity, bigint> = new Map();
 
   /**
-   * Return a new QueryBuilder instance.
-   */
-  public get query(): QueryBuilder {
-    return new QueryBuilder(this);
-  }
-
-  /**
    * Given an array of query steps (or a string ID mapping to a combination of
    * components/tags, if we're dealing with a persisted query) return a new
    * (or cached) query object.
@@ -72,7 +71,7 @@ export class Manager {
     E extends Entity<T> = Entity<T>
   >(steps: QueryStep[], id: string): Query<T, E> {
     if (!this.queries[id]) {
-      this.queries[id] = new Query(this, steps);
+      this.queries[id] = new Query(this.ctx, steps);
     }
     return this.queries[id] as Query<T, E>;
   }
@@ -100,7 +99,7 @@ export class Manager {
 
     for (const tag of tags) {
       if (!(tag in regs.tags)) {
-        regs.tags[tag] = getID();
+        regs.tags[tag] = this.ctx.ids.id.next();
       }
     }
 
@@ -163,7 +162,7 @@ export class Manager {
 
     for (const entity of this.toDestroy) {
       this.index.remove(entity.key, entity);
-      releaseID(entity.id);
+      this.ctx.ids.id.release(entity.id);
     }
 
     // reset everything for the next tick
@@ -201,7 +200,7 @@ export class Manager {
     data: BaseDataType<T> = {},
     tags: string[] = []
   ): Entity<T> {
-    const entity = new Entity(this, data, tags);
+    const entity = new Entity(this.ctx, data, tags);
     this.indexEntity(entity);
     return entity;
   }
@@ -211,7 +210,20 @@ export class Manager {
    */
   protected getEntityKey(entity: Entity): bigint {
     const tags = this.registrations.tags;
+
     const arr = Array.from(entity.tags).map(t => tags[t]);
     return this.registry.add(...entity.items.map(e => e.type), ...arr);
+  }
+
+  protected createEntityRefTag(entity: Entity): void {
+    const tag = Symbol(`entity.${entity.id}`);
+    const id = this.ctx.ids.id.next();
+    // this.registrations.refs[entity.id] = tag;
+    // this.registrations.tags[tag] = id;
+    this.registry.add(id);
+  }
+
+  public constructor(context: Context<$AnyEvil>) {
+    this.ctx = context;
   }
 }

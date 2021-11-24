@@ -1,16 +1,16 @@
 import { describe, expect } from '@jest/globals';
 
-import { Manager } from '../../lib';
 import { WithA } from '../helpers/entities';
+import { getContext } from '../helpers/setup';
 
 describe('Registry', () => {
   test('remove deletes an entity', () => {
-    const m = new Manager();
-    const e = m.create(WithA);
-    m.tick();
+    const ctx = getContext();
+    const e = ctx.create(WithA);
+    ctx.tick(0);
     e.destroy();
-    m.tick();
+    ctx.tick(1);
 
-    expect(m.index.all()).toHaveLength(0);
+    expect(ctx.manager.index.all()).toHaveLength(0);
   });
 });

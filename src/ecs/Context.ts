@@ -2,6 +2,7 @@ import type { Plugin, PluginClass, SerializeOptions } from '../lib';
 import type {
   BaseDataType,
   BaseType,
+  Identifier,
   KeyedByType,
   Plugins,
   Serialized,
@@ -13,6 +14,7 @@ import type { System } from './System';
 
 import { Deserializer, Manager, QueryBuilder, Serializer } from '../lib';
 import { Phase } from '../types';
+import { bigintID, IDGenerator, intID } from '../utils';
 import { useWithPlugins } from '../utils/useWith';
 import { compose } from './composers';
 
@@ -31,6 +33,14 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
   }
 
   public $!: T;
+  public ids: {
+    id: IDGenerator<Identifier>;
+    bigint: IDGenerator<bigint>;
+  } = {
+    bigint: IDGenerator.from(bigintID),
+    id: IDGenerator.from(intID)
+  };
+
   public manager: Manager;
 
   // binary semaphore to prevent overlapping tick() calls
@@ -41,15 +51,11 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
     return [];
   }
 
-  public async tick(delta: number, time: number): Promise<void> {
-    if (!this.isLocked) {
-      this.isLocked = true;
-      await this.system.tick?.(delta, time);
-      this.manager.tick();
-      this.isLocked = false;
-    } else {
-      console.warn('Tick duration exceeds tick rate.');
-    }
+  public async tick(delta: number, time: number = Date.now()): Promise<void> {
+    this.isLocked = true;
+    await this.system.tick?.(delta, time);
+    this.manager.tick();
+    this.isLocked = false;
   }
 
   public load(save: Serialized): void {
@@ -112,7 +118,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
   }
 
   public get query(): QueryBuilder {
-    return new QueryBuilder(this.manager);
+    return new QueryBuilder(this as unknown as Context);
   }
 
   protected getPlugins(): T {
@@ -146,7 +152,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
   }
 
   public constructor() {
-    this.manager = new Manager();
+    this.manager = new Manager(this);
     this.$ = this.getPlugins();
     this.system = this.getSystem();
   }

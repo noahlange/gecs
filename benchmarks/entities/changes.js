@@ -1,17 +1,17 @@
 const bench = require('nanobench');
-const { Manager, Entity } = require('../../lib');
+const { Manager, Entity, Context } = require('../../lib');
 const { Test1, Test2, Test3 } = require('../helpers/components');
 
 for (const count of [1, 10, 50, 100]) {
   function setup() {
+    const ctx = new Context();
     const TestEntity = Entity.with(Test1, Test2, Test3);
-    const em = new Manager();
     const entities = [];
     for (let i = 0; i < count * 1000; i++) {
-      entities.push(em.create(TestEntity));
+      entities.push(ctx.create(TestEntity));
     }
-    em.tick();
-    return { em, entities };
+    ctx.tick();
+    return { ctx, entities };
   }
 
   bench(`Modify ${count}k entities (1 component)`, b => {

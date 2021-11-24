@@ -1,4 +1,4 @@
-import type { ComponentClass, Entity } from '../ecs';
+import type { ComponentClass, Context, Entity } from '../ecs';
 import type {
   BaseType,
   Identifier,
@@ -6,7 +6,7 @@ import type {
   PartialByType,
   QueryStep
 } from '../types';
-import type { Manager, Query } from '.';
+import type { Query } from '.';
 import type { U } from 'ts-toolbelt';
 
 import { Constraint } from '../types';
@@ -51,7 +51,7 @@ export class QueryBuilder<T extends BaseType = {}>
   protected state!: QueryState;
   protected resolved: Query<T> | null = null;
   protected criteria: QueryStep[] = [];
-  protected manager: Manager;
+  protected ctx: Context;
 
   /**
    * Mark query parameters as mandatory.
@@ -102,10 +102,10 @@ export class QueryBuilder<T extends BaseType = {}>
    * Constrain results based on one or more tags.
    */
   public tags(...items: string[]): this {
-    const tags = this.manager.registrations.tags;
+    const tags = this.ctx.manager.registrations.tags;
     const filtered = items.filter(t => !tags[t]);
     if (filtered.length) {
-      this.manager.register([], [], filtered);
+      this.ctx.manager.register([], [], filtered);
     }
 
     this.state.ids = items.map(i => tags[i]);
@@ -113,7 +113,7 @@ export class QueryBuilder<T extends BaseType = {}>
   }
 
   public get query(): Query<T, Entity<T>> {
-    return (this.resolved ??= this.manager.getQuery<T, Entity<T>>(
+    return (this.resolved ??= this.ctx.manager.getQuery<T, Entity<T>>(
       this.criteria,
       this.key
     ));
@@ -152,8 +152,8 @@ export class QueryBuilder<T extends BaseType = {}>
     return this;
   }
 
-  public constructor(manager: Manager) {
-    this.manager = manager;
+  public constructor(ctx: Context) {
+    this.ctx = ctx;
     this.reset();
   }
 }

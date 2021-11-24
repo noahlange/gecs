@@ -1,9 +1,8 @@
-import type { Entity } from '../ecs';
-import type { BaseType, QueryStep } from '../types';
-import type { Manager } from './Manager';
+import type { Context, Entity } from '../ecs';
+import type { BaseType, Identifier, QueryStep } from '../types';
 
 import { Constraint } from '../types';
-import { getID, match, union } from '../utils';
+import { match, union } from '../utils';
 
 type ConstraintsExceptSome = Exclude<Constraint, Constraint.SOME>;
 type Targets = { [key in ConstraintsExceptSome]: bigint | null };
@@ -18,9 +17,10 @@ export class Query<
   T extends BaseType = BaseType,
   E extends Entity<T> = Entity<T>
 > {
-  public readonly id = getID();
+  public readonly id: Identifier;
   public key: bigint | null = null;
 
+  protected ctx: Context;
   protected results: Set<E> = new Set();
   protected constraints: Set<ConstraintsExceptSome> = new Set();
 
@@ -29,7 +29,6 @@ export class Query<
    */
   protected keys: Map<bigint, boolean> = new Map();
   protected steps: QueryStep[];
-  protected manager: Manager;
   protected executed: boolean = false;
 
   protected targets: Record<ConstraintsExceptSome, bigint | null> = {
@@ -43,8 +42,9 @@ export class Query<
    */
   public refresh(): void {
     this.executed = true;
-    const matches = this.manager.index.keys().filter(key => this.filter(key));
-    this.results = new Set(this.manager.index.get(matches)) as Set<E>;
+    const index = this.ctx.manager.index;
+    const matches = index.get(index.keys().filter(key => this.filter(key)));
+    this.results = new Set(matches) as Set<E>;
   }
 
   public update(additions: Entity[], removals: Entity[]): void {
@@ -90,7 +90,7 @@ export class Query<
   protected reducer = (targets: Targets, step: QueryStep): Targets => {
     // we've already thrown if an ID hasn't been resolved
     const constraint = step.constraint as ConstraintsExceptSome;
-    const id = this.manager.getID(...step.ids);
+    const id = this.ctx.manager.getID(...step.ids);
     targets[constraint] = targets[constraint]
       ? union(targets[constraint], id)
       : id;
@@ -142,9 +142,9 @@ export class Query<
     return res;
   }
 
-  public constructor(entities: Manager, steps: QueryStep[]) {
-    this.manager = entities;
-    // .some() only changes the type signature
+  public constructor(context: Context, steps: QueryStep[]) {
+    this.ctx = context;
+    this.id = context.ids.id.next();
     this.steps = steps.filter(step => step.constraint !== Constraint.SOME);
     this.init();
   }

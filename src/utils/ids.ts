@@ -1,58 +1,18 @@
-import type { Identifier } from '../types';
-
-export interface IdentifierGenerator {
-  (): Identifier;
-}
-
-const released: Identifier[] = [];
-const reserved: Set<Identifier> = new Set();
-
-function* intGenerator(): IterableIterator<number> {
+/**
+ * Return consecutive ints.
+ */
+export function* intID(): IterableIterator<number> {
   let id = 1;
   do {
     yield id++;
   } while (true);
 }
 
-export const intID = (): (() => number) => {
-  const gen = intGenerator();
-  return (): number => released.shift() ?? gen.next().value;
-};
-
-export const releaseID = (id: Identifier): void => {
-  if (reserved.has(id)) {
-    reserved.delete(id);
-  }
-  released.push(id);
-};
-
-export const reserveID = (id: Identifier): void => {
-  reserved.add(id);
-};
-
-const generator: Record<string, IdentifierGenerator> = {
-  fn: intID()
-};
-
-/**
- * Set the string ID generation function.
- */
-export function setID(fn: IdentifierGenerator): void {
-  generator.fn = fn;
-}
-
-/**
- * Return a new string ID.
- */
-export function getID(): Identifier {
-  return generator.fn();
-}
-
 /**
  * Return bigints increasing by powers of 2.
  * 0001 -> 0010 -> 0100 -> 1000, etc.
  */
-function* bigintIDGenerator(): IterableIterator<bigint> {
+export function* bigintID(): IterableIterator<bigint> {
   let id = 1n;
   do {
     yield 1n << id++;
@@ -60,16 +20,27 @@ function* bigintIDGenerator(): IterableIterator<bigint> {
 }
 
 /**
- * Return a new bigint generation function.
+ * Generic ID generator with ID recycling.
  */
-export const bigintID = (): (() => bigint) => {
-  const gen = bigintIDGenerator();
-  return (): bigint => gen.next().value;
-};
+export class IDGenerator<T> {
+  public static from<T>(generator: () => IterableIterator<T>): IDGenerator<T> {
+    const gen = generator();
+    return new IDGenerator(() => gen.next().value);
+  }
 
-export const ids = {
-  release: releaseID,
-  reserve: reserveID,
-  set: setID,
-  get: getID
-};
+  protected released: T[] = [];
+  protected generator: () => T;
+
+  public release(id: T): void {
+    this.released.push(id);
+  }
+
+  public next(): T {
+    const next = this.released.shift();
+    return next ?? this.generator();
+  }
+
+  protected constructor(generator: () => T) {
+    this.generator = generator;
+  }
+}

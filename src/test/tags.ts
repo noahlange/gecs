@@ -1,11 +1,11 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { Manager } from '../lib';
 import { WithABC } from './helpers/entities';
+import { getContext } from './helpers/setup';
 
 describe('tagging entities', () => {
-  const em = new Manager();
-  const item = em.create(WithABC, { a: { value: '???' } }, ['MY_TAG']);
+  const ctx = getContext();
+  const item = ctx.create(WithABC, { a: { value: '???' } }, ['MY_TAG']);
 
   test('create() with tags', () => {
     expect(item.tags.has('MY_TAG')).toBeTruthy();

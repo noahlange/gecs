@@ -1,19 +1,20 @@
 import type { Identifier } from '../types';
 
 import { bigintID, union } from '../utils';
+import { IDGenerator } from '../utils/ids';
 
 /**
  * Map human-readable identifiers (nanoids, tags, .type, etc) to bigints for
  * faster bitmask queries.
  */
 export class Registry {
-  protected id = bigintID();
+  protected generator = IDGenerator.from(bigintID);
   protected registry: Record<Identifier, bigint> = {};
 
   public add(...keys: Identifier[]): bigint {
     const res: bigint[] = [];
     for (const key of keys) {
-      res.push((this.registry[key] ??= this.id()));
+      res.push((this.registry[key] ??= this.generator.next()));
     }
     return union(...res);
   }
@@ -21,5 +22,9 @@ export class Registry {
   public getID(...keys: Identifier[]): bigint | null {
     const res = union(...keys.map(key => this.registry[key] ?? 0n));
     return res === 0n ? null : res;
+  }
+
+  public release(id: bigint): void {
+    this.generator.release(id);
   }
 }

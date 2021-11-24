@@ -1,22 +1,23 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { debug, Entity, Manager } from '../../';
+import { debug, Entity } from '../../';
 import { A, B } from '../helpers/components';
+import { getContext } from '../helpers/setup';
 
 @debug.leak
 class E extends Entity.with(A, B) {}
 
 describe('debug tooling - leak decorator', () => {
   test('...should throw if accessed once destroyed', () => {
-    const em = new Manager();
-    const item = em.create(E);
+    const ctx = getContext();
+    const item = ctx.create(E);
 
-    em.tick();
+    ctx.tick(0);
     // normal access
     expect(() => item.$).not.toThrow();
 
     item.destroy();
-    em.tick();
+    ctx.tick(0);
     // 🚨 wee-oh, memory leak 🚨
     expect(() => item.$).toThrow();
   });

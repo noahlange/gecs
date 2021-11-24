@@ -1,4 +1,4 @@
-import type { Entity, Manager } from '../../';
+import type { Entity } from '../../';
 import type { Identifier } from '../../types';
 
 import { Context } from '../../';
@@ -16,24 +16,22 @@ export function getContext(): Context<{}> {
 
 export async function setup(): Promise<{
   ctx: Context<{}>;
-  em: Manager;
   ids: Identifier[];
 }> {
   const ctx = getContext();
   const entities: Entity[] = [];
   const count = 5;
-  const em = ctx.manager;
 
-  await withTick(em, () => {
+  await withTick(ctx, () => {
     for (let i = 0; i < count; i++) {
       entities.push(
-        em.create(WithA, {}, ['a']),
-        em.create(WithB, {}, ['b']),
-        em.create(WithAC, {}, ['a', 'c']),
-        em.create(WithABC, {}, ['a', 'b', 'c'])
+        ctx.create(WithA, {}, ['a']),
+        ctx.create(WithB, {}, ['b']),
+        ctx.create(WithAC, {}, ['a', 'c']),
+        ctx.create(WithABC, {}, ['a', 'b', 'c'])
       );
     }
   });
 
-  return { ctx, em, ids: entities.map(e => e.id) };
+  return { ctx, ids: entities.map(e => e.id) };
 }

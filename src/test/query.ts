@@ -2,7 +2,6 @@ import type { Entity } from '../ecs';
 
 import { describe, expect, test } from '@jest/globals';
 
-import { Manager } from '../';
 import { A, B, C } from './helpers/components';
 import { WithA, WithAB } from './helpers/entities';
 import { getContext, setup } from './helpers/setup';
@@ -12,14 +11,14 @@ describe('basic types', () => {
   const count = 5;
 
   test('select by component', async () => {
-    const { em } = await setup();
-    const hasA = em.query.all.components(A);
+    const { ctx } = await setup();
+    const hasA = ctx.query.all.components(A);
     expect(hasA.get()).toHaveLength(count * 3);
   });
 
   test('select by tag', async () => {
-    const { em } = await setup();
-    const withABTags = em.query.any.tags('a', 'b');
+    const { ctx } = await setup();
+    const withABTags = ctx.query.any.tags('a', 'b');
     expect(withABTags.get()).toHaveLength(count * 4);
   });
 });
@@ -28,14 +27,14 @@ describe('implicit queries', () => {
   const count = 5;
 
   test('select by component', async () => {
-    const { em } = await setup();
-    const hasA = em.query.components(A).get();
+    const { ctx } = await setup();
+    const hasA = ctx.query.components(A).get();
     expect(hasA).toHaveLength(count * 3);
   });
 
   test('select by tag', async () => {
-    const { em } = await setup();
-    const withABTags = em.query.tags('a', 'b').get();
+    const { ctx } = await setup();
+    const withABTags = ctx.query.tags('a', 'b').get();
     expect(withABTags).toHaveLength(count * 1);
   });
 });
@@ -43,28 +42,28 @@ describe('implicit queries', () => {
 describe('basic query modifiers', () => {
   const count = 5;
   test('.components.all()', async () => {
-    const { em } = await setup();
+    const { ctx } = await setup();
 
-    const hasA = em.query.components(A);
+    const hasA = ctx.query.components(A);
     expect(hasA.get()).toHaveLength(count * 3);
 
-    const hasAB = em.query.components(A, B);
+    const hasAB = ctx.query.components(A, B);
     expect(hasAB.get()).toHaveLength(count * 1);
   });
 
   test('.components.any()', async () => {
-    const { em } = await setup();
+    const { ctx } = await setup();
 
-    const hasABC = em.query.any.components(A, B, C);
+    const hasABC = ctx.query.any.components(A, B, C);
     expect(hasABC.get()).toHaveLength(count * 4);
 
-    const hasC = em.query.any.components(C);
+    const hasC = ctx.query.any.components(C);
     expect(hasC.get()).toHaveLength(count * 2);
   });
 
   test('.components.none()', async () => {
-    const { em } = await setup();
-    const noA = em.query.none.components(A);
+    const { ctx } = await setup();
+    const noA = ctx.query.none.components(A);
     expect(noA.get()).toHaveLength(count); // i.e., WithB
   });
 });
@@ -72,33 +71,32 @@ describe('basic query modifiers', () => {
 describe('tag queries', () => {
   const count = 5;
 
-  test('.tags.all()', async () => {
-    const { em } = await setup();
-    expect(em.query.all.tags('a').get()).toHaveLength(count * 3);
-    expect(em.query.all.tags('c').get()).toHaveLength(count * 2);
+  test('.all.tags()', async () => {
+    const { ctx } = await setup();
+    expect(ctx.query.all.tags('a').get()).toHaveLength(count * 3);
+    expect(ctx.query.all.tags('c').get()).toHaveLength(count * 2);
   });
 
-  test('.tags.none()', async () => {
-    const { em } = await setup();
-    expect(em.query.none.tags('a').get()).toHaveLength(count);
-    expect(em.query.none.tags('a', 'b').get()).toHaveLength(0);
+  test('.none.tags()', async () => {
+    const { ctx } = await setup();
+    expect(ctx.query.none.tags('a').get()).toHaveLength(count);
+    expect(ctx.query.none.tags('a', 'b').get()).toHaveLength(0);
   });
 
   test('newly-added tags', async () => {
     const ctx = getContext();
-    const em = ctx.manager;
-    const q = em.query.components(A).all.tags('a');
+    const q = ctx.query.components(A).all.tags('a');
     const entities: Entity[] = [];
 
-    await withTick(em, () => {
+    await withTick(ctx, () => {
       for (let i = 0; i < count; i++) {
-        entities.push(em.create(WithA, {}, []));
+        entities.push(ctx.create(WithA, {}, []));
       }
     });
 
     expect(q.get()).toHaveLength(0);
 
-    await withTick(em, () => {
+    await withTick(ctx, () => {
       for (const entity of entities) {
         entity.tags.add('a');
       }
@@ -109,19 +107,18 @@ describe('tag queries', () => {
 
   test('newly-removed tags', async () => {
     const ctx = getContext();
-    const em = ctx.manager;
-    const q = em.query.components(A).all.tags('a');
+    const q = ctx.query.components(A).all.tags('a');
     const entities: Entity[] = [];
 
-    await withTick(em, () => {
+    await withTick(ctx, () => {
       for (let i = 0; i < count; i++) {
-        entities.push(em.create(WithA, {}, ['a']));
+        entities.push(ctx.create(WithA, {}, ['a']));
       }
     });
 
     expect(q.get()).toHaveLength(count);
 
-    await withTick(em, () => {
+    await withTick(ctx, () => {
       for (const entity of entities) {
         entity.tags.remove('a');
       }
@@ -134,8 +131,8 @@ describe('tag queries', () => {
 describe('complex queries', () => {
   const count = 5;
   test('components + tags', async () => {
-    const { em } = await setup();
-    const q = em.query.all.components(A).some.components(B).none.tags('c');
+    const { ctx } = await setup();
+    const q = ctx.query.all.components(A).some.components(B).none.tags('c');
     expect(q.get()).toHaveLength(count);
   });
 });
@@ -144,24 +141,24 @@ describe('entity queries', () => {
   const count = 5;
 
   test('return with specified components', async () => {
-    const { em } = await setup();
-    const hasA = em.query.components(A);
-    const hasB = em.query.components(B);
+    const { ctx } = await setup();
+    const hasA = ctx.query.components(A);
+    const hasB = ctx.query.components(B);
     expect(hasA.get()).toHaveLength(count * 3);
     expect(hasB.get()).toHaveLength(count * 2);
   });
 
   test('return without specified components', async () => {
-    const { em } = await setup();
-    const noA = em.query.none.components(A);
-    const noB = em.query.none.components(A, B);
+    const { ctx } = await setup();
+    const noA = ctx.query.none.components(A);
+    const noB = ctx.query.none.components(A, B);
     expect(noA.get()).toHaveLength(count);
     expect(noB.get()).toHaveLength(0);
   });
 
   test('chained queries', async () => {
-    const { em } = await setup();
-    const q = em.query.components(A).none.components(B);
+    const { ctx } = await setup();
+    const q = ctx.query.components(A).none.components(B);
     expect(q.get()).toHaveLength(count * 2);
   });
 });
@@ -257,16 +254,16 @@ describe('methods', () => {
 
 describe('background registration', () => {
   test('unregistered tags should be registered at runtime', () => {
-    const em = new Manager();
+    const ctx = getContext();
 
-    em.register([], [], ['A']);
+    ctx.register([], [], ['A']);
 
-    expect(em.registrations.tags['A']).not.toBeUndefined();
-    expect(em.registrations.tags['B']).toBeUndefined();
+    expect(ctx.manager.registrations.tags['A']).not.toBeUndefined();
+    expect(ctx.manager.registrations.tags['B']).toBeUndefined();
 
-    const q = em.query.all.tags('B');
+    const q = ctx.query.all.tags('B');
     q.get();
 
-    expect(em.registrations.tags['B']).not.toBeUndefined();
+    expect(ctx.manager.registrations.tags['B']).not.toBeUndefined();
   });
 });

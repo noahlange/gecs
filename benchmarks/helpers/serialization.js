@@ -5,7 +5,6 @@ const E1 = Entity.with(Complex1);
 const E2 = Entity.with(Complex1, Complex2);
 const E3 = Entity.with(Complex1, Complex2, Complex3);
 
-const components = [Complex1, Complex2, Complex3];
 const entities = [E1, E2, E3];
 
 function setup(create, components) {

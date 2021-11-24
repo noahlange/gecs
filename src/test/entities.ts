@@ -1,13 +1,13 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { Manager } from '../lib';
 import { A, B, C } from './helpers/components';
 import { WithA, WithAB, WithABC } from './helpers/entities';
+import { getContext } from './helpers/setup';
 import { withTick } from './helpers/utils';
 
 describe('creating entities', () => {
-  const em = new Manager();
-  const item = em.create(WithABC);
+  const ctx = getContext();
+  const item = ctx.create(WithABC);
 
   test('`Entity.with()` adds additional items to the list of those attached to a newly-constructed container', () => {
     expect(item.items.length).toBe(3);
@@ -16,8 +16,8 @@ describe('creating entities', () => {
 
 describe('populating components', () => {
   test('populating simple components', () => {
-    const em = new Manager();
-    const item = em.create(WithABC, {
+    const ctx = getContext();
+    const item = ctx.create(WithABC, {
       a: { value: '???' },
       b: { value: 123 },
       c: { value: false }
@@ -29,8 +29,8 @@ describe('populating components', () => {
 });
 
 describe('component bindings', () => {
-  const em = new Manager();
-  const { $ } = em.create(WithABC);
+  const ctx = getContext();
+  const { $ } = ctx.create(WithABC);
 
   test('`$` returns all components', () => {
     const keys = Object.keys($);
@@ -54,8 +54,8 @@ describe('component bindings', () => {
 });
 
 describe('has/is helpers', () => {
-  const em = new Manager();
-  const entity = em.create(WithAB, {}, ['MY_TAG']);
+  const ctx = getContext();
+  const entity = ctx.create(WithAB, {}, ['MY_TAG']);
   test('has() returns true if all components are present', () => {
     expect(entity.has(A, B)).toBeTruthy();
     expect(entity.has(A, C)).toBeFalsy();
@@ -69,8 +69,8 @@ describe('has/is helpers', () => {
 
 describe('modifying components', () => {
   test('removing a component should not affect other entities with the same prototype', () => {
-    const em = new Manager();
-    const [a, b] = [em.create(WithAB), em.create(WithAB)];
+    const ctx = getContext();
+    const [a, b] = [ctx.create(WithAB), ctx.create(WithAB)];
     // out of the box, same items
     expect(a.items).toEqual(b.items);
     a.components.remove(B);
@@ -80,8 +80,8 @@ describe('modifying components', () => {
   });
 
   test('adding a component should not affect other entities with the same prototype', () => {
-    const em = new Manager();
-    const [a, b] = [em.create(WithA), em.create(WithA)];
+    const ctx = getContext();
+    const [a, b] = [ctx.create(WithA), ctx.create(WithA)];
     // out of the box, same items
     expect(a.items).toEqual(b.items);
     a.components.add(B);
@@ -91,38 +91,38 @@ describe('modifying components', () => {
   });
 
   test('adding an duplicate component should be a no-op', async () => {
-    const em = new Manager();
-    const a = await withTick(em, () => {
-      return em.create(WithA, { a: { value: '2' } });
-    });
+    const ctx = getContext();
+    const a = await withTick(ctx, () =>
+      ctx.create(WithA, { a: { value: '2' } })
+    );
 
     a.components.add(A, { value: '5' });
     expect(a.$.a.value).toBe('2');
     // @ts-expect-error
-    expect(em.toIndex.size).toBe(0);
+    expect(ctx.manager.toIndex.size).toBe(0);
   });
 
   test('removing a nonexistent component should be a no-op', async () => {
-    const em = new Manager();
-    const a = await withTick(em, () => {
-      return em.create(WithA, { a: { value: '2' } });
-    });
+    const ctx = getContext();
+    const a = await withTick(ctx, () =>
+      ctx.create(WithA, { a: { value: '2' } })
+    );
     a.components.remove(B);
     // @ts-expect-error
-    expect(em.toIndex.size).toBe(0);
+    expect(ctx.manager.toIndex.size).toBe(0);
   });
 
   test('has()', () => {
-    const em = new Manager();
-    const a = em.create(WithAB);
+    const ctx = getContext();
+    const a = ctx.create(WithAB);
 
     expect(a.has(A)).toBe(true);
     expect(a.has(C)).toBe(false);
   });
 
   test('all(), iterating', () => {
-    const em = new Manager();
-    const a = em.create(WithAB);
+    const ctx = getContext();
+    const a = ctx.create(WithAB);
 
     const all = a.components.all();
     const iterated = Array.from(a.components);

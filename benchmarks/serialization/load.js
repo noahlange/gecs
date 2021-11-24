@@ -1,6 +1,6 @@
 const bench = require('nanobench');
 const { Context } = require('../../lib');
-const { setup, register } = require('../helpers/serialization');
+const { setup } = require('../helpers/serialization');
 
 for (const count of [1, 10, 50, 100]) {
   for (const cmp of [1, 2, 3]) {

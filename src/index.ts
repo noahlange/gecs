@@ -8,7 +8,7 @@ export {
 } from './ecs/composers';
 export { Manager, Serializer, Deserializer, Plugin } from './lib';
 
-export { setID, ids, debug } from './utils';
+export { debug } from './utils';
 export { Phase } from './types';
 
 export type { EntityClass, ComponentClass, SystemClass } from './ecs';

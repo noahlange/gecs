@@ -1,4 +1,3 @@
-import type { Manager } from '../lib';
 import type {
   $AnyEvil,
   $AnyOK,
@@ -9,10 +8,11 @@ import type {
   PartialValueByType,
   Ref
 } from '../types';
+import type { Context } from '.';
 import type { Component, ComponentClass } from './Component';
 
 import { ChangeSet } from '../lib';
-import { getID, useWithComponent } from '../utils';
+import { useWithComponent } from '../utils';
 import { EntityRef } from './EntityRef';
 
 export interface EntityComponents {
@@ -33,7 +33,7 @@ export interface EntityClass<
   E extends Entity<T> = Entity<T>
 > {
   data?: BaseDataType<T>;
-  new (manager: Manager, data?: BaseDataType<T>, tags?: string[]): E;
+  new (context: Context, data?: BaseDataType<T>, tags?: string[]): E;
   with<A extends ComponentClass[], T extends BaseType = {}>(
     ...items: A
   ): EntityClass<T & KeyedByType<A>>;
@@ -57,7 +57,7 @@ export class Entity<T extends BaseType = {}> {
    */
   public key: bigint = 0n;
   public readonly $: T;
-  public readonly id: Identifier = getID();
+  public readonly id: Identifier;
   public readonly tags: ChangeSet;
   public readonly items!: ComponentClass[];
 
@@ -74,7 +74,7 @@ export class Entity<T extends BaseType = {}> {
     };
   }
 
-  protected readonly manager: Manager;
+  protected readonly ctx: Context;
   protected readonly refs: EntityRef[] = [];
 
   public is(...tags: string[]): boolean {
@@ -100,7 +100,7 @@ export class Entity<T extends BaseType = {}> {
       }
     }
     this.refs.splice(0, this.refs.length);
-    this.manager.destroy(this);
+    this.ctx.manager.destroy(this);
   }
 
   protected getBindings(data: BaseDataType<T>): T {
@@ -151,7 +151,7 @@ export class Entity<T extends BaseType = {}> {
 
       this.items.push(ComponentConstructor);
       // turns out indexing repeatedly is faster than doing a bool set/check
-      this.manager.indexEntity(this);
+      this.ctx.manager.indexEntity(this);
     }
   }
 
@@ -160,20 +160,21 @@ export class Entity<T extends BaseType = {}> {
       if (C.type in this.$) {
         this.items.splice(this.items.indexOf(C), 1);
         delete this.$[C.type];
-        this.manager.indexEntity(this);
+        this.ctx.manager.indexEntity(this);
       }
     }
   }
 
   public constructor(
-    manager: Manager,
+    context: Context,
     data: BaseDataType<T> = {},
     tags: string[] = []
   ) {
-    this.manager = manager;
-    this.tags = new ChangeSet(tags, () => this.manager.indexEntity(this));
+    this.ctx = context;
+    this.tags = new ChangeSet(tags, () => this.ctx.manager.indexEntity(this));
     // we need a unique copy of this in case we modify its components later on
     this.items = (this.items ?? []).slice();
     this.$ = this.getBindings(data);
+    this.id = context.ids.id.next();
   }
 }
