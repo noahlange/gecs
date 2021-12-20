@@ -1,5 +1,6 @@
-export { parallel } from './Parallel';
 export { compose } from './Composer';
-export { sequence } from './Sequence';
 export { conditional } from './Conditional';
+export { parallel } from './Parallel';
+export { sequence } from './Sequence';
 export { phase } from './Phase';
+export { throttle } from './Throttle';

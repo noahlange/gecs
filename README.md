@@ -67,7 +67,7 @@ export default class StatePlugin extends Plugin<ContextPlugins> {
 
 ### Phases
 
-By specifying a static (numeric) `phase` property on a system, or using the `phase()` system composition helper, you can group systems together into different portions of the tick. Ties between systems in different plugins are executed in order of plugin registration.
+By specifying a static (numeric) `phase` property on a system, or using the `phase()` system composition helper, you can group systems together into different portions of the tick. Ties between systems in different plugins are executed in order of plugin registration. Systems without an explicit phase are executed at the end of the `UPDATE` phase (`599`).
 
 ```typescript
 import { Phase as DefaultPhases, phase } from 'gecs';
@@ -228,7 +228,7 @@ for (const component of entity.components) {
 }
 ```
 
-A major footgun here is that the types of entities with removed components will not change, so unless you're paying close attention, you may find yourself accessing a non-existent component. Of course, the entity won't appear in future queries with that component, so you only need to watch out for the duration of the system.
+A major footgun here is that the types of entities with removed components will not change during the current system's `tick()`. Unless you're paying close attention, you may find yourself accessing a non-existent component.
 
 ```typescript
 for (const entity of ctx.query.components(A, B)) {
@@ -346,7 +346,7 @@ class Renderer extends System {
 
 ### System composition
 
-**gecs** offers three system composition functions that allow you to structure your game's system flow without forcing you to wrap systems in complex branching logic.
+**gecs** offers a handful of system composition functions that allow you to structure your game's system flow without forcing you to wrap systems in complex branching logic.
 
 The `sequence()` and `parallel()` functions accept an array of systems or system functions and return another system "wrapping" the ones passed in.
 
@@ -356,8 +356,16 @@ The `sequence()` and `parallel()` functions accept an array of systems or system
 
 The precise mechanism by which an async system runs asynchronously (e.g., web worker, child process, etc.), is up to the developer.
 
+The `conditional()`, `phase()` and `throttle()` helpers accept a single parameter, followed by an array of systems/system functions.
+
+- `conditional()` takes a function with the game context as its sole parameter, followed by an array of systems/system functions.
+
+- `phase()` takes a single value in the exported `PHASE` enum, followed by systems. There are three primary phases (`LOAD`, `UPDATE`, `RENDER`>), each with their own `PRE` and `POST` modifiers. Systems with assigned phases are executed in ascending order. Systems without an assigned phase are executed at the end of `UPDATE`.
+
+- `throttle()` takes a single number parameter, `x`, followed by systems. A throttled system executes once per `x` ms.
+
 ```ts
-import { parallel, sequence, conditional } from 'gecs';
+import { parallel, sequence, conditional, phase, throttle } from 'gecs';
 import { SimA, SimB, SimC } from './sims';
 import { setup, teardown } from './misc';
 
@@ -371,6 +379,14 @@ const inSequence = sequence(setup, inParallel, teardown);
 const ifSimulating = conditional(
   ctx => ctx.state.mode === GameMode.SIMULATION,
   inSequence
+);
+
+const atTheEnd = phase(Phase.POST_RENDER, () =>
+  console.log('it is the very end of the tick')
+);
+
+const throttled = throttle(200, () =>
+  console.log('will execute once every 200ms')
 );
 ```
 

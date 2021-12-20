@@ -21,9 +21,9 @@ const MyContext = Context.with(StatelessPlugin);
 
 describe('stateless function systems', () => {
   test('should execute properly', async () => {
-    const world = new MyContext();
-    await world.start();
-
-    expect(world.$.state.value).toBe(3);
+    const ctx = new MyContext();
+    await ctx.start();
+    await ctx.tick();
+    expect(ctx.$.state.value).toBe(3);
   });
 });

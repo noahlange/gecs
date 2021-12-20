@@ -11,7 +11,6 @@ import { anonymous } from '../types';
 import { match } from '../utils';
 import { EntityIndex } from './EntityIndex';
 import { Query } from './Query';
-import { QueryBuilder } from './QueryBuilder';
 import { Registry } from './Registry';
 
 interface Registrations {
@@ -215,13 +214,13 @@ export class Manager {
     return this.registry.add(...entity.items.map(e => e.type), ...arr);
   }
 
-  protected createEntityRefTag(entity: Entity): void {
-    const tag = Symbol(`entity.${entity.id}`);
-    const id = this.ctx.ids.id.next();
-    // this.registrations.refs[entity.id] = tag;
-    // this.registrations.tags[tag] = id;
-    this.registry.add(id);
-  }
+  // protected createEntityRefTag(entity: Entity): void {
+  //   const tag = Symbol(`entity.${entity.id}`);
+  //   const id = this.ctx.ids.id.next();
+  //   this.registrations.refs[entity.id] = tag;
+  //   this.registrations.tags[tag] = id;
+  //   this.registry.add(id);
+  // }
 
   public constructor(context: Context<$AnyEvil>) {
     this.ctx = context;

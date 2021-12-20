@@ -1,10 +1,11 @@
 export { Context, Component, Entity, EntityRef, System } from './ecs';
 export {
+  compose,
   conditional,
   parallel,
-  compose,
   phase,
-  sequence
+  sequence,
+  throttle
 } from './ecs/composers';
 export { Manager, Serializer, Deserializer, Plugin } from './lib';
 

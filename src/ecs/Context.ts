@@ -51,7 +51,10 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
     return [];
   }
 
-  public async tick(delta: number, time: number = Date.now()): Promise<void> {
+  public async tick(
+    delta: number = 0,
+    time: number = Date.now()
+  ): Promise<void> {
     this.isLocked = true;
     await this.system.tick?.(delta, time);
     this.manager.tick();
@@ -98,7 +101,6 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
     }
     await this.system.start?.();
     this.manager.tick();
-    await this.tick(0, 0);
   }
 
   public async stop(): Promise<void> {

@@ -8,7 +8,8 @@ describe('system phases', () => {
   test('sort systems ascending', async () => {
     const ctx = new (Context.with(PhaseState))();
     await ctx.start();
-    expect(ctx.$.phase.value).toBe(3);
+    await ctx.tick();
+    expect(ctx.$.state.value).toBe(3);
   });
 
   test('ties go in order of plugin registration', async () => {
@@ -30,6 +31,7 @@ describe('system phases', () => {
 
     const ctx = new (Context.with(PluginB, PluginA))();
     await ctx.start();
+    await ctx.tick();
     await ctx.stop();
 
     expect(calls).toEqual(['b', 'a']);
