@@ -179,7 +179,8 @@ export enum Constraint {
   SOME = 0,
   ALL = 1,
   ANY = 2,
-  NONE = 3
+  NONE = 3,
+  IN = 4
 }
 
 export interface QueryStep {

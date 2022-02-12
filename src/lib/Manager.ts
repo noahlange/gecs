@@ -25,6 +25,7 @@ export class Manager {
    */
   public index = new EntityIndex();
   public keys: Record<Identifier, bigint> = {};
+  public entities: Record<Identifier, Entity> = {};
 
   /**
    * A mapping of tag literals to tag IDs. These IDs are mapped in turn to bigints for querying.
@@ -127,6 +128,8 @@ export class Manager {
     let modified = 0n;
 
     for (const [entity, oldKey] of this.toIndex) {
+      this.entities[entity.id] = entity;
+
       entity.key = this.getEntityKey(entity);
 
       // the entry existed, but has changed
@@ -137,16 +140,16 @@ export class Manager {
         // the entity has not yet been indexed
         if (!oldKey) {
           added.push(entity);
-          this.index.append(entity.key, entity);
+          this.index.append(entity.key, entity.id);
           continue;
         }
 
         // entities need to be removed from queries and unindexed whether or not they continue to exist
         removed.push(entity);
-        this.index.remove(oldKey, entity);
+        this.index.remove(oldKey, entity.id);
         // ...but only bother re-indexing it if it's going to exist next tick.
         if (!this.toDestroy.has(entity)) {
-          this.index.append(entity.key, entity);
+          this.index.append(entity.key, entity.id);
           added.push(entity);
         }
       }
@@ -160,7 +163,8 @@ export class Manager {
     }
 
     for (const entity of this.toDestroy) {
-      this.index.remove(entity.key, entity);
+      delete this.entities[entity.id];
+      this.index.remove(entity.key, entity.id);
       this.ctx.ids.id.release(entity.id);
     }
 
@@ -209,7 +213,6 @@ export class Manager {
    */
   protected getEntityKey(entity: Entity): bigint {
     const tags = this.registrations.tags;
-
     const arr = Array.from(entity.tags).map(t => tags[t]);
     return this.registry.add(...entity.items.map(e => e.type), ...arr);
   }

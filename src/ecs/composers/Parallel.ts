@@ -16,7 +16,7 @@ export function parallel<T extends Plugins<T>>(
 ): SystemClass<T> {
   return class Parallel extends Pipeline<T> {
     protected static async run<T>(items: T[], fn: Runner<T>): Promise<void> {
-      await Promise.all(
+      await Promise.allSettled(
         items.reduce((a: Promise<unknown>[], b) => a.concat(fn(b)), [])
       );
     }

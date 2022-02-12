@@ -1,9 +1,9 @@
-import type { Entity } from '../ecs';
+import type { Identifier } from '../types';
 
 export class EntityIndex {
-  protected map: Map<bigint, Set<Entity>> = new Map();
+  protected map: Map<bigint, Set<Identifier>> = new Map();
 
-  public all(): Entity[] {
+  public all(): Identifier[] {
     const res = [];
     for (const set of this.map.values()) {
       res.push(...set);
@@ -22,7 +22,7 @@ export class EntityIndex {
   /**
    * For an array of keys, return a flat array of corresponding entities.
    */
-  public get(keys: bigint[]): Entity[] {
+  public get(keys: bigint[]): Identifier[] {
     const res = [];
     for (const key of keys) {
       res.push(...(this.map.get(key) ?? []));
@@ -33,18 +33,18 @@ export class EntityIndex {
   /**
    * For a given key, index additional entities.
    */
-  public append(key: bigint, entity: Entity): void {
+  public append(key: bigint, id: Identifier): void {
     const value = this.map.get(key) ?? new Set();
-    this.map.set(key, value.add(entity));
+    this.map.set(key, value.add(id));
   }
 
   /**
    * For a given key, remove given entities.
    */
-  public remove(key: bigint, entity: Entity): void {
+  public remove(key: bigint, id: Identifier): void {
     const value = this.map.get(key);
     if (value) {
-      value.delete(entity);
+      value.delete(id);
       // prune if it's empty
       if (!value.size) {
         this.map.delete(key);

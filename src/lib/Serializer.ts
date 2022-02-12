@@ -92,7 +92,11 @@ export class Serializer<T extends Plugins<T>> {
   protected serializeEntities(options: SerializeOptions): SerializedEntity[] {
     this.stack = [];
     const filter = options.entityFilter ?? (() => true);
-    const entities = this.ctx.manager.index.all().filter(filter);
+    const entities = this.ctx.manager.index
+      .all()
+      .map(id => this.ctx.manager.entities[id])
+      .filter(f => f && filter(f));
+
     const res = entities.map(entity => {
       const type =
         // if the class is anonymous (i.e., not `extend`ed), we'll give it a

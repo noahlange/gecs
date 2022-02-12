@@ -4,8 +4,8 @@ import type { BaseType, Identifier, QueryStep } from '../types';
 import { Constraint } from '../types';
 import { match, union } from '../utils';
 
-type ConstraintsExceptSome = Exclude<Constraint, Constraint.SOME>;
-type Targets = { [key in ConstraintsExceptSome]: bigint | null };
+type TargetContraints = Constraint.ALL | Constraint.NONE | Constraint.ANY;
+type Targets = { [key in TargetContraints]: bigint | null };
 
 const fns = {
   [Constraint.NONE]: match.none,
@@ -22,7 +22,8 @@ export class Query<
 
   protected ctx: Context;
   protected results: Set<E> = new Set();
-  protected constraints: Set<ConstraintsExceptSome> = new Set();
+  protected constraints: Set<TargetContraints> = new Set();
+  protected refs: Identifier[] = [];
 
   /**
    * A mapping of bigint keys to whether or not they're valid matches. If we've already determined a key does not match, we don't want to check it again every tick. Because we do need to differentiate true/false from nullish, we're using a Map instead of a Set.
@@ -31,20 +32,23 @@ export class Query<
   protected steps: QueryStep[];
   protected executed: boolean = false;
 
-  protected targets: Record<ConstraintsExceptSome, bigint | null> = {
+  protected targets: Record<TargetContraints, bigint | null> = {
     [Constraint.ANY]: null,
     [Constraint.ALL]: null,
     [Constraint.NONE]: null
   };
 
   /**
-   * Forcibly reload the query. This is pretty expensive.
+   * Forcibly reload the query. This is expensive.
    */
   public refresh(): void {
     this.executed = true;
     const index = this.ctx.manager.index;
-    const matches = index.get(index.keys().filter(key => this.filter(key)));
-    this.results = new Set(matches) as Set<E>;
+    this.results = new Set(
+      index
+        .get(index.keys().filter(key => this.filter(key)))
+        .map(id => this.ctx.manager.entities[id])
+    ) as Set<E>;
   }
 
   public update(additions: Entity[], removals: Entity[]): void {
@@ -67,7 +71,20 @@ export class Query<
     if (!this.executed) {
       this.refresh();
     }
-    yield* this.results;
+    if (this.refs.length) {
+      const entities = this.refs
+        // @ts-ignore
+        .map(id => this.ctx.manager.entities[id]?.refs.map(r => r.entity) ?? [])
+        .reduce((a, b) => a.concat(b), []) as E[];
+
+      for (const entity of entities) {
+        if (this.results.has(entity)) {
+          yield entity;
+        }
+      }
+    } else {
+      yield* this.results;
+    }
   }
 
   /**
@@ -89,7 +106,7 @@ export class Query<
 
   protected reducer = (targets: Targets, step: QueryStep): Targets => {
     // we've already thrown if an ID hasn't been resolved
-    const constraint = step.constraint as ConstraintsExceptSome;
+    const constraint = step.constraint as TargetContraints;
     const id = this.ctx.manager.getID(...step.ids);
     targets[constraint] = targets[constraint]
       ? union(targets[constraint], id)
@@ -103,14 +120,17 @@ export class Query<
    * bigints used for entity matching during the filtering process.
    */
   protected init(): void {
-    const targets: Record<ConstraintsExceptSome, QueryStep[]> = {
+    const targets: Record<TargetContraints, QueryStep[]> = {
       [Constraint.ALL]: [],
       [Constraint.ANY]: [],
       [Constraint.NONE]: []
     };
 
     for (const step of this.steps) {
-      if (step.constraint !== Constraint.SOME) {
+      if (
+        step.constraint !== Constraint.SOME &&
+        step.constraint !== Constraint.IN
+      ) {
         this.constraints.add(step.constraint);
         targets[step.constraint].push(step);
       }
@@ -145,7 +165,12 @@ export class Query<
   public constructor(context: Context, steps: QueryStep[]) {
     this.ctx = context;
     this.id = context.ids.id.next();
-    this.steps = steps.filter(step => step.constraint !== Constraint.SOME);
+    this.refs = steps
+      .filter(step => step.constraint === Constraint.IN)
+      .reduce((a: Identifier[], b) => a.concat(b.ids), []);
+    this.steps = steps.filter(
+      ({ constraint: c }) => c !== Constraint.SOME && c !== Constraint.IN
+    );
     this.init();
   }
 }

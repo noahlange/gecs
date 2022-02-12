@@ -116,6 +116,11 @@ export class Entity<T extends BaseType = {}> {
         Object.defineProperty(bindings, type, {
           get: () => item.ref,
           set: (entity: Ref<EntityRef> | null): void => {
+            const current = item.ref as Entity<{}>;
+            if (current) {
+              // need to remove it from an existing entity's list of refs
+              current.refs.splice(current.refs.indexOf(item), 1);
+            }
             item.ref = entity;
             entity?.refs.push(item);
           }

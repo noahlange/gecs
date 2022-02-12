@@ -22,6 +22,7 @@ export interface QueryBuilderBase<T extends BaseType = {}>
   none: QueryBuilderBase<T>;
   get(): Entity<T>[];
   first(): Entity<T> | null;
+  references(...entities: Entity<{}>[]): this;
   [Symbol.iterator](): Iterator<Entity<T>>;
 }
 
@@ -86,6 +87,15 @@ export class QueryBuilder<T extends BaseType = {}>
   public get none(): this {
     this.state.tag = Constraint.NONE;
     return this;
+  }
+
+  /**
+   * Constrain results to those referencing one of several entities.
+   */
+  public references(...entities: Entity[]): this {
+    this.state.tag = Constraint.IN;
+    this.state.ids = entities.map(entity => entity.id);
+    return this.reset();
   }
 
   /**
