@@ -81,11 +81,11 @@ export class Entity<T extends BaseType = {}> {
     return this.tags.has(...tags);
   }
 
-  public has = <C extends ComponentClass[]>(
+  public has<C extends ComponentClass[]>(
     ...components: C
-  ): this is Entity<T & KeyedByType<C>> => {
+  ): this is Entity<T & KeyedByType<C>> {
     return components.every(component => component.type in this.$);
-  };
+  }
 
   /**
    * Destroy existing references and mark the entity for destruction + re-indexing.

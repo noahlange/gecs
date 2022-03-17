@@ -1,5 +1,9 @@
 # 1.0.0-alpha
 
+## 1.0.0-alpha.6
+
+- fixes bug that discarded type info when `Entity.has()` was passed multiple arguments
+
 ## 1.0.0-alpha.5
 
 - reverts query API from `noun.adjective()` to `adjective.noun()`
