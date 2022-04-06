@@ -1,6 +1,6 @@
 {
   "name": "gecs",
-  "version": "1.0.0-alpha.5",
+  "version": "1.0.0-alpha.6",
   "description": "Generic-abusing ECS framework written in TypeScript.",
   "author": {
     "name": "Noah Lange",
@@ -38,7 +38,7 @@
   ],
   "scripts": {
     "start": "tsc --watch",
-    "build": "npx tsc && npx tsc --project tsconfig.prod.json",
+    "build": "npx tsc && npx tsc --project ./tsconfig.prod.json",
     "dev": "npm-run-all dev:*",
     "dev:types": "tsc --noEmit",
     "dev:test": "jest --coverage",

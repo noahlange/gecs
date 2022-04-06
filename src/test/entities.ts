@@ -7,10 +7,15 @@ import { withTick } from './helpers/utils';
 
 describe('creating entities', () => {
   const ctx = getContext();
-  const item = ctx.create(WithABC);
 
   test('`Entity.with()` adds additional items to the list of those attached to a newly-constructed container', () => {
+    const item = ctx.create(WithABC);
     expect(item.items.length).toBe(3);
+  });
+
+  test('Can be created with a static ID.', () => {
+    const item = ctx.create(WithABC, { id: 123 });
+    expect(item.id).toBe(123);
   });
 });
 

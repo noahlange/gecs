@@ -113,7 +113,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
 
   public create<C extends BaseType<Component>>(
     EntityConstructor: EntityClass<C>,
-    data: BaseDataType<C> = {},
+    data: BaseDataType<C> & { id?: Identifier } = {},
     tags: string[] = []
   ): Entity<C> {
     return this.manager.create(EntityConstructor, data, tags);

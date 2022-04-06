@@ -121,8 +121,20 @@ export class Entity<T extends BaseType = {}> {
               // need to remove it from an existing entity's list of refs
               current.refs.splice(current.refs.indexOf(item), 1);
             }
-            item.ref = entity;
-            entity?.refs.push(item);
+            if (typeof entity === 'string' || typeof entity === 'number') {
+              const ref = this.ctx.manager.entities[entity];
+              if (ref) {
+                item.ref = ref;
+                ref.refs.push(item);
+              } else {
+                throw new Error(
+                  'Attempted to create ID ref to missing entity.'
+                );
+              }
+            } else {
+              item.ref = entity;
+              entity?.refs.push(item);
+            }
           }
         });
 
@@ -172,7 +184,7 @@ export class Entity<T extends BaseType = {}> {
 
   public constructor(
     context: Context,
-    data: BaseDataType<T> = {},
+    data: BaseDataType<T> & { id?: Identifier } = {},
     tags: string[] = []
   ) {
     this.ctx = context;
@@ -180,6 +192,6 @@ export class Entity<T extends BaseType = {}> {
     // we need a unique copy of this in case we modify its components later on
     this.items = (this.items ?? []).slice();
     this.$ = this.getBindings(data);
-    this.id = context.ids.id.next();
+    this.id = data.id ?? context.ids.id.next();
   }
 }

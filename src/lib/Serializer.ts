@@ -62,7 +62,7 @@ export class Serializer<T extends Plugins<T>> {
             if (value instanceof Entity) {
               // create an entity reference so we can re-link it on load
               res = [eid, value.id].join('|');
-            } else {
+            } else if (value) {
               for (const key of Object.getOwnPropertyNames(value)) {
                 const next = value[key];
                 if (!this.stack.includes(next)) {

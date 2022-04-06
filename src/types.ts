@@ -168,9 +168,9 @@ export type PartialValueByType<A extends WithStaticType> =
     : DeepPartial<InstanceType<A>>;
 
 /**
- * Given an EntityRef, returns the type of the entity.
+ * Given an EntityRef, returns an intersection of the entity type and Identifier—the Identifier is an escape hatch that allows us to reference entities we might be identifying statically (e.g., in data files).
  */
-export type Ref<T> = T extends EntityRef<infer R> ? R : never;
+export type Ref<T> = T extends EntityRef<infer R> ? R | Identifier : never;
 
 /**
  * Constraint for a given query step.

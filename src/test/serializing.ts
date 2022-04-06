@@ -108,7 +108,7 @@ describe('save and load', () => {
     expect(save1).toEqual(save2);
   });
 
-  test('reattaches entity instances', async () => {
+  test('reattaches entity refs', async () => {
     const [ctx1, ctx2] = [getContext(), getContext()];
 
     await withTick(ctx1, () => {
@@ -129,6 +129,15 @@ describe('save and load', () => {
 
     expect(a2!.$.ref).toBe(b2);
   });
+});
+
+test('serialize null refs', async () => {
+  const [ctx1, ctx2] = [getContext(), getContext()];
+  await withTick(ctx1, () => ctx1.create(E.WithRef, { ref: null }));
+  const saved = ctx1.save();
+  await withTick(ctx2, () => ctx2.load(saved));
+  const a2 = ctx2.query.components(C.Ref).first();
+  expect(a2?.$.ref).toBeNull();
 });
 
 test('warn when attempting to recreate unregistered components', async () => {

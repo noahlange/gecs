@@ -71,12 +71,8 @@ export class Deserializer<T extends Plugins<T>> {
 
     switch (typeof value) {
       case 'object': {
-        if (Array.isArray(value)) {
-          res = value.map((item, i) => {
-            const next = path.concat([i + '']);
-            return this.deserializeInPlace(next, id, item);
-          });
-        } else if (value) {
+        // could be null
+        if (value) {
           // iterate through the object...
           for (const key of Object.getOwnPropertyNames(value)) {
             // getting our value and an extended path

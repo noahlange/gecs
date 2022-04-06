@@ -115,6 +115,7 @@ export class Manager {
    */
   public indexEntity(entity: Entity): void {
     this.toIndex.set(entity, entity.key ?? null);
+    this.entities[entity.id] = entity;
   }
 
   /**

@@ -3,6 +3,9 @@
 ## 1.0.0-alpha.6
 
 - fixes bug that discarded type info when `Entity.has()` was passed multiple arguments
+- allow user to pass static ID to `ctx.create()`
+- allows user to populate entity refs using a static ID
+- implements `references()` queries
 
 ## 1.0.0-alpha.5
 

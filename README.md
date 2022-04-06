@@ -148,16 +148,51 @@ These component instances are accessed via the `$` property.
 ```ts
 import { Entity } from 'gecs';
 import { Foo, Bar } from './components';
+import { ctx } from './context';
 
 const MyEntity = Entity.with(Foo, Bar);
-
-const e = new MyEntity();
+const e = ctx.create(MyEntity);
 
 e.$.foobly instanceof Foo; // true
 e.$.foobly.value === '1'; // true
 
 e.$.woobly instanceof Bar; // true
 e.$.woobly.value === 1; // true
+
+// You can pass data as the second param of ctx.create() to populate a component on creation.
+const e2 = ctx.create(MyEntity, { foobly: { value: '123' } });
+
+e.$.foobly instanceof Foo; // true
+e.$.foobly.value === '123'; // true
+```
+
+EntityRefs are a special type of component that allow you to link one entity to another.
+
+```ts
+import type { EntityType } from 'gecs';
+
+import { Entity, EntityRef } from 'gecs';
+import { Foo, Bar } from './components';
+import { MyEntity, e } from './entities';
+
+// an entity with Foo, Bar components
+type FooBarEntity = EntityType<[typeof Foo, typeof Bar]>;
+
+// referencing an entity with said components
+export class FooBarRef extends EntityRef<FooBarEntity> {
+  // this is an entity instance (or null) accessed via `zoobly`
+  public static readonly type = 'foobar';
+}
+
+const WithFooBar = Entity.with(FooBarRef);
+
+myRefEntity.$.foobar === null; // true; refs default to null
+myRefEntity.$.foobar = e; // refs are assigned like properties
+myRefEntity.$.foobar instanceof MyEntity; // true
+
+// you can pass an entity (or its id) as the value of the corresponding key in `ctx.create()`
+const myRefEntity2 = ctx.create(Entity.with(FooBarRef), { foobar: e });
+const myRefEntity3 = Entity.with(FooBarRef, { foobar: e.id });
 ```
 
 Per the example above, you can `extend` the result of the `with()` call to create a custom entity class, or create new instances using the return value of `with()` value as-is.
@@ -306,9 +341,7 @@ class Renderer extends System {
   protected sprites: Record<string, { path: string; sprite: PIXI.Sprite }> = {};
 
   protected $ = {
-    sprites: this.ctx.query
-      .all.components(Sprite)
-      .some.components(Position)
+    sprites: this.ctx.query.all.components(Sprite).some.components(Position)
   };
 
   public tick(delta: number, time?: number): void {
@@ -399,26 +432,28 @@ const throttled = throttle(200, () =>
 Queries return collections of entities based on the user's criteria. Query results are typed exactly like an ordinary entity, so you'll have (typed) access to each of the components you've requested in your query—but nothing more.
 
 ```ts
-const q = ctx.query
-  .all.components(A, B, C)
+const q = ctx.query.all
+  .components(A, B, C)
   .some.components(D, E, F)
   .any.tags('1', '2', '3');
 ```
 
 ### Building
 
-Queries consist of one or more "steps," each corresponding to a different type of query— components, tags or entities.
+Queries consist of one or more "steps," each corresponding to a different type of query— components, tags or refs.
 
 ```typescript
 const q1 = ctx.query.components(A, B);
 const q2 = ctx.query.tags('one', 'two', 'three');
+// `.references()` returns all entities with an EntityRef pointing to the passed entity instance
+const q3 = ctx.query.components(RefComponent).references(referencedEntity);
 ```
 
 Steps are executed sequentially. The result of a query is the intersection of each step's results.
 
 ```typescript
-ctx.query
-  .some.components(A, B) // (A | B)
+ctx.query.some
+  .components(A, B) // (A | B)
   .all.tags('one', 'two'); //  & ('one' & 'two')
 ```
 

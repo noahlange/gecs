@@ -19,6 +19,13 @@ describe('entity references', () => {
     expect(withRef.$.abc).toBe(abc);
   });
 
+  test('...can be set with an id', () => {
+    const ctx = getContext();
+    const abc = ctx.create(WithABC);
+    const withRef = ctx.create(WithRefABC, { abc: abc.id });
+    expect(withRef.$.abc).toBe(abc);
+  });
+
   test('...can be set at runtime', () => {
     const ctx = getContext();
     const abc = ctx.create(WithABC);
