@@ -37,56 +37,29 @@ class MovePlugin extends Plugin {
   };
 }
 
-function getContext() {
+function getTest(count) {
   const Ctx = Context.with(MovePlugin);
-  const ctx = new Ctx();
-  return ctx;
+
+  return async b => {
+    const ctx = new Ctx();
+    await ctx.start();
+
+    // create _n_ entities
+    for (let x = 0; x < count; x++) {
+      ctx.create(Moveable);
+    }
+    ctx.manager.tick();
+
+    b.start();
+    for (let i = 0; i < 100; i++) {
+      await ctx.tick();
+    }
+    b.end();
+  };
 }
 
-bench(`simple movement, 100 items`, async b => {
-  const ctx = getContext();
-  await ctx.start();
-
-  for (let x = 0; x < 10 ** 2; x++) {
-    ctx.create(Moveable);
-  }
-  ctx.manager.tick();
-
-  b.start();
-  for (let i = 0; i < 1000; i++) {
-    await ctx.tick();
-  }
-  b.end();
-});
-
-bench(`simple movement, 1000 items`, async b => {
-  const ctx = getContext();
-  await ctx.start();
-
-  for (let x = 0; x < 10 ** 3; x++) {
-    ctx.create(Moveable);
-  }
-  ctx.manager.tick();
-
-  b.start();
-  for (let i = 0; i < 1000; i++) {
-    await ctx.tick();
-  }
-  b.end();
-});
-
-bench(`simple movement, 10000 items`, async b => {
-  const ctx = getContext();
-  await ctx.start();
-
-  for (let x = 0; x < 10 ** 4; x++) {
-    ctx.create(Moveable);
-  }
-  ctx.manager.tick();
-
-  b.start();
-  for (let i = 0; i < 1000; i++) {
-    await ctx.tick();
-  }
-  b.end();
-});
+bench(`100 ticks, 100 entities`, getTest(100));
+bench(`100 ticks, 1K entities`, getTest(1000));
+bench(`100 ticks, 10K entities`, getTest(10000));
+bench(`100 ticks, 100K entities`, getTest(100000));
+bench(`100 ticks, 1M entities`, getTest(1000000));
