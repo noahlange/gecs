@@ -4,12 +4,7 @@ export class EntityIndex {
   protected map: Map<bigint, Set<Identifier>> = new Map();
 
   public all(): Identifier[] {
-    const res = [];
-    for (const set of this.map.values()) {
-      res.push(...set);
-    }
-    // dedupe, because entities may exist in multiple sets
-    return Array.from(new Set(res));
+    return Array.from(this.map.values()).flatMap(set => Array.from(set));
   }
 
   /**
@@ -23,11 +18,7 @@ export class EntityIndex {
    * For an array of keys, return a flat array of corresponding entities.
    */
   public get(keys: bigint[]): Identifier[] {
-    const res = [];
-    for (const key of keys) {
-      res.push(...(this.map.get(key) ?? []));
-    }
-    return res;
+    return keys.flatMap(key => Array.from(this.map.get(key) ?? []));
   }
 
   /**
