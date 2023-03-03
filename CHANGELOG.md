@@ -1,5 +1,9 @@
 # 1.0.0-alpha
 
+## 1.0.0-alpha.7
+
+- remove support for ref population by static id.
+
 ## 1.0.0-alpha.6
 
 - fixes bug that discarded type info when `Entity.has()` was passed multiple arguments
