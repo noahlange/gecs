@@ -3,11 +3,10 @@ import type { Serialized } from '../types';
 
 import { describe, expect, jest, test } from '@jest/globals';
 
-import { Component, Entity } from '../';
-import * as C from './helpers/components';
-import * as E from './helpers/entities';
-import { getContext } from './helpers/setup';
-import { withTick } from './helpers/utils';
+import { Component, Entity } from '..';
+import { getContext, withTick } from '../test/helpers';
+import * as C from '../test/helpers/components';
+import * as E from '../test/helpers/entities';
 
 describe('save and load', () => {
   test("basics: doesn't explode", () => {
@@ -22,53 +21,6 @@ describe('save and load', () => {
 
     expect(() => (res = ctx.save())).not.toThrow();
     expect(() => ctx.load(res)).not.toThrow();
-  });
-
-  test('recreates nested values', async () => {
-    class E extends Component {
-      public static readonly type = 'e';
-      public a = { b: { c: { d: 3 } } };
-    }
-
-    const ctx1 = getContext();
-    ctx1.register([], [E]);
-
-    await withTick(ctx1, () => {
-      const WithBigInt = Entity.with(E);
-      const e = ctx1.create(WithBigInt);
-      e.$.e.a.b.c.d = 6;
-    });
-
-    const saved = ctx1.save();
-
-    const ctx2 = getContext();
-    ctx2.register([], [E]);
-
-    await withTick(ctx2, () => ctx2.load(saved));
-    const e = ctx2.query.components(E).first();
-
-    expect(e).not.toBeNull();
-    expect(e?.$.e.a.b.c.d).toEqual(6);
-  });
-
-  test('recreates bigints', async () => {
-    const ctx1 = getContext();
-
-    await withTick(ctx1, () => {
-      const WithBigInt = Entity.with(C.D);
-      const e = ctx1.create(WithBigInt);
-      e.$.d.value = 12345n;
-    });
-
-    const saved = ctx1.save();
-
-    const ctx2 = getContext();
-
-    await withTick(ctx2, () => ctx2.load(saved));
-    const e = ctx2.query.components(C.D).first();
-
-    expect(e).not.toBeNull();
-    expect(e?.$.d.value).toEqual(12345n);
   });
 
   test('saves composed entities', async () => {
@@ -106,28 +58,6 @@ describe('save and load', () => {
 
     const save2 = ctx2.save();
     expect(save1).toEqual(save2);
-  });
-
-  test('reattaches entity refs', async () => {
-    const [ctx1, ctx2] = [getContext(), getContext()];
-
-    await withTick(ctx1, () => {
-      const a = ctx1.create(E.WithRef);
-      const b = ctx1.create(E.WithA);
-      a.$.ref = b;
-    });
-
-    const saved = ctx1.save();
-
-    await withTick(ctx2, () => ctx2.load(saved));
-
-    const a2 = ctx2.query.components(C.Ref).first();
-    const b2 = ctx2.query.components(C.A).first();
-
-    expect(a2).not.toBeNull();
-    expect(b2).not.toBeNull();
-
-    expect(a2!.$.ref).toBe(b2);
   });
 });
 

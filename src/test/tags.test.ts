@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 
+import { getContext } from './helpers';
 import { WithABC } from './helpers/entities';
-import { getContext } from './helpers/setup';
 
 describe('tagging entities', () => {
   const ctx = getContext();

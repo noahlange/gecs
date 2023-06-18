@@ -1,12 +1,5 @@
-import type { Context } from '../ecs/Context';
-import type { EntityClass } from '../ecs/Entity';
-import type {
-  $AnyEvil,
-  $AnyOK,
-  Identifier,
-  Plugins,
-  Serialized
-} from '../types';
+import type { Context, EntityClass } from '../ecs';
+import type { $AnyEvil, $AnyOK, Identifier, Plugins, Serialized } from '../types';
 
 import { Entity } from '../ecs/Entity';
 import { eid } from '../types';
@@ -60,11 +53,7 @@ export class Deserializer<T extends Plugins<T>> {
     }
   }
 
-  protected deserializeInPlace(
-    path: string[],
-    id: Identifier,
-    value: $AnyOK
-  ): $AnyOK {
+  protected deserializeInPlace(path: string[], id: Identifier, value: $AnyOK): $AnyOK {
     const { refs, stack } = this;
     let res: unknown | undefined = value;
     stack.push(value);
@@ -79,11 +68,7 @@ export class Deserializer<T extends Plugins<T>> {
             const [next, nextPath] = [value[key], [...path, key]];
             if (!stack.includes(next)) {
               // ensure we aren't going to blow the stack with a circular reference before attempting to deserialize
-              this.set(
-                res as object,
-                [key],
-                next ? this.deserializeInPlace(nextPath, id, next) : next
-              );
+              this.set(res as object, [key], next ? this.deserializeInPlace(nextPath, id, next) : next);
             }
           }
         }
@@ -125,9 +110,7 @@ export class Deserializer<T extends Plugins<T>> {
           console.warn(`Missing entities/components: ${missing.join(', ')}`);
           continue;
         }
-        entities[type] = toRegister[type] = Entity.with(
-          ...type.split('|').map(c => components[c])
-        );
+        entities[type] = toRegister[type] = Entity.with(...type.split('|').map(c => components[c]));
       }
 
       // now that we're confident that the entity class exists, we're going to populate data for `ctx.create()`

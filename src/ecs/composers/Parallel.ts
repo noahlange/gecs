@@ -11,14 +11,10 @@ interface Runner<T> {
  * Return a single system composed of multiple systems to be run in parallel,
  * resolving once all systems have been resolved.
  */
-export function parallel<T extends Plugins<T>>(
-  ...Systems: SystemType<T>[]
-): SystemClass<T> {
+export function parallel<T extends Plugins<T>>(...Systems: SystemType<T>[]): SystemClass<T> {
   return class Parallel extends Pipeline<T> {
     protected static async run<T>(items: T[], fn: Runner<T>): Promise<void> {
-      await Promise.allSettled(
-        items.reduce((a: Promise<unknown>[], b) => a.concat(fn(b)), [])
-      );
+      await Promise.allSettled(items.reduce((a: Promise<unknown>[], b) => a.concat(fn(b)), []));
     }
 
     public async tick(dt: number, ts: number): Promise<void> {

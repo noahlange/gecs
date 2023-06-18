@@ -17,7 +17,6 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": true,
     "isolatedModules": true,
-    "importsNotUsedAsValues": "error",
     "declaration": true,
     "declarationDir": "./types"
   },

@@ -1,34 +1,19 @@
-import type { Plugin, PluginClass, SerializeOptions } from '../lib';
-import type {
-  BaseDataType,
-  BaseType,
-  Identifier,
-  KeyedByType,
-  Plugins,
-  Serialized,
-  SystemType
-} from '../types';
-import type { Component, ComponentClass } from './Component';
-import type { Entity, EntityClass } from './Entity';
-import type { System } from './System';
+import type { Component, ComponentClass, Entity, EntityClass, Plugin, PluginClass, System } from '../';
+import type { SerializeOptions } from '../lib';
+import type { BaseDataType, BaseType, Identifier, KeyedByType, Plugins, Serialized, SystemType } from '../types';
 
 import { Deserializer, Manager, QueryBuilder, Serializer } from '../lib';
 import { Phase } from '../types';
-import { bigintID, IDGenerator, intID } from '../utils';
-import { useWithPlugins } from '../utils/useWith';
+import { bigintID, IDGenerator, intID, useWithPlugins } from '../utils';
 import { compose } from './composers';
 
 export interface ContextClass<T extends Plugins<T> = Plugins<{}>> {
   new (): Context<T>;
-  with<A extends PluginClass<T>[]>(
-    ...args: A
-  ): ContextClass<T & KeyedByType<A>>;
+  with<A extends PluginClass<T>[]>(...args: A): ContextClass<T & KeyedByType<A>>;
 }
 
 export class Context<T extends Plugins<T> = Plugins<{}>> {
-  public static with<A extends PluginClass<any>[] = []>(
-    ...args: A
-  ): ContextClass<KeyedByType<A>> {
+  public static with<A extends PluginClass<any>[] = []>(...args: A): ContextClass<KeyedByType<A>> {
     return useWithPlugins(...args) as ContextClass<KeyedByType<A>>;
   }
 
@@ -51,10 +36,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
     return [];
   }
 
-  public async tick(
-    delta: number = 0,
-    time: number = Date.now()
-  ): Promise<void> {
+  public async tick(delta: number = 0, time: number = Date.now()): Promise<void> {
     this.isLocked = true;
     await this.system.tick?.(delta, time);
     this.manager.tick();
@@ -80,16 +62,8 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
    * @remarks
    * To avoid allocating unnecessarily large bigints, we won't be registering entities for querying, but we do need to register them for serializing/deserializing.
    */
-  public register(
-    entities: EntityClass[] = [],
-    components: ComponentClass[] = [],
-    tags: string[] = []
-  ): void {
-    this.manager.register(
-      Object.values(entities),
-      Object.values(components),
-      tags
-    );
+  public register(entities: EntityClass[] = [], components: ComponentClass[] = [], tags: string[] = []): void {
+    this.manager.register(entities, components, tags);
   }
 
   /**
@@ -120,7 +94,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
   }
 
   public get query(): QueryBuilder {
-    return new QueryBuilder(this as unknown as Context);
+    return new QueryBuilder(this);
   }
 
   protected getPlugins(): T {
@@ -128,11 +102,8 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
 
     for (const Plugin of this.items) {
       const plugin = new Plugin(this);
-      this.register(
-        Object.values(plugin.$?.entities ?? {}),
-        Object.values(plugin.$?.components ?? {}),
-        plugin.$?.tags ?? []
-      );
+      const { entities = {}, components = {}, tags = [] } = plugin.$ ?? {};
+      this.register(Object.values(entities), Object.values(components), tags);
       res[Plugin.type as keyof T] = plugin as T[keyof T];
     }
     return res;

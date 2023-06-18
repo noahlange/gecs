@@ -1,6 +1,6 @@
-import { describe, expect } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 
-import { Registry } from '../../lib';
+import { Registry } from '.';
 
 describe('Registry', () => {
   describe('.add(), .remove(), .clear()', () => {

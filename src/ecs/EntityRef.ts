@@ -5,8 +5,7 @@ export interface RefComponentClass extends ComponentClass {
   new (): EntityRef;
 }
 
-export interface PopulatedEntityRef<E extends Entity = Entity>
-  extends EntityRef<E> {
+export interface PopulatedEntityRef<E extends Entity = Entity> extends EntityRef<E> {
   readonly entity: E;
 }
 

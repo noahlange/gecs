@@ -2,8 +2,8 @@
 
 import { describe, expect, test } from '@jest/globals';
 
-import { Context } from '../../';
-import { ParallelState } from '../helpers/plugins';
+import { ParallelState } from '../../test/helpers/plugins';
+import { Context } from '../';
 
 describe('parallel systems', () => {
   const MyContext = Context.with(ParallelState);

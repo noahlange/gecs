@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { Context, Plugin } from '../../';
+import { Context, Plugin } from '..';
 
 class StatelessPlugin extends Plugin<{ state: StatelessPlugin }> {
   public static readonly type = 'state';

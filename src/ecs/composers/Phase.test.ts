@@ -1,8 +1,8 @@
 /* eslint-disable max-classes-per-file */
 import { describe, expect, test } from '@jest/globals';
 
-import { Context, Phase, phase, Plugin } from '../../';
-import { PhaseState } from '../helpers/plugins';
+import { Context, Phase, phase, Plugin } from '../..';
+import { PhaseState } from '../../test/helpers/plugins';
 
 describe('system phases', () => {
   test('sort systems ascending', async () => {

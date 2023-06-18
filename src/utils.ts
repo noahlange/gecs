@@ -5,14 +5,8 @@ import type { Plugins, SystemType } from './types';
  * Determine if a system-like function is the constructor of a stateful system
  * or simply a stateless function system.
  */
-export function isSystemConstructor<T extends Plugins<T>>(
-  system: SystemType<T>
-): system is SystemClass<T> {
-  return !!(
-    system.prototype?.tick ??
-    system.prototype?.stop ??
-    system.prototype?.start
-  );
+export function isSystemConstructor<T extends Plugins<T>>(system: SystemType<T>): system is SystemClass<T> {
+  return !!(system.prototype?.tick ?? system.prototype?.stop ?? system.prototype?.start);
 }
 
 export const debug = {

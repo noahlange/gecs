@@ -11,7 +11,8 @@ import type {
 import type { Context } from '.';
 import type { Component, ComponentClass } from './Component';
 
-import { ChangeSet } from '../lib';
+import { ChangeSet, Manager } from '../lib';
+import { Components, ToDestroy, ToIndex } from '../types';
 import { useWithComponent } from '../utils';
 import { EntityRef } from './EntityRef';
 
@@ -19,30 +20,20 @@ export interface EntityComponents {
   all: () => readonly Component[];
   has: (...components: ComponentClass[]) => boolean;
   // @todo - here be typing dragons
-  add: <C extends ComponentClass>(
-    ComponentConstructor: C,
-    data?: PartialValueByType<C>
-  ) => void;
+  add: <C extends ComponentClass>(ComponentConstructor: C, data?: PartialValueByType<C>) => void;
   remove: (...components: ComponentClass[]) => void;
   delete: (...components: ComponentClass[]) => void;
   [Symbol.iterator](): Generator<Component>;
 }
 
-export interface EntityClass<
-  T extends BaseType = {},
-  E extends Entity<T> = Entity<T>
-> {
+export interface EntityClass<T extends BaseType = {}, E extends Entity<T> = Entity<T>> {
   data?: BaseDataType<T>;
   new (context: Context, data?: BaseDataType<T>, tags?: string[]): E;
-  with<A extends ComponentClass[], T extends BaseType = {}>(
-    ...items: A
-  ): EntityClass<T & KeyedByType<A>>;
+  with<A extends ComponentClass[], T extends BaseType = {}>(...items: A): EntityClass<T & KeyedByType<A>>;
 }
 
 export class Entity<T extends BaseType = {}> {
-  public static with<T, A extends ComponentClass[]>(
-    ...components: A
-  ): EntityClass<T & KeyedByType<A>> {
+  public static with<T, A extends ComponentClass[]>(...components: A): EntityClass<T & KeyedByType<A>> {
     return useWithComponent<T & KeyedByType<A>, A>(this, ...components);
   }
 
@@ -59,7 +50,7 @@ export class Entity<T extends BaseType = {}> {
   public readonly $: T;
   public readonly id: Identifier;
   public readonly tags: ChangeSet;
-  public readonly items!: ComponentClass[];
+  public readonly [Components]!: ComponentClass[];
 
   public get components(): EntityComponents {
     return {
@@ -74,16 +65,14 @@ export class Entity<T extends BaseType = {}> {
     };
   }
 
-  protected readonly ctx: Context;
+  protected readonly mid: Identifier;
   protected readonly refs: EntityRef[] = [];
 
   public is(...tags: string[]): boolean {
     return this.tags.has(...tags);
   }
 
-  public has<C extends ComponentClass[]>(
-    ...components: C
-  ): this is Entity<T & KeyedByType<C>> {
+  public has<C extends ComponentClass[]>(...components: C): this is Entity<T & KeyedByType<C>> {
     return components.every(component => component.type in this.$);
   }
 
@@ -91,22 +80,24 @@ export class Entity<T extends BaseType = {}> {
    * Destroy existing references and mark the entity for destruction + re-indexing.
    */
   public destroy(): void {
-    for (const reference of this.refs) {
-      if (reference.entity === this) {
-        reference.entity = null;
+    if (this.refs.length) {
+      for (const reference of this.refs) {
+        if (reference.entity === this) {
+          reference.entity = null;
+        }
+        if (reference.ref === this) {
+          reference.ref = null;
+        }
       }
-      if (reference.ref === this) {
-        reference.ref = null;
-      }
+      this.refs.splice(0, this.refs.length);
     }
-    this.refs.splice(0, this.refs.length);
-    this.ctx.manager.destroy(this);
+    Manager[ToDestroy][this.mid].push(this);
   }
 
   protected getBindings(data: BaseDataType<T>): T {
     const bindings = {} as T;
 
-    for (const Item of this.items) {
+    for (const Item of this[Components]) {
       const [type, item] = [Item.type as keyof T, new Item()];
 
       if (item instanceof EntityRef) {
@@ -121,29 +112,15 @@ export class Entity<T extends BaseType = {}> {
               // need to remove it from an existing entity's list of refs
               current.refs.splice(current.refs.indexOf(item), 1);
             }
-            if (typeof entity === 'string' || typeof entity === 'number') {
-              const ref = this.ctx.manager.entities[entity];
-              if (ref) {
-                item.ref = ref;
-                ref.refs.push(item);
-              } else {
-                throw new Error(
-                  'Attempted to create ID ref to missing entity.'
-                );
-              }
-            } else {
-              item.ref = entity;
-              entity?.refs.push(item);
-            }
+            item.ref = entity;
+            entity?.refs.push(item);
           }
         });
 
         // since defineProperty throws everything out the window, I think this is unavoidable.
         (bindings[type] as $AnyOK) = data[type] ?? null;
       } else {
-        bindings[type] = (
-          data[type] ? Object.assign(item, data[type] ?? {}) : item
-        ) as T[keyof T];
+        bindings[type] = Object.assign(item, data[type] ?? {}) as T[keyof T];
       }
     }
     return bindings;
@@ -153,45 +130,36 @@ export class Entity<T extends BaseType = {}> {
     return Object.values(this.$);
   }
 
-  protected addComponent<C extends ComponentClass>(
-    ComponentConstructor: C,
-    data?: PartialValueByType<C>
-  ): void {
+  protected addComponent<C extends ComponentClass>(ComponentConstructor: C, data?: PartialValueByType<C>): void {
     const type = ComponentConstructor.type as string & keyof T;
     if (!(type in this.$)) {
       // get the component in question
-      this.$[type] = (
-        data
-          ? Object.assign(new ComponentConstructor(), data)
-          : new ComponentConstructor()
-      ) as T[string & keyof T];
+      this.$[type] = Object.assign(new ComponentConstructor(), data ?? {}) as T[string & keyof T];
 
-      this.items.push(ComponentConstructor);
+      this[Components].push(ComponentConstructor);
       // turns out indexing repeatedly is faster than doing a bool set/check
-      this.ctx.manager.indexEntity(this);
+      Manager[ToIndex][this.mid].push([this, this.key ?? null]);
     }
   }
 
   protected removeComponents(...components: ComponentClass[]): void {
     for (const C of components) {
       if (C.type in this.$) {
-        this.items.splice(this.items.indexOf(C), 1);
+        this[Components].splice(this[Components].indexOf(C), 1);
         delete this.$[C.type];
-        this.ctx.manager.indexEntity(this);
+        Manager[ToIndex][this.mid].push([this, this.key ?? null]);
       }
     }
   }
 
-  public constructor(
-    context: Context,
-    data: BaseDataType<T> & { id?: Identifier } = {},
-    tags: string[] = []
-  ) {
-    this.ctx = context;
-    this.tags = new ChangeSet(tags, () => this.ctx.manager.indexEntity(this));
-    // we need a unique copy of this in case we modify its components later on
-    this.items = (this.items ?? []).slice();
-    this.$ = this.getBindings(data);
+  public constructor(context: Context, data: BaseDataType<T> & { id?: Identifier } = {}, tags: string[] = []) {
     this.id = data.id ?? context.ids.id.next();
+    this.mid = context.manager.id;
+    this.tags = new ChangeSet(tags, () => {
+      Manager[ToIndex][this.mid].push([this, this.key ?? null]);
+    });
+    // we need a unique copy of this in case we modify its components later on
+    this[Components] = (this.constructor.prototype[Components] ?? []).slice();
+    this.$ = this.getBindings(data);
   }
 }

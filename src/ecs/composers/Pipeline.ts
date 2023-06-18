@@ -1,5 +1,4 @@
-import type { SystemType } from '../../types';
-import type { Context } from '..';
+import type { Context, SystemType } from '../../';
 import type { SystemLike } from '../System';
 
 import { isSystemConstructor } from '../../utils';
@@ -31,9 +30,7 @@ export abstract class Pipeline<T> extends System<T> {
 
   protected addSystems(systems: SystemType<T>[]): void {
     this.systems = systems.flat(1).map(System => {
-      return isSystemConstructor(System)
-        ? new System(this.ctx)
-        : { tick: (dt, ts) => System(this.ctx, dt, ts) };
+      return isSystemConstructor(System) ? new System(this.ctx) : { tick: (dt, ts) => System(this.ctx, dt, ts) };
     });
   }
 

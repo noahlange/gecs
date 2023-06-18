@@ -1,11 +1,11 @@
-import type { Entity } from '../../';
+import type { Entity } from '../..';
+import type { OfOrPromiseOf } from '../../types';
 import type { Identifier } from '../../types';
 
-import { Context } from '../../';
+import { Context } from '../..';
 import * as C from './components';
 import { WithA, WithABC, WithAC, WithB } from './entities';
 import * as E from './entities';
-import { withTick } from './utils';
 
 export function getContext(): Context<{}> {
   const ctx = new Context();
@@ -34,4 +34,15 @@ export async function setup(): Promise<{
   });
 
   return { ctx, ids: entities.map(e => e.id) };
+}
+
+interface Tickable {
+  tick(...args: any[]): OfOrPromiseOf<void>;
+}
+
+export async function withTick<T>(tickable: Tickable, callback: () => OfOrPromiseOf<T>): Promise<T> {
+  await tickable.tick();
+  const res = await callback();
+  await tickable.tick();
+  return res;
 }

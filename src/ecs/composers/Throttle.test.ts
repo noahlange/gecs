@@ -1,7 +1,7 @@
-import { describe, test } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 
-import { Context } from '../../';
-import { ThrottleState } from '../helpers/plugins';
+import { ThrottleState } from '../../test/helpers/plugins';
+import { Context } from '../';
 
 const MyContext = Context.with(ThrottleState);
 

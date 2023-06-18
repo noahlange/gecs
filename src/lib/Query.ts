@@ -13,10 +13,7 @@ const fns = {
   [Constraint.ANY]: match.any
 };
 
-export class Query<
-  T extends BaseType = BaseType,
-  E extends Entity<T> = Entity<T>
-> {
+export class Query<T extends BaseType = BaseType, E extends Entity<T> = Entity<T>> {
   public readonly id: Identifier;
   public key: bigint | null = null;
 
@@ -45,9 +42,7 @@ export class Query<
     this.executed = true;
     const index = this.ctx.manager.index;
     this.results = new Set(
-      index
-        .get(index.keys().filter(key => this.filter(key)))
-        .map(id => this.ctx.manager.entities[id])
+      index.get(index.keys().filter(key => this.filter(key))).map(id => this.ctx.manager.entities[id])
     ) as Set<E>;
   }
 
@@ -108,9 +103,7 @@ export class Query<
     // we've already thrown if an ID hasn't been resolved
     const constraint = step.constraint as TargetContraints;
     const id = this.ctx.manager.getID(...step.ids);
-    targets[constraint] = targets[constraint]
-      ? union(targets[constraint], id)
-      : id;
+    targets[constraint] = targets[constraint] ? union(targets[constraint], id) : id;
 
     return targets;
   };
@@ -127,10 +120,7 @@ export class Query<
     };
 
     for (const step of this.steps) {
-      if (
-        step.constraint !== Constraint.SOME &&
-        step.constraint !== Constraint.IN
-      ) {
+      if (step.constraint !== Constraint.SOME && step.constraint !== Constraint.IN) {
         this.constraints.add(step.constraint);
         targets[step.constraint].push(step);
       }
@@ -168,9 +158,7 @@ export class Query<
     this.refs = steps
       .filter(step => step.constraint === Constraint.IN)
       .reduce((a: Identifier[], b) => a.concat(b.ids), []);
-    this.steps = steps.filter(
-      ({ constraint: c }) => c !== Constraint.SOME && c !== Constraint.IN
-    );
+    this.steps = steps.filter(({ constraint: c }) => c !== Constraint.SOME && c !== Constraint.IN);
     this.init();
   }
 }

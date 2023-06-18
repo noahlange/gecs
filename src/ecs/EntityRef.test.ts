@@ -1,9 +1,8 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { Entity, EntityRef } from '../ecs';
-import { WithABC } from './helpers/entities';
-import { getContext } from './helpers/setup';
-import { withTick } from './helpers/utils';
+import { getContext, withTick } from '../test/helpers';
+import { WithABC } from '../test/helpers/entities';
+import { Entity, EntityRef } from './';
 
 class RefABC extends EntityRef<WithABC> {
   public static readonly type = 'abc';
@@ -41,10 +40,7 @@ describe('entity reference queries', () => {
 
   test('...can query referenced entities', async () => {
     const ctx = getContext();
-    const [abc, withRef] = await withTick(ctx, () => [
-      ctx.create(WithABC),
-      ctx.create(WithRefABC, {})
-    ]);
+    const [abc, withRef] = await withTick(ctx, () => [ctx.create(WithABC), ctx.create(WithRefABC, {})]);
 
     const q = ctx.query.references(abc);
 
@@ -60,5 +56,32 @@ describe('entity reference queries', () => {
     });
 
     expect(q.first()).toBe(null);
+  });
+});
+
+describe('destroying objects', () => {
+  const WithRefABC = Entity.with(RefABC);
+
+  test('forward refs should be nullified', async () => {
+    const ctx = getContext();
+    const abc = ctx.create(WithABC);
+    const withRef = ctx.create(WithRefABC, { abc });
+    abc.destroy();
+    expect(withRef.$.abc).toBeNull();
+  });
+
+  test('back refs should be nullified', async () => {
+    const ctx = getContext();
+
+    const abc = ctx.create(WithABC);
+    const withRef = ctx.create(WithRefABC, { abc });
+    await withTick(ctx, () => {
+      withRef.destroy();
+    });
+
+    expect(
+      // @ts-ignore
+      abc.refs.find(ref => ref.ref === withRef || ref.entity === withRef)
+    ).toBeFalsy();
   });
 });

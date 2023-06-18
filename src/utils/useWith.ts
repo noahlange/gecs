@@ -2,10 +2,10 @@
 
 import type { ComponentClass, ContextClass, EntityClass } from '../ecs';
 import type { PluginClass } from '../lib/Plugin';
-import type { BaseType, KeyedByType } from '../types';
-import type { U } from 'ts-toolbelt';
+import type { BaseType, KeyedByType, Merge } from '../types';
 
 import { Context } from '../ecs';
+import { Components } from '../types';
 
 const ctors: Map<EntityClass, ComponentClass[]> = new Map();
 
@@ -14,10 +14,10 @@ const ctors: Map<EntityClass, ComponentClass[]> = new Map();
  * @param Constructor - Constructor to extend.
  * @param items - array of containees; this will extend existing `$`s
  */
-export function useWithComponent<
-  T extends BaseType,
-  A extends ComponentClass[] = []
->(Constructor: EntityClass<T>, ...items: A): EntityClass<T & KeyedByType<A>> {
+export function useWithComponent<T extends BaseType, A extends ComponentClass[] = []>(
+  Constructor: EntityClass<T>,
+  ...items: A
+): EntityClass<T & KeyedByType<A>> {
   // we're tracking entity class => component classes, allowing us to extend existing component sets.
   const curr = ctors.get(Constructor) ?? [];
   // we need to give each entity its own constructor
@@ -29,7 +29,7 @@ export function useWithComponent<
   const value = [...curr, ...items];
   ctors.set(_a, value);
 
-  Object.defineProperty(_a.prototype, 'items', {
+  Object.defineProperty(_a.prototype, Components, {
     value: value.slice(),
     writable: true
   });
@@ -38,14 +38,13 @@ export function useWithComponent<
   return _a as unknown as EntityClass<T & KeyedByType<A>>;
 }
 
-export function useWithPlugins<
-  P extends PluginClass<R>[],
-  R extends KeyedByType<P>
->(...items: P): ContextClass<U.Merge<R>> {
-  const _a = class extends Context<U.Merge<R>> {};
+export function useWithPlugins<P extends PluginClass<R>[], R extends KeyedByType<P>>(
+  ...items: P
+): ContextClass<Merge<R>> {
+  const _a = class extends Context<Merge<R>> {};
   Object.defineProperty(_a.prototype, 'items', {
     value: items.slice(),
     writable: true
   });
-  return _a as unknown as ContextClass<U.Merge<R>>;
+  return _a as unknown as ContextClass<Merge<R>>;
 }

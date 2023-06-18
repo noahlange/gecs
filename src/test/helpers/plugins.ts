@@ -1,14 +1,7 @@
 /* eslint-disable max-classes-per-file */
 import type { PluginData } from '../../types';
 
-import {
-  conditional,
-  parallel,
-  phase,
-  Plugin,
-  sequence,
-  throttle
-} from '../../';
+import { conditional, parallel, phase, Plugin, sequence, throttle } from '../../';
 import { Phase } from '../../types';
 
 const wait = (): Promise<void> => new Promise(ok => setTimeout(ok, 10));
@@ -66,10 +59,8 @@ export class PhaseState extends Plugin {
     systems: [
       phase(
         Phase.ON_LOAD,
-        sequence(
-          () => (this.value += 1),
-          () => (this.value += 1)
-        )
+        () => (this.value += 1),
+        () => (this.value += 1)
       ),
       phase(
         Phase.ON_UPDATE,

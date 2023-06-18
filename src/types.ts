@@ -1,18 +1,25 @@
-import type {
-  Component,
-  ComponentClass,
-  Entity,
-  EntityClass,
-  SystemClass
-} from './ecs';
+import type { Component, ComponentClass, Entity, EntityClass, SystemClass } from './ecs';
 import type { EntityRef } from './ecs/EntityRef';
 import type { SystemFunction } from './ecs/System';
 import type { PluginClass, QueryBuilderBase } from './lib';
-import type { U } from 'ts-toolbelt';
+
+// Copy-pasted with permission from https://github.com/sindresorhus/type-fest/blob/main/source/simplify.d.ts
+export type Simplify<T> = { [KeyType in keyof T]: T[KeyType] } & {};
+
+// Copy-pasted with permission from https://github.com/sindresorhus/type-fest/blob/main/source/union-to-intersection.d.ts
+export type UnionToIntersection<Union> = (Union extends unknown ? (distributedUnion: Union) => void : never) extends (
+  mergedIntersection: infer Intersection
+) => void
+  ? Intersection
+  : never;
 
 // There's certainly a better way to handle this, but it appears to behave consistently enough—at least in Chrome...?
 export const anonymous = '_a';
 export const eid = '$id$';
+
+export const Components = 'Components';
+export const ToDestroy = 'ToDestroy';
+export const ToIndex = 'ToIndex';
 
 export const Phase = {
   PRE_LOAD: 100,
@@ -36,6 +43,8 @@ export interface PluginData<T> {
 /**
  * Utility types
  */
+
+export type Merge<T> = Simplify<UnionToIntersection<T>>;
 
 /**
  * avoidable `any`s that should be revisited and addressed.
@@ -71,17 +80,13 @@ export interface BaseType<T extends Component = {}> {
 }
 
 export type BaseDataType<T extends BaseType> = {
-  [K in keyof T]?: T[K] extends EntityRef
-    ? Ref<T[K]> | null
-    : DeepPartial<T[K]>;
+  [K in keyof T]?: T[K] extends EntityRef ? Ref<T[K]> | null : DeepPartial<T[K]>;
 };
 
 /**
  * Bare-bones data for an entity's components.
  */
-export type DataType<T> = T extends EntityClass<infer D>
-  ? BaseDataType<D>
-  : never;
+export type DataType<T> = T extends EntityClass<infer D> ? BaseDataType<D> : never;
 
 export type Plugins<T extends Plugins<T>> = {
   [K in keyof T]: T[K];
@@ -95,6 +100,12 @@ export interface WithStaticType<T = $AnyOK> {
   new (...args: $AnyOK[]): T;
 }
 
+type InstanceOrRefKeyedByType<T> = T extends WithStaticType
+  ? {
+      [key in T['type']]: InstanceType<T> extends EntityRef ? Ref<InstanceType<T>> | null : InstanceType<T>;
+    }
+  : never;
+
 /**
  * Given an array of WithStaticTypes, return a merged array of key-value pairs with required values.
  *
@@ -105,16 +116,8 @@ export interface WithStaticType<T = $AnyOK> {
  * class B extends Component { static readonly type: 'b' }
  * type KeyedByType<[typeof A, typeof B]> // { a: A, b: B }
  */
-export type KeyedByType<A extends WithStaticType[]> = U.Merge<
-  A extends (infer B)[]
-    ? B extends WithStaticType
-      ? {
-          [key in B['type']]: InstanceType<B> extends EntityRef
-            ? Ref<InstanceType<B>> | null
-            : InstanceType<B>;
-        }
-      : never
-    : never
+export type KeyedByType<A extends WithStaticType[]> = Merge<
+  A extends (infer B)[] ? InstanceOrRefKeyedByType<B> : never
 >;
 
 /**
@@ -127,16 +130,8 @@ export type KeyedByType<A extends WithStaticType[]> = U.Merge<
  * class B extends Component { static readonly type: 'b' }
  * type PartialByType<[typeof A, typeof B]> // { a?: A, b?: B }
  */
-export type PartialByType<A extends WithStaticType[]> = U.Merge<
-  A extends (infer B)[]
-    ? B extends WithStaticType
-      ? {
-          [key in B['type']]?: InstanceType<B> extends EntityRef
-            ? Ref<InstanceType<B>> | null
-            : InstanceType<B>;
-        }
-      : never
-    : never
+export type PartialByType<A extends WithStaticType[]> = Merge<
+  A extends (infer B)[] ? Partial<InstanceOrRefKeyedByType<B>> : never
 >;
 
 /**
@@ -149,12 +144,8 @@ export type PartialByType<A extends WithStaticType[]> = U.Merge<
  * class B extends Component { static readonly type: 'b' }
  * type NeverByType<[typeof A, typeof B]> // { a: never, b: never }
  */
-export type NeverByType<A extends WithStaticType[]> = U.Merge<
-  A extends (infer B)[]
-    ? B extends WithStaticType
-      ? { [key in B['type']]: never }
-      : never
-    : never
+export type NeverByType<A extends WithStaticType[]> = Merge<
+  A extends (infer B)[] ? (B extends WithStaticType ? { [key in B['type']]: never } : never) : never
 >;
 
 /**
@@ -162,10 +153,9 @@ export type NeverByType<A extends WithStaticType[]> = U.Merge<
  * - given an EntityRef, return the type of the referenced entity.
  * - given an ordinary component, return the partial type of its data.
  */
-export type PartialValueByType<A extends WithStaticType> =
-  InstanceType<A> extends EntityRef<infer R>
-    ? R | null
-    : DeepPartial<InstanceType<A>>;
+export type PartialValueByType<A extends WithStaticType> = InstanceType<A> extends EntityRef<infer R>
+  ? R | null
+  : DeepPartial<InstanceType<A>>;
 
 /**
  * Given an EntityRef, returns an intersection of the entity type and Identifier—the Identifier is an escape hatch that allows us to reference entities we might be identifying statically (e.g., in data files).
@@ -191,32 +181,28 @@ export interface QueryStep {
 /**
  * An arbitrary (stateless or stateful) system with context plugins of type T.
  */
-export type SystemType<T extends Plugins<T>> =
-  | SystemClass<T>
-  | SystemFunction<T>;
+export type SystemType<T extends Plugins<T>> = SystemClass<T> | SystemFunction<T>;
 
 /**
  * An entity with required components and/or optional components
  * @typeParam R - array of required component types
  * @typeParam O - array of optional component types
  */
-export type EntityType<
-  R extends ComponentClass[] = [],
-  O extends ComponentClass[] = []
-> = Entity<U.Merge<KeyedByType<R> & PartialByType<O>>>;
+export type EntityType<R extends ComponentClass[] = [], O extends ComponentClass[] = []> = Entity<
+  Merge<KeyedByType<R> & PartialByType<O>>
+>;
 
-export type QueryType<
-  R extends ComponentClass[] = [],
-  O extends ComponentClass[] = []
-> = QueryBuilderBase<U.Merge<KeyedByType<R> & PartialByType<O>>>;
+export type QueryType<R extends ComponentClass[] = [], O extends ComponentClass[] = []> = QueryBuilderBase<
+  Merge<KeyedByType<R> & PartialByType<O>>
+>;
 
 /**
  * A collection of plugins (and their dependencies).
  */
-export type PluginDeps<A extends PluginClass<any>[]> = U.Merge<
+export type PluginDeps<A extends PluginClass<any>[]> = Merge<
   A extends (infer T)[]
     ? T extends PluginClass<infer R>
-      ? U.Merge<R & { [K in T['type']]: InstanceType<T> }>
+      ? Merge<R & { [K in T['type']]: InstanceType<T> }>
       : never
     : never
 >;

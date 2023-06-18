@@ -1,8 +1,8 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { debug, Entity } from '../../';
+import { debug, Entity } from '../..';
+import { getContext } from '../helpers';
 import { A, B } from '../helpers/components';
-import { getContext } from '../helpers/setup';
 
 @debug.leak
 class E extends Entity.with(A, B) {}

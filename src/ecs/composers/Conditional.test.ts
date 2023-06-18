@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { Context } from '../../';
-import { ConditionalState } from '../helpers/plugins';
+import { ConditionalState } from '../../test/helpers/plugins';
+import { Context } from '../';
 
 describe('conditional systems', () => {
   const MyContext = Context.with(ConditionalState);

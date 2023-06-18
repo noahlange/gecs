@@ -1,6 +1,6 @@
-import { describe, expect } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 
-import { ChangeSet } from '../../lib';
+import { ChangeSet } from '.';
 
 describe('ChangeSet', () => {
   describe('.add(), .remove(), .clear()', () => {

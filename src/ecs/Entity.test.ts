@@ -1,16 +1,17 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { A, B, C } from './helpers/components';
-import { WithA, WithAB, WithABC } from './helpers/entities';
-import { getContext } from './helpers/setup';
-import { withTick } from './helpers/utils';
+import { Manager } from '../lib';
+import { getContext, withTick } from '../test/helpers';
+import { A, B, C } from '../test/helpers/components';
+import { WithA, WithAB, WithABC } from '../test/helpers/entities';
+import { Components, ToIndex } from '../types';
 
 describe('creating entities', () => {
   const ctx = getContext();
 
-  test('`Entity.with()` adds additional items to the list of those attached to a newly-constructed container', () => {
+  test('`Entity.with()` adds additional[Components] to the list of those attached to a newly-constructed container', () => {
     const item = ctx.create(WithABC);
-    expect(item.items.length).toBe(3);
+    expect(item[Components].length).toBe(3);
   });
 
   test('Can be created with a static ID.', () => {
@@ -76,45 +77,39 @@ describe('modifying components', () => {
   test('removing a component should not affect other entities with the same prototype', () => {
     const ctx = getContext();
     const [a, b] = [ctx.create(WithAB), ctx.create(WithAB)];
-    // out of the box, same items
-    expect(a.items).toEqual(b.items);
+    // out of the box, same[Components]
+    expect(a[Components]).toEqual(b[Components]);
     a.components.remove(B);
     // a loses a component, b doesn't
-    expect(a.items).not.toContain(B);
-    expect(b.items).toContain(B);
+    expect(a[Components]).not.toContain(B);
+    expect(b[Components]).toContain(B);
   });
 
   test('adding a component should not affect other entities with the same prototype', () => {
     const ctx = getContext();
     const [a, b] = [ctx.create(WithA), ctx.create(WithA)];
-    // out of the box, same items
-    expect(a.items).toEqual(b.items);
+    // out of the box, same[Components]
+    expect(a[Components]).toEqual(b[Components]);
     a.components.add(B);
     // a loses a component, b doesn't
-    expect(a.items).toContain(B);
-    expect(b.items).not.toContain(B);
+    expect(a[Components]).toContain(B);
+    expect(b[Components]).not.toContain(B);
   });
 
   test('adding an duplicate component should be a no-op', async () => {
     const ctx = getContext();
-    const a = await withTick(ctx, () =>
-      ctx.create(WithA, { a: { value: '2' } })
-    );
+    const a = await withTick(ctx, () => ctx.create(WithA, { a: { value: '2' } }));
 
     a.components.add(A, { value: '5' });
     expect(a.$.a.value).toBe('2');
-    // @ts-expect-error
-    expect(ctx.manager.toIndex.size).toBe(0);
+    expect(Manager[ToIndex][ctx.manager.id].length).toBe(0);
   });
 
   test('removing a nonexistent component should be a no-op', async () => {
     const ctx = getContext();
-    const a = await withTick(ctx, () =>
-      ctx.create(WithA, { a: { value: '2' } })
-    );
+    const a = await withTick(ctx, () => ctx.create(WithA, { a: { value: '2' } }));
     a.components.remove(B);
-    // @ts-expect-error
-    expect(ctx.manager.toIndex.size).toBe(0);
+    expect(Manager[ToIndex][ctx.manager.id].length).toBe(0);
   });
 
   test('has()', () => {

@@ -1,5 +1,10 @@
 # 1.0.0-alpha
 
+## 1.0.0-alpha.8
+
+- removes all dependencies by grace of Sindre Sorhus's [type-fest](https://github.com/sindresorhus/type-fest).
+- query builder will no longer add duplicate criteria, improving efficiency for 'floating queries'
+
 ## 1.0.0-alpha.7
 
 - remove support for ref population by static id.

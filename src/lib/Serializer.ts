@@ -1,15 +1,8 @@
 import type { Context } from '../ecs';
-import type {
-  Plugins,
-  Serialized,
-  SerializedEntity,
-  SomeDictionary,
-  Visited,
-  Visiting
-} from '../types';
+import type { Plugins, Serialized, SerializedEntity, SomeDictionary, Visited, Visiting } from '../types';
 
 import { Entity } from '../ecs/Entity';
-import { anonymous, eid } from '../types';
+import { anonymous, Components, eid } from '../types';
 
 export interface SerializeOptions {
   entityFilter?: (entity: Entity) => boolean;
@@ -48,11 +41,7 @@ export class Serializer<T extends Plugins<T>> {
       case 'object': {
         if (Array.isArray(value)) {
           res = value.map(item =>
-            typeof item === 'object'
-              ? item
-                ? this.visit(item)
-                : item
-              : this.serializeValue(item)
+            typeof item === 'object' ? (item ? this.visit(item) : item) : this.serializeValue(item)
           );
         } else if (value) {
           if (value.toJSON) {
@@ -104,7 +93,7 @@ export class Serializer<T extends Plugins<T>> {
         // have any custom functionality, we don't have to worry about losing
         // access to class methods, etc.
         !entity.constructor.name || entity.constructor.name === anonymous
-          ? entity.items.map(e => e.type).join('|')
+          ? entity[Components].map(e => e.type).join('|')
           : // but if it is named, we want to track that.
             entity.constructor.name;
 

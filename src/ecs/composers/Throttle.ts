@@ -6,10 +6,7 @@ import { Pipeline } from './Pipeline';
 /**
  * Given a `ms` and list of systems, return a single system that executes once every `ms`.
  */
-export function throttle<T extends Plugins<T>>(
-  ms: number,
-  ...Systems: SystemType<T>[]
-): SystemClass<T> {
+export function throttle<T extends Plugins<T>>(ms: number, ...Systems: SystemType<T>[]): SystemClass<T> {
   return class Throttle extends Pipeline<T> {
     protected elapsed = 0;
 
