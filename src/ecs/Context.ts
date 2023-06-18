@@ -70,6 +70,9 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
    * Kickstart the Context and its systems.
    */
   public async start(): Promise<void> {
+    this.$ = this.getPlugins();
+    this.system = this.getSystem();
+
     for (const plugin of Object.values(this.$)) {
       await (plugin as Plugin).start?.();
     }
@@ -126,7 +129,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
 
   public constructor() {
     this.manager = new Manager(this);
-    this.$ = this.getPlugins();
-    this.system = this.getSystem();
+    // @ts-ignore
+    (this.$ = {}), (this.system = () => void 0);
   }
 }
