@@ -1,5 +1,5 @@
 const bench = require('nanobench');
-const { Context } = require('../../lib/ecs/Context');
+const { Context } = require('gecs');
 const { Test1, Test2, Test3 } = require('../helpers/components');
 const { E1, E2, E3 } = require('../helpers/entities');
 

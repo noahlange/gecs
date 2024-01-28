@@ -1,5 +1,5 @@
 const bench = require('nanobench');
-const { Context, Component, Entity, Plugin } = require('../../lib');
+const { Context, Component, Entity, Plugin } = require('gecs');
 
 class Position extends Component {
   static type = 'position';

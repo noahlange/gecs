@@ -1,5 +1,5 @@
 const bench = require('nanobench');
-const { Manager, Entity, Context } = require('../../lib');
+const { Entity, Context } = require('gecs');
 const { Test1, Test2, Test3 } = require('../helpers/components');
 
 for (const count of [1, 10, 50, 100]) {

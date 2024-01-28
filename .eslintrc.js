@@ -32,11 +32,7 @@ module.exports = {
     '@typescript-eslint/no-inferrable-types': [0],
     '@typescript-eslint/prefer-enum-initializers': [2],
     '@typescript-eslint/explicit-member-accessibility': [2],
-    '@typescript-eslint/explicit-function-return-type': [
-      2,
-      // ...but not at the expense of readability.
-      { allowHigherOrderFunctions: true, allowExpressions: true }
-    ],
+    '@typescript-eslint/explicit-function-return-type': [0],
     // consistency...
     '@typescript-eslint/consistent-type-definitions': [2, 'interface'],
     '@typescript-eslint/consistent-type-imports': [1],
@@ -60,10 +56,7 @@ module.exports = {
         ]
       }
     ],
-    '@typescript-eslint/consistent-type-assertions': [
-      2,
-      { assertionStyle: 'as' }
-    ],
+    '@typescript-eslint/consistent-type-assertions': [2, { assertionStyle: 'as' }],
     'import/no-unresolved': [0],
     'import/namespace': [0],
     'sort-imports': [0],

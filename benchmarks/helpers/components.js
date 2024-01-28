@@ -1,4 +1,4 @@
-const { Component } = require('../../lib');
+const { Component } = require('gecs');
 
 class Test1 extends Component {
   static type = 'test1';

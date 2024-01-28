@@ -1,4 +1,4 @@
-const { Context, Entity, Component } = require('../../lib');
+const { Context, Entity } = require('gecs');
 const { Complex1, Complex2, Complex3 } = require('./components');
 
 const E1 = Entity.with(Complex1);
@@ -10,11 +10,7 @@ const entities = [E1, E2, E3];
 function setup(create, components) {
   const E = entities[components - 1];
   const ctx = new Context();
-  ctx.register(
-    require('./entities'),
-    require('./components'),
-    require('./tags')
-  );
+  ctx.register(require('./entities'), require('./components'), require('./tags'));
 
   for (let i = 0; i < create * 1000; i++) {
     const data = { complex1: { a: { b: { c: 5 } } } };

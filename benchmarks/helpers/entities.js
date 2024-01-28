@@ -1,4 +1,4 @@
-const { Entity } = require('../../lib');
+const { Entity } = require('gecs');
 const { Test1, Test2, Test3 } = require('./components');
 
 const E1 = Entity.with(Test1);

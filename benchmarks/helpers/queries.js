@@ -1,4 +1,4 @@
-const { Manager, Context } = require('../../lib');
+const { Manager, Context } = require('gecs');
 const { E1, E2, E3 } = require('./entities');
 const entities = [E1, E2, E3];
 
