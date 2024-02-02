@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, test } from 'vitest';
 
 import { getContext } from './helpers';
 import { WithABC } from './helpers/entities';

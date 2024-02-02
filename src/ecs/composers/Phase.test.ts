@@ -1,5 +1,5 @@
 /* eslint-disable max-classes-per-file */
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, test } from 'vitest';
 
 import { Context, Phase, phase, Plugin } from '../..';
 import { PhaseState } from '../../test/helpers/plugins';

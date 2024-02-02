@@ -14,7 +14,7 @@ export type UnionToIntersection<Union> = (Union extends unknown ? (distributedUn
   : never;
 
 // There's certainly a better way to handle this, but it appears to behave consistently enough—at least in Chrome...?
-export const anonymous = '_a';
+export const anonymous = '__anon';
 export const eid = '$id$';
 
 export const Components = 'Components';

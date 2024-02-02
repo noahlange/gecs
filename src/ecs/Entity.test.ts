@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, test } from 'vitest';
 
 import { Manager } from '../lib';
 import { getContext, withTick } from '../test/helpers';

@@ -1,10 +1,11 @@
 import type { Context, SystemType } from '../../';
+import type { Plugins } from '../../types';
 import type { SystemLike } from '../System';
 
 import { isSystemConstructor } from '../../utils';
 import { System } from '../System';
 
-export abstract class Pipeline<T> extends System<T> {
+export abstract class Pipeline<T extends Plugins<T>> extends System<T> {
   public systems: SystemLike[] = [];
 
   public tick(dt: number, ts: number): void {

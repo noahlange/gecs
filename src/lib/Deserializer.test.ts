@@ -1,5 +1,5 @@
 /* eslint-disable max-classes-per-file */
-import { describe, expect, jest, test } from '@jest/globals';
+import { describe, expect, vi, test } from 'vitest';
 
 import { Component, Entity } from '..';
 import { getContext, withTick } from '../test/helpers';
@@ -90,7 +90,7 @@ test('warn when attempting to recreate unregistered components', async () => {
     ctx1.create(Entity.with(E));
   });
 
-  const spy = jest.spyOn(console, 'warn').mockImplementation(() => void 0);
+  const spy = vi.spyOn(console, 'warn').mockImplementation(() => void 0);
   ctx2.load(ctx1.save());
   expect(console.warn).toHaveBeenCalledWith('Missing entities/components: e');
   spy.mockRestore();

@@ -4,7 +4,7 @@ import type { BaseDataType, BaseType, Identifier, KeyedByType, Plugins, Serializ
 
 import { Deserializer, Manager, QueryBuilder, Serializer } from '../lib';
 import { Phase } from '../types';
-import { _, bigintID, IDGenerator, intID, useWithPlugins } from '../utils';
+import { bigintID, IDGenerator, intID, useWithPlugins } from '../utils';
 import { compose } from './composers';
 
 export interface ContextClass<T extends Plugins<T> = Plugins<{}>> {
@@ -75,7 +75,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
 
   public async stop(): Promise<void> {
     await this.system.stop?.();
-    for (const plugin of _.values(this.$)) {
+    for (const plugin of Object.values(this.$)) {
       await (plugin as Plugin).stop?.();
     }
     this.manager.stop();

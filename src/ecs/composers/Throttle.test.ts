@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, test } from 'vitest';
 
 import { ThrottleState } from '../../test/helpers/plugins';
 import { Context } from '../';

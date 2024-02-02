@@ -1,6 +1,6 @@
 import type { Entity } from '../ecs';
 
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, test } from 'vitest';
 
 import { getContext, setup, withTick } from '../test/helpers';
 import { A, B, C } from '../test/helpers/components';

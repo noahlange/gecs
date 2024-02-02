@@ -8,10 +8,10 @@ export interface SerializeOptions {
   entityFilter?: (entity: Entity) => boolean;
 }
 
-export class Serializer<T extends Plugins<T>> {
+export class Serializer {
   // make sure we aren't recursing infinitely through circular references
   protected stack: unknown[] = [];
-  protected ctx: Context<T>;
+  protected ctx: Context;
 
   /**
    * Convert the context into a structure we can stringify and save to disk
@@ -109,7 +109,7 @@ export class Serializer<T extends Plugins<T>> {
     return res;
   }
 
-  public constructor(ctx: Context<T>) {
+  public constructor(ctx: Context<Plugins<any>>) {
     this.ctx = ctx;
   }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, test } from 'vitest';
 
 import { ChangeSet } from '.';
 
@@ -22,7 +22,7 @@ describe('ChangeSet', () => {
     });
   });
 
-  describe('onChange handler', () => {
+  test('onChange handler', () => {
     let calls = 0;
     const set = new ChangeSet([], () => calls++);
 

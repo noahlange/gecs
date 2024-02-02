@@ -4,8 +4,8 @@ import type { $AnyEvil, $AnyOK, Identifier, Plugins, Serialized } from '../types
 import { Entity } from '../ecs/Entity';
 import { eid } from '../types';
 
-export class Deserializer<T extends Plugins<T>> {
-  protected ctx: Context<T>;
+export class Deserializer {
+  protected ctx: Context;
   protected stack: unknown[] = [];
 
   /**
@@ -138,7 +138,7 @@ export class Deserializer<T extends Plugins<T>> {
     this.stack = [];
   }
 
-  public constructor(ctx: Context<T>) {
+  public constructor(ctx: Context<Plugins<any>>) {
     this.ctx = ctx;
   }
 }
