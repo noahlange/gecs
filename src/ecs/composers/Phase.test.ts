@@ -8,7 +8,7 @@ describe('system phases', () => {
   test('sort systems ascending', async () => {
     const ctx = new (Context.with(PhaseState))();
     await ctx.start();
-    await ctx.tick();
+    ctx.tick();
     expect(ctx.$.state.value).toBe(3);
   });
 
@@ -31,7 +31,7 @@ describe('system phases', () => {
 
     const ctx = new (Context.with(PluginB, PluginA))();
     await ctx.start();
-    await ctx.tick();
+    ctx.tick();
     await ctx.stop();
 
     expect(calls).toEqual(['b', 'a']);

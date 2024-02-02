@@ -32,6 +32,18 @@ export const debug = {
   }
 };
 
+export const _ = {
+  keys<T extends object, K extends keyof T = keyof T>(o: T): K[] {
+    return Object.keys(o) as K[];
+  },
+  values<T extends object, K extends keyof T = keyof T>(o: T): T[K][] {
+    return Object.values(o);
+  },
+  entries<T extends object, K extends keyof T = keyof T>(o: T) {
+    return Object.entries(o) as [K, T[K]][];
+  }
+};
+
 export * from './utils/bit';
 export * from './utils/useWith';
 export * from './utils/ids';

@@ -5,6 +5,7 @@ import type {
   BaseType,
   Identifier,
   KeyedByType,
+  MergeData,
   PartialValueByType,
   Ref
 } from '../types';
@@ -33,8 +34,12 @@ export interface EntityClass<T extends BaseType = {}, E extends Entity<T> = Enti
 }
 
 export class Entity<T extends BaseType = {}> {
-  public static with<T, A extends ComponentClass[]>(...components: A): EntityClass<T & KeyedByType<A>> {
-    return useWithComponent<T & KeyedByType<A>, A>(this, ...components);
+  public static with<
+    T extends BaseType,
+    A extends ComponentClass[],
+    M extends MergeData<T & KeyedByType<A>> = MergeData<T & KeyedByType<A>>
+  >(...components: A): EntityClass<M> {
+    return useWithComponent<M, A>(this, ...components);
   }
 
   /**
@@ -116,8 +121,8 @@ export class Entity<T extends BaseType = {}> {
             entity?.refs.push(item);
           }
         });
+        // since defineProperty throws types out the window anyways, I think this is unavoidable.
 
-        // since defineProperty throws everything out the window, I think this is unavoidable.
         (bindings[type] as $AnyOK) = data[type] ?? null;
       } else {
         bindings[type] = Object.assign(item, data[type] ?? {}) as T[keyof T];

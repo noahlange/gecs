@@ -17,5 +17,5 @@ export function setup(create, components) {
     }
     ctx.create(E, data);
   }
-  return em;
+  return ctx;
 }

@@ -24,7 +24,7 @@ async function setup(create: number, components: number) {
     ctx.create(E, data);
   }
 
-  await ctx.tick();
+  ctx.tick();
   return ctx;
 }
 
@@ -44,7 +44,7 @@ async function setupComplex(create: number, components: number) {
       ['one', 'two', 'three']
     );
   }
-  await ctx.tick();
+  ctx.tick();
   return ctx;
 }
 
@@ -55,7 +55,7 @@ async function setupTags(create: number, tags: number) {
   for (let i = 0; i < create * 1000; i++) {
     ctx.create(E1, { test1: { a: 4, b: 5 } }, tagList);
   }
-  await ctx.tick();
+  ctx.tick();
   return ctx;
 }
 

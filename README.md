@@ -359,7 +359,7 @@ class Renderer extends System {
     }
   }
 
-  // both start() and tick() functions can be async
+  // start() and stop() functions can be async
   public async start(): Promise<void> {
     this.app = new PIXI.Application();
     // create all sprites and add to the stage
@@ -409,18 +409,11 @@ const inParallel = parallel(SimA, SimB, SimC);
 const inSequence = sequence(setup, inParallel, teardown);
 
 // only execute if the game state's mode property is "SIMULATION"
-const ifSimulating = conditional(
-  ctx => ctx.state.mode === GameMode.SIMULATION,
-  inSequence
-);
+const ifSimulating = conditional(ctx => ctx.state.mode === GameMode.SIMULATION, inSequence);
 
-const atTheEnd = phase(Phase.POST_RENDER, () =>
-  console.log('it is the very end of the tick')
-);
+const atTheEnd = phase(Phase.POST_RENDER, () => console.log('it is the very end of the tick'));
 
-const throttled = throttle(200, () =>
-  console.log('will execute once every 200ms')
-);
+const throttled = throttle(200, () => console.log('will execute once every 200ms'));
 ```
 
 ### Caveats
@@ -432,10 +425,7 @@ const throttled = throttle(200, () =>
 Queries return collections of entities based on the user's criteria. Query results are typed exactly like an ordinary entity, so you'll have (typed) access to each of the components you've requested in your query—but nothing more.
 
 ```ts
-const q = ctx.query.all
-  .components(A, B, C)
-  .some.components(D, E, F)
-  .any.tags('1', '2', '3');
+const q = ctx.query.all.components(A, B, C).some.components(D, E, F).any.tags('1', '2', '3');
 ```
 
 ### Building
@@ -609,14 +599,14 @@ Serialization has one caveat: you must manually register all components types an
 
 ```typescript
 import { Context } from 'gecs';
-import { Components, Entities } from './lib';
+import { Components, Entities, Tags } from './lib';
 
 // instantiate new context
 const ctx = new Context();
 
 // you must register components and entity constructors using inheritance
 // (composed entity constructors don't need to be registered)
-ctx.register({ ...Components, ...Entities });
+ctx.register(Object.values(Components), Object.values(Entities), Object.values(Tags));
 
 // fetch and load state
 await fetch('./save.json')

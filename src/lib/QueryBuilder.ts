@@ -1,5 +1,5 @@
 import type { ComponentClass, Context, Entity } from '../ecs';
-import type { BaseType, Identifier, KeyedByType, Merge, PartialByType, QueryStep } from '../types';
+import type { BaseType, Identifier, KeyedByType, MergeData, PartialByType, QueryStep } from '../types';
 import type { Query } from '.';
 
 import { Constraint } from '../types';
@@ -19,12 +19,12 @@ export interface QueryBuilderBase<T extends BaseType = {}> extends QueryBuilderA
 }
 
 interface QueryBuilderAll<T extends BaseType = {}> {
-  components<A extends ComponentClass[]>(...components: A): QueryBuilder<Merge<T & KeyedByType<A>>>;
+  components<A extends ComponentClass[]>(...components: A): QueryBuilder<MergeData<T & KeyedByType<A>>>;
   tags(...tags: string[]): QueryBuilder<T>;
 }
 
 interface QueryBuilderAny<T extends BaseType = {}> {
-  components<A extends ComponentClass[]>(...components: A): QueryBuilder<Merge<T & PartialByType<A>>>;
+  components<A extends ComponentClass[]>(...components: A): QueryBuilder<MergeData<T & PartialByType<A>>>;
   tags(...tags: string[]): QueryBuilder<T>;
 }
 
@@ -91,9 +91,9 @@ export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T
   /**
    * Constrain results based on one or components.
    */
-  public components<A extends ComponentClass[]>(...components: A): QueryBuilder<Merge<T & KeyedByType<A>>> {
+  public components<A extends ComponentClass[]>(...components: A): QueryBuilder<MergeData<T & KeyedByType<A>>> {
     this.state.ids.push(...components.map(c => c.type));
-    return this.reset() as unknown as QueryBuilder<Merge<T & KeyedByType<A>>>;
+    return this.reset() as unknown as QueryBuilder<MergeData<T & KeyedByType<A>>>;
   }
 
   /**

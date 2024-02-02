@@ -1,5 +1,5 @@
 export { Context, Component, Entity, EntityRef, System } from './ecs';
-export { compose, conditional, parallel, phase, sequence, throttle } from './ecs/composers';
+export { compose, conditional, phase, sequence, throttle } from './ecs/composers';
 export { Manager, Serializer, Deserializer, Plugin } from './lib';
 
 export { debug } from './utils';

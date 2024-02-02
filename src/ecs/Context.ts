@@ -4,7 +4,7 @@ import type { BaseDataType, BaseType, Identifier, KeyedByType, Plugins, Serializ
 
 import { Deserializer, Manager, QueryBuilder, Serializer } from '../lib';
 import { Phase } from '../types';
-import { bigintID, IDGenerator, intID, useWithPlugins } from '../utils';
+import { _, bigintID, IDGenerator, intID, useWithPlugins } from '../utils';
 import { compose } from './composers';
 
 export interface ContextClass<T extends Plugins<T> = Plugins<{}>> {
@@ -28,19 +28,15 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
 
   public manager: Manager;
 
-  // binary semaphore to prevent overlapping tick() calls
-  protected isLocked: boolean = false;
   protected system: System<T>;
 
   public get items(): PluginClass<T>[] {
     return [];
   }
 
-  public async tick(delta: number = 0, time: number = Date.now()): Promise<void> {
-    this.isLocked = true;
-    await this.system.tick?.(delta, time);
+  public tick(delta: number = 0, time: number = Date.now()): void {
+    this.system.tick?.(delta, time);
     this.manager.tick();
-    this.isLocked = false;
   }
 
   public load(save: Serialized): void {
@@ -79,7 +75,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
 
   public async stop(): Promise<void> {
     await this.system.stop?.();
-    for (const plugin of Object.values(this.$)) {
+    for (const plugin of _.values(this.$)) {
       await (plugin as Plugin).stop?.();
     }
     this.manager.stop();
@@ -121,7 +117,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
       .flatMap(system => system)
       .sort((a, b) => (a.phase ?? defaultPhase) - (b.phase ?? defaultPhase));
 
-    return new (compose(...systems))(this) as System<T>;
+    return new (compose(...systems))(this);
   }
 
   public constructor() {

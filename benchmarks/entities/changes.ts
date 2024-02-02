@@ -11,7 +11,7 @@ for (const count of [1, 10, 50, 100]) {
     for (let i = 0; i < count * 1000; i++) {
       entities.push(ctx.create(TestEntity));
     }
-    await ctx.tick();
+    ctx.tick();
     return { ctx, entities };
   };
 

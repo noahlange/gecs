@@ -56,7 +56,7 @@ function getTest(count: number): RunFn {
 
     b.start();
     for (let i = 0; i < 100; i++) {
-      await ctx.tick();
+      ctx.tick();
     }
     b.end();
   };

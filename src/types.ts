@@ -45,6 +45,7 @@ export interface PluginData<T> {
  */
 
 export type Merge<T> = Simplify<UnionToIntersection<T>>;
+export type MergeData<T> = Simplify<UnionToIntersection<T>> & BaseDataType;
 
 /**
  * avoidable `any`s that should be revisited and addressed.
@@ -79,7 +80,7 @@ export interface BaseType<T extends Component = {}> {
   [key: string]: T | null;
 }
 
-export type BaseDataType<T extends BaseType> = {
+export type BaseDataType<T extends BaseType = {}> = {
   [K in keyof T]?: T[K] extends EntityRef ? Ref<T[K]> | null : DeepPartial<T[K]>;
 };
 
@@ -157,9 +158,6 @@ export type PartialValueByType<A extends WithStaticType> = InstanceType<A> exten
   ? R | null
   : DeepPartial<InstanceType<A>>;
 
-/**
- * Given an EntityRef, returns an intersection of the entity type and Identifier—the Identifier is an escape hatch that allows us to reference entities we might be identifying statically (e.g., in data files).
- */
 export type Ref<T> = T extends EntityRef<infer R> ? R : never;
 
 /**
@@ -189,11 +187,11 @@ export type SystemType<T extends Plugins<T>> = SystemClass<T> | SystemFunction<T
  * @typeParam O - array of optional component types
  */
 export type EntityType<R extends ComponentClass[] = [], O extends ComponentClass[] = []> = Entity<
-  Merge<KeyedByType<R> & PartialByType<O>>
+  MergeData<KeyedByType<R> & PartialByType<O>>
 >;
 
 export type QueryType<R extends ComponentClass[] = [], O extends ComponentClass[] = []> = QueryBuilderBase<
-  Merge<KeyedByType<R> & PartialByType<O>>
+  MergeData<KeyedByType<R> & PartialByType<O>>
 >;
 
 /**

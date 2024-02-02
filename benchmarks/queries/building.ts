@@ -26,7 +26,7 @@ async function setupComplex(create, i) {
       ['one', 'two', 'three']
     );
   }
-  await ctx.tick();
+  ctx.tick();
   return ctx;
 }
 

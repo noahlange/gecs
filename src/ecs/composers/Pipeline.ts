@@ -7,9 +7,9 @@ import { System } from '../System';
 export abstract class Pipeline<T> extends System<T> {
   public systems: SystemLike[] = [];
 
-  public async tick(dt: number, ts: number): Promise<void> {
+  public tick(dt: number, ts: number): void {
     for (const system of this.systems) {
-      await system.tick?.(dt, ts);
+      system.tick?.(dt, ts);
       this.ctx.manager.tick();
     }
   }

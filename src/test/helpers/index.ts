@@ -37,12 +37,12 @@ export async function setup(): Promise<{
 }
 
 interface Tickable {
-  tick(...args: any[]): OfOrPromiseOf<void>;
+  tick(...args: any[]): void;
 }
 
 export async function withTick<T>(tickable: Tickable, callback: () => OfOrPromiseOf<T>): Promise<T> {
-  await tickable.tick();
+  tickable.tick();
   const res = await callback();
-  await tickable.tick();
+  tickable.tick();
   return res;
 }

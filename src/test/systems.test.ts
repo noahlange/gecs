@@ -23,7 +23,7 @@ describe('stateless function systems', () => {
   test('should execute properly', async () => {
     const ctx = new MyContext();
     await ctx.start();
-    await ctx.tick();
+    ctx.tick();
     expect(ctx.$.state.value).toBe(3);
   });
 });
