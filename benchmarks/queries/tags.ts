@@ -1,5 +1,6 @@
-const bench = require('nanobench');
-const { setupTags } = require('../helpers/queries');
+import bench from 'nanobench';
+
+import { setupTags } from '../helpers/queries';
 
 for (const count of [1, 10, 50, 100]) {
   bench(`query ${count}k entities (1 tag)`, async b => {

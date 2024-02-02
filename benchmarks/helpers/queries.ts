@@ -1,15 +1,17 @@
-const { Manager, Context } = require('gecs');
-const { E1, E2, E3 } = require('./entities');
+import { Context, Manager } from 'gecs';
+
+import { E1, E2, E3 } from './entities';
 const entities = [E1, E2, E3];
 
-const e = Object.values(require('./entities'));
-const c = Object.values(require('./components'));
+import c from './components';
+import e from './entities';
+import t from './tags';
 
-async function setup(create, components) {
+async function setup(create: number, components: number) {
   const E = entities[components - 1];
   const ctx = new Context();
 
-  ctx.register(e, c, require('./tags'));
+  ctx.register(e, c, t);
 
   for (let i = 0; i < create * 1000; i++) {
     const data = { test1: { a: 4, b: 5 } };
@@ -26,11 +28,11 @@ async function setup(create, components) {
   return ctx;
 }
 
-async function setupComplex(create, components) {
+async function setupComplex(create: number, components: number) {
   const E = entities[components - 1];
 
   const ctx = new Context();
-  ctx.register(e, c, require('./tags'));
+  ctx.register(e, c, t);
   for (let i = 0; i < create * 1000; i++) {
     ctx.create(
       E,
@@ -46,13 +48,10 @@ async function setupComplex(create, components) {
   return ctx;
 }
 
-async function setupTags(create, tags) {
-  const tagList = [];
+async function setupTags(create: number, tags: number) {
+  const tagList = Array.from({ length: tags }, (_, i) => `tag-${i}`);
   const ctx = new Context();
-  for (let i = 0; i < tags.length; i++) {
-    tags.push(`tag-${i + 1}`);
-  }
-  ctx.register(e, c, require('./tags'));
+  ctx.register(e, c, t);
   for (let i = 0; i < create * 1000; i++) {
     ctx.create(E1, { test1: { a: 4, b: 5 } }, tagList);
   }
@@ -60,8 +59,4 @@ async function setupTags(create, tags) {
   return ctx;
 }
 
-module.exports = {
-  setup,
-  setupComplex,
-  setupTags
-};
+export { setup, setupComplex, setupTags };

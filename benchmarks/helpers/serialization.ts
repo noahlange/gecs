@@ -1,5 +1,9 @@
-const { Context, Entity } = require('gecs');
-const { Complex1, Complex2, Complex3 } = require('./components');
+import { Context, Entity } from 'gecs';
+
+import { Complex1, Complex2, Complex3 } from './components';
+import c from './components';
+import e from './entities';
+import t from './tags';
 
 const E1 = Entity.with(Complex1);
 const E2 = Entity.with(Complex1, Complex2);
@@ -10,7 +14,7 @@ const entities = [E1, E2, E3];
 function setup(create, components) {
   const E = entities[components - 1];
   const ctx = new Context();
-  ctx.register(require('./entities'), require('./components'), require('./tags'));
+  ctx.register(e, c, t);
 
   for (let i = 0; i < create * 1000; i++) {
     const data = { complex1: { a: { b: { c: 5 } } } };
@@ -29,6 +33,4 @@ function setup(create, components) {
   return ctx;
 }
 
-module.exports = {
-  setup
-};
+export { setup };

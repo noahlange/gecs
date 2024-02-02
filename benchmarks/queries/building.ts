@@ -1,7 +1,8 @@
-const bench = require('nanobench');
-const { Context } = require('gecs');
-const { Test1, Test2, Test3 } = require('../helpers/components');
-const { E1, E2, E3 } = require('../helpers/entities');
+import { Context } from 'gecs';
+import bench from 'nanobench';
+
+import { Test1, Test2, Test3 } from '../helpers/components';
+import { E1, E2, E3 } from '../helpers/entities';
 
 const components = [Test1, Test2, Test3];
 const entities = [E1, E2, E3];

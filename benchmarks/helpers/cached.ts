@@ -1,8 +1,9 @@
-const { Context } = require('gecs');
-const { E1, E2, E3 } = require('./entities');
+import { Context } from 'gecs';
+import { E1, E2, E3 } from './entities';
+
 const entities = [E1, E2, E3];
 
-function setup(create, components) {
+export function setup(create, components) {
   const E = entities[components - 1];
 
   const ctx = new Context();

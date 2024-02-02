@@ -1,6 +1,7 @@
-const bench = require('nanobench');
-const { Test1, Test2, Test3 } = require('../helpers/components');
-const { setup } = require('../helpers/queries');
+import bench from 'nanobench';
+
+import { Test1, Test2, Test3 } from '../helpers/components';
+import { setup } from '../helpers/queries';
 
 for (const count of [1, 10, 50, 100]) {
   bench(`query ${count}k entities (1 component)`, async b => {
