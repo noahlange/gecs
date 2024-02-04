@@ -1,5 +1,5 @@
 /* eslint-disable max-classes-per-file */
-import { describe, expect, vi, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import { Component, Entity } from '..';
 import { getContext, withTick } from '../test/helpers';

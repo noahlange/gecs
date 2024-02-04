@@ -1,7 +1,7 @@
 /* eslint-disable max-classes-per-file */
 import type { Serialized } from '../types';
 
-import { describe, expect, vi, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import { Component, Entity } from '..';
 import { getContext, withTick } from '../test/helpers';
