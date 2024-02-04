@@ -4,8 +4,6 @@ import type { PluginData } from '../../types';
 import { conditional, phase, Plugin, sequence, throttle } from '../../';
 import { Phase } from '../../types';
 
-const wait = (): Promise<void> => new Promise(ok => setTimeout(ok, 10));
-
 export class ConditionalState extends Plugin {
   public static readonly type = 'state';
   public value = 0;
