@@ -13,20 +13,20 @@ jobs:
     steps:
       - uses: actions/checkout@v1
 
-      - name: Use Node.js 16.x
+      - name: Use Node.js 20.x
         uses: actions/setup-node@v1
         with:
-          node-version: 16.x
+          node-version: 20.x
 
       - name: Install
         run: |
           npm install
-          npm run build
+          npm run dev:types
 
       - name: Lint & Test
         run: |
           npm run dev:lint
-          npm run dev:test
+          npm run dev:test-ci
 
       - name: Coveralls
         uses: coverallsapp/github-action@master

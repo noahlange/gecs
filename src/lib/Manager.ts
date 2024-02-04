@@ -1,13 +1,7 @@
 import type { ComponentClass, Context, Entity, EntityClass } from '../ecs';
-import type {
-  $AnyEvil,
-  BaseDataType,
-  BaseType,
-  Identifier,
-  QueryStep
-} from '../types';
+import type { $AnyEvil, BaseDataType, BaseType, Identifier, QueryStep } from '../types';
 
-import { anonymous } from '../types';
+import { anonymous, Components, ToDestroy, ToIndex } from '../types';
 import { match } from '../utils';
 import { EntityIndex } from './EntityIndex';
 import { Query } from './Query';
@@ -20,12 +14,16 @@ interface Registrations {
 }
 
 export class Manager {
+  public static [ToIndex]: Record<Identifier, [Entity, bigint][]> = {};
+  public static [ToDestroy]: Record<Identifier, Entity[]> = {};
+
   /**
    * Maps bigint identifiers to result sets.
    */
-  public index = new EntityIndex();
   public keys: Record<Identifier, bigint> = {};
+  public index: EntityIndex = new EntityIndex();
   public entities: Record<Identifier, Entity> = {};
+  public id: Identifier;
 
   /**
    * A mapping of tag literals to tag IDs. These IDs are mapped in turn to bigints for querying.
@@ -48,48 +46,28 @@ export class Manager {
   protected queries: Record<string, Query> = {};
 
   /**
-   * A set of entities marked for destruction by the end of a system tick—these
-   * entities will be stricken from queries during the manager's tick() method.
-   */
-  protected toDestroy: Set<Entity> = new Set();
-
-  /**
-   * A map of Entity -> key. Queries with modified entries are updated at the
-   * end of each system tick. We're tracking the current key to filter out
-   * entities that haven't actually changed—a entity with a tag that's been
-   * removed and re-added, for example.
-   */
-  protected toIndex: Map<Entity, bigint> = new Map();
-
-  /**
    * Given an array of query steps (or a string ID mapping to a combination of
    * components/tags, if we're dealing with a persisted query) return a new
    * (or cached) query object.
    */
-  public getQuery<
-    T extends BaseType = BaseType,
-    E extends Entity<T> = Entity<T>
-  >(steps: QueryStep[], id: string): Query<T, E> {
+  public getQuery<T extends BaseType = BaseType, E extends Entity<T> = Entity<T>>(
+    steps: QueryStep[],
+    id: string
+  ): Query<T, E> {
     if (!this.queries[id]) {
       this.queries[id] = new Query(this.ctx, steps);
     }
     return this.queries[id] as Query<T, E>;
   }
 
-  public register(
-    entities: EntityClass[],
-    components: ComponentClass[],
-    tags: string[]
-  ): void {
+  public register(entities: EntityClass[], components: ComponentClass[], tags: string[]): void {
     const regs = this.registrations;
 
     for (const entity of entities) {
-      const key =
-        entity.name === anonymous
-          ? (entity.prototype.items as ComponentClass[])
-              .map(e => e.type)
-              .join('|')
-          : entity.name;
+      let key = entity.name;
+      if (key === anonymous) {
+        key = entity.prototype[Components].map((e: ComponentClass) => e.type).join('|');
+      }
       regs.entities[key] = entity;
     }
 
@@ -103,19 +81,7 @@ export class Manager {
       }
     }
 
-    this.registry.add(
-      ...components.map(c => c.type),
-      ...tags.map(t => regs.tags[t])
-    );
-  }
-
-  /**
-   * Indicate that we've modified the entity; index the current key to ensure that/how it's changed at the end of the
-   * tick so we can pare down the list of queries we need to update.
-   */
-  public indexEntity(entity: Entity): void {
-    this.toIndex.set(entity, entity.key ?? null);
-    this.entities[entity.id] = entity;
+    this.registry.add(...components.map(c => c.type), ...tags.map(t => regs.tags[t]));
   }
 
   /**
@@ -123,35 +89,43 @@ export class Manager {
    */
   public tick(): void {
     const added: Entity[] = [];
-    const removed: Entity[] = Array.from(this.toDestroy.values());
+    const removed: Entity[] = Array.from(Manager[ToDestroy][this.id]);
+    const index = Manager[ToIndex][this.id];
+    const hasIndexed = index.length > 0;
+
+    if (!removed.length && !hasIndexed) {
+      return;
+    }
 
     // get the union of every key modified over the course of the last tick
     let modified = 0n;
 
-    for (const [entity, oldKey] of this.toIndex) {
-      this.entities[entity.id] = entity;
+    if (hasIndexed) {
+      for (const [entity, oldKey] of index) {
+        this.entities[entity.id] = entity;
 
-      entity.key = this.getEntityKey(entity);
+        entity.key = this.getEntityKey(entity);
 
-      // the entry existed, but has changed
-      if (entity.key !== oldKey) {
-        // we need to update queries touching both the old key and the new key
-        modified |= oldKey | entity.key;
+        // the entry existed, but has changed
+        if (entity.key !== oldKey) {
+          // we need to update queries touching both the old key and the new key
+          modified |= oldKey | entity.key;
 
-        // the entity has not yet been indexed
-        if (!oldKey) {
-          added.push(entity);
-          this.index.append(entity.key, entity.id);
-          continue;
-        }
+          // the entity has not yet been indexed
+          if (!oldKey) {
+            added.push(entity);
+            this.index.append(entity.key, entity.id);
+            continue;
+          }
 
-        // entities need to be removed from queries and unindexed whether or not they continue to exist
-        removed.push(entity);
-        this.index.remove(oldKey, entity.id);
-        // ...but only bother re-indexing it if it's going to exist next tick.
-        if (!this.toDestroy.has(entity)) {
-          this.index.append(entity.key, entity.id);
-          added.push(entity);
+          // entities need to be removed from queries and unindexed whether or not they continue to exist
+          removed.push(entity);
+          this.index.remove(oldKey, entity.id);
+          // ...but only bother re-indexing it if it's going to exist next tick.
+          if (!Manager[ToDestroy][this.id].includes(entity)) {
+            this.index.append(entity.key, entity.id);
+            added.push(entity);
+          }
         }
       }
     }
@@ -163,15 +137,15 @@ export class Manager {
       }
     }
 
-    for (const entity of this.toDestroy) {
+    for (const entity of removed) {
       delete this.entities[entity.id];
       this.index.remove(entity.key, entity.id);
       this.ctx.ids.id.release(entity.id);
     }
 
     // reset everything for the next tick
-    this.toIndex.clear();
-    this.toDestroy.clear();
+    Manager[ToDestroy][this.id] = [];
+    Manager[ToIndex][this.id] = [];
   }
 
   /**
@@ -181,18 +155,11 @@ export class Manager {
     return this.registry.getID(...names);
   }
 
-  /**
-   * Mark an entity for destruction and removal at the system tick's end.
-   */
-  public destroy(entity: Entity): void {
-    this.toDestroy.add(entity);
-  }
-
   public stop(): void {
     this.queries = {};
     this.index = new EntityIndex();
-    this.toDestroy.clear();
-    this.toIndex.clear();
+    Manager[ToIndex][this.id] = [];
+    Manager[ToDestroy][this.id] = [];
   }
 
   /**
@@ -205,7 +172,8 @@ export class Manager {
     tags: string[] = []
   ): Entity<T> {
     const entity = new Entity(this.ctx, data, tags);
-    this.indexEntity(entity);
+    Manager[ToIndex][this.id].push([entity, entity.key ?? null]);
+    this.entities[entity.id] = entity;
     return entity;
   }
 
@@ -215,7 +183,7 @@ export class Manager {
   protected getEntityKey(entity: Entity): bigint {
     const tags = this.registrations.tags;
     const arr = Array.from(entity.tags).map(t => tags[t]);
-    return this.registry.add(...entity.items.map(e => e.type), ...arr);
+    return this.registry.add(...entity[Components].map(e => e.type), ...arr);
   }
 
   // protected createEntityRefTag(entity: Entity): void {
@@ -228,5 +196,8 @@ export class Manager {
 
   public constructor(context: Context<$AnyEvil>) {
     this.ctx = context;
+    this.id = this.ctx.ids.id.next();
+    Manager[ToIndex][this.id] = [];
+    Manager[ToDestroy][this.id] = [];
   }
 }

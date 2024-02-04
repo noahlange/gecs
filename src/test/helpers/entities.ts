@@ -17,16 +17,4 @@ const cWithAB = Entity.with(A, B);
 const cWithABC = Entity.with(A, B, C);
 const cWithRef = Entity.with(Ref);
 
-export {
-  WithA,
-  WithB,
-  WithC,
-  WithAB,
-  WithAC,
-  WithABC,
-  WithRef,
-  cWithA,
-  cWithAB,
-  cWithABC,
-  cWithRef
-};
+export { WithA, WithB, WithC, WithAB, WithAC, WithABC, WithRef, cWithA, cWithAB, cWithABC, cWithRef };

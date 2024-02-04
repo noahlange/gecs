@@ -7,12 +7,12 @@ export interface SystemClass<T> {
 }
 
 export interface SystemFunction<T extends Plugins<T>> {
-  (ctx: Context<T>, delta: number, ts: number): OfOrPromiseOf<unknown>;
+  (ctx: Context<T>, delta: number, ts: number): void;
   phase?: number;
 }
 
 export interface SystemLike {
-  tick?(dt: number, ts: number): OfOrPromiseOf<unknown>;
+  tick?(dt: number, ts: number): void;
   start?(): OfOrPromiseOf<unknown>;
   stop?(): OfOrPromiseOf<unknown>;
 }
@@ -20,7 +20,7 @@ export interface SystemLike {
 export class System<T extends Plugins<T> = {}> {
   public ctx: Context<T>;
 
-  public tick?(delta: number, ts: number): OfOrPromiseOf<unknown>;
+  public tick?(delta: number, ts: number): void;
   public start?(): OfOrPromiseOf<unknown>;
   public stop?(): OfOrPromiseOf<unknown>;
 

@@ -2,10 +2,10 @@
 
 import type { ComponentClass, ContextClass, EntityClass } from '../ecs';
 import type { PluginClass } from '../lib/Plugin';
-import type { BaseType, KeyedByType } from '../types';
-import type { U } from 'ts-toolbelt';
+import type { BaseType, KeyedByType, Merge } from '../types';
 
 import { Context } from '../ecs';
+import { Components } from '../types';
 
 const ctors: Map<EntityClass, ComponentClass[]> = new Map();
 
@@ -14,38 +14,37 @@ const ctors: Map<EntityClass, ComponentClass[]> = new Map();
  * @param Constructor - Constructor to extend.
  * @param items - array of containees; this will extend existing `$`s
  */
-export function useWithComponent<
-  T extends BaseType,
-  A extends ComponentClass[] = []
->(Constructor: EntityClass<T>, ...items: A): EntityClass<T & KeyedByType<A>> {
+export function useWithComponent<T extends BaseType, A extends ComponentClass[] = []>(
+  Constructor: EntityClass<T>,
+  ...items: A
+): EntityClass<T & KeyedByType<A>> {
   // we're tracking entity class => component classes, allowing us to extend existing component sets.
   const curr = ctors.get(Constructor) ?? [];
   // we need to give each entity its own constructor
-  const _a = class extends Constructor {};
+  const __anon = class extends Constructor {};
 
   // and we need to define this here because no other configuration permits
   // `items` to be accessible on the prototype while being not being subject to
   // changes in other items of the same type (via `.slice()` in the entity constructor)
   const value = [...curr, ...items];
-  ctors.set(_a, value);
+  ctors.set(__anon, value);
 
-  Object.defineProperty(_a.prototype, 'items', {
+  Object.defineProperty(__anon.prototype, Components, {
     value: value.slice(),
     writable: true
   });
 
   // type system abuse
-  return _a as unknown as EntityClass<T & KeyedByType<A>>;
+  return __anon as unknown as EntityClass<T & KeyedByType<A>>;
 }
 
-export function useWithPlugins<
-  P extends PluginClass<R>[],
-  R extends KeyedByType<P>
->(...items: P): ContextClass<U.Merge<R>> {
-  const _a = class extends Context<U.Merge<R>> {};
-  Object.defineProperty(_a.prototype, 'items', {
+export function useWithPlugins<P extends PluginClass<R>[], R extends KeyedByType<P>>(
+  ...items: P
+): ContextClass<Merge<R>> {
+  const __anon = class extends Context<Merge<R>> {};
+  Object.defineProperty(__anon.prototype, 'items', {
     value: items.slice(),
     writable: true
   });
-  return _a as unknown as ContextClass<U.Merge<R>>;
+  return __anon as unknown as ContextClass<Merge<R>>;
 }

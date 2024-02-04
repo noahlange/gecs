@@ -1,14 +1,9 @@
 {
-  "ts-node": {
-    "compilerOptions": {
-      "module": "commonjs"
-    }
-  },
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "node",
-    "rootDir": "src",
+    "rootDir": ".",
     "outDir": "esm",
     "strict": true,
     "experimentalDecorators": true,
@@ -17,9 +12,13 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": true,
     "isolatedModules": true,
-    "importsNotUsedAsValues": "error",
     "declaration": true,
-    "declarationDir": "./types"
+    "declarationDir": "./types",
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "gecs": ["./src/index"]
+    }
   },
-  "include": ["./src/**/*.ts", "./src/**/*.d.ts"]
+  "include": ["./src/**/*.ts", "./benchmarks/**/*.ts"]
 }

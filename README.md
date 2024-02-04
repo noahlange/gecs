@@ -52,7 +52,7 @@ export default class StatePlugin extends Plugin<ContextPlugins> {
     entities: { WithA, WithB, WithC },
     // arbitrary string tags
     tags: ['one', 'two', 'three'],
-    // systems; either stateless function systems or stateful class-based
+    // systems; either stateless function systems or stateful, class-based
     systems: [
       phase(Phase.ON_LOAD, ctx => {
         // to be executed at the beginning of the tick
@@ -115,14 +115,6 @@ export class Position extends Component {
   public y: number = 0;
   public r: number = 0;
 }
-
-export class Sprite extends Component {
-  // alternative to "readonly"
-  public static type = 'sprite' as const;
-  // instance properties...
-  public anchor: number = 0.5;
-  public path: string = '/assets/mole.png';
-}
 ```
 
 By passing a series of component classes to the entity's static `with()` method, you can declaratively define the structure of your entity. The static `type` property of each component class serves as the key by which the component can be accessed from its containing entity.
@@ -130,14 +122,14 @@ By passing a series of component classes to the entity's static `with()` method,
 ```ts
 import { Component, Entity } from 'gecs';
 
+// this component is accessed via `entity.$.foobly`
 export class Foo extends Component {
-  // this component is accessed via `foobly`
   public static readonly type = 'foobly';
   public value: string = '1';
 }
 
+// this component is accessed via `entity.$.woobly`
 export class Bar extends Component {
-  // this component is accessed via `woobly`
   public static readonly type = 'woobly';
   public value: number = 1;
 }
@@ -148,51 +140,44 @@ These component instances are accessed via the `$` property.
 ```ts
 import { Entity } from 'gecs';
 import { Foo, Bar } from './components';
-import { ctx } from './context';
 
 const MyEntity = Entity.with(Foo, Bar);
-const e = ctx.create(MyEntity);
+const entity = ctx.create(MyEntity);
 
-e.$.foobly instanceof Foo; // true
-e.$.foobly.value === '1'; // true
+entity.$.foobly instanceof Foo; // true
+entity.$.foobly.value === '1';  // true
 
-e.$.woobly instanceof Bar; // true
-e.$.woobly.value === 1; // true
+entity.$.woobly instanceof Bar; // true
+entity.$.woobly.value === 1;    // true
 
-// You can pass data as the second param of ctx.create() to populate a component on creation.
-const e2 = ctx.create(MyEntity, { foobly: { value: '123' } });
+// You can pass a data param to populate a component's instance properties.
+const entity2 = ctx.create(MyEntity, { foobly: { value: '123' } });
 
-e.$.foobly instanceof Foo; // true
-e.$.foobly.value === '123'; // true
+entity2.$.foobly instanceof Foo; // true
+entity2.$.foobly.value === '123'; // true
 ```
 
-EntityRefs are a special type of component that allow you to link one entity to another.
+`EntityRefs` are a special type of component that allow you to link one entity to another.
 
 ```ts
 import type { EntityType } from 'gecs';
 
 import { Entity, EntityRef } from 'gecs';
-import { Foo, Bar } from './components';
-import { MyEntity, e } from './entities';
+import { Actor, Item } from './entities';
 
-// an entity with Foo, Bar components
-type FooBarEntity = EntityType<[typeof Foo, typeof Bar]>;
-
-// referencing an entity with said components
-export class FooBarRef extends EntityRef<FooBarEntity> {
-  // this is an entity instance (or null) accessed via `zoobly`
-  public static readonly type = 'foobar';
+export class Ownership extends EntityRef<Actor, Item> {
+  public static readonly type = 'owner';
 }
 
-const WithFooBar = Entity.with(FooBarRef);
+const owner = ctx.create(Actor);
+const item = ctx.create(Item);
 
-myRefEntity.$.foobar === null; // true; refs default to null
-myRefEntity.$.foobar = e; // refs are assigned like properties
-myRefEntity.$.foobar instanceof MyEntity; // true
+item.$.owner === null;         // true; refs default to null
+item.$.owner = owner;          // refs are assigned like properties
+item.$.owner instanceof Actor; // true
 
-// you can pass an entity (or its id) as the value of the corresponding key in `ctx.create()`
-const myRefEntity2 = ctx.create(Entity.with(FooBarRef), { foobar: e });
-const myRefEntity3 = Entity.with(FooBarRef, { foobar: e.id });
+// you can pass an entity as the value of the corresponding key in `ctx.create()`
+const item2 = ctx.create(Item, { owner });
 ```
 
 Per the example above, you can `extend` the result of the `with()` call to create a custom entity class, or create new instances using the return value of `with()` value as-is.
@@ -232,6 +217,7 @@ function usingSpritePosition(entity: SpritePositionEntity): void {
   entity.$.position.y += 1;
 
   if (entity instanceof SpritePosition) {
+    entity.myInstanceMethod();
     // using an `instanceof` type guard, we can use class-specific functionality
   }
 
@@ -241,7 +227,7 @@ function usingSpritePosition(entity: SpritePositionEntity): void {
   }
 
   if (entity.is('BAR')) {
-    // and `is()` ensures the presence of the tag "BAR"
+    // `is()` ensures the presence of the tag "BAR"
   }
 }
 ```
@@ -268,7 +254,7 @@ A major footgun here is that the types of entities with removed components will 
 ```typescript
 for (const entity of ctx.query.components(A, B)) {
   entity.components.remove(B); // 💣
-  entity.$.b.foo = '???'; // 💥
+  entity.$.b.foo = '???';      // 💥
 }
 ```
 
@@ -277,8 +263,8 @@ for (const entity of ctx.query.components(A, B)) {
 ```typescript
 entity.tags.add('a', 'b');
 entity.tags.has('c', 'd');
-entity.tags.all(); // same as Array.from(entity.tags)
 entity.tags.remove('e', 'f');
+entity.tags.all();
 
 for (const tag of entity.tags) {
   // do stuff
@@ -289,18 +275,6 @@ for (const tag of entity.tags) {
 
 At its core, a system is a function or object that performs one or more closely-related tasks.
 
-```ts
-import type { Context } from 'gecs';
-import { Position, Velocity } from './components';
-
-export function movement(ctx: Context): void {
-  for (const { $ } of ctx.query.components(Position, Velocity)) {
-    $.position.x += $.velocity.dx;
-    $.position.y += $.velocity.dy;
-  }
-}
-```
-
 **gecs** supports both stateful object-oriented systems and stateless functional systems. If you need to take advantage of object persistence or invoke system lifecycle methods, then a stateful system is your best option.
 
 ```ts
@@ -310,7 +284,7 @@ import { InputManager } from 'my-magical-library';
 import { Position, Clickable } from './components';
 
 export class ClickPositionSystem extends System {
-  public input = new InputManager();
+  protected readonly input = new InputManager();
 
   public tick() {
     if (this.input.isMouseDown()) {
@@ -327,6 +301,18 @@ export class ClickPositionSystem extends System {
 
 If not, stateless systems can help simplify your codebase.
 
+```ts
+import type { Context } from 'gecs';
+import { Position, Velocity } from './components';
+
+export function movement(ctx: Context): void {
+  for (const { $ } of ctx.query.components(Position, Velocity)) {
+    $.position.x += $.velocity.dx;
+    $.position.y += $.velocity.dy;
+  }
+}
+```
+
 The primary functionality of a System is executed within its `start()`, `stop()` and/or `tick()` methods. While both methods are technically optional, every system will have at least one. Some run once or twice—map generation, for example—while others might run on every tick and have no initialization code to speak of.
 
 An example implementation of a simple PIXI.js renderer:
@@ -341,7 +327,9 @@ class Renderer extends System {
   protected sprites: Record<string, { path: string; sprite: PIXI.Sprite }> = {};
 
   protected $ = {
-    sprites: this.ctx.query.all.components(Sprite).some.components(Position)
+    sprites: this.ctx.query
+      .all.components(Sprite)
+      .some.components(Position)
   };
 
   public tick(delta: number, time?: number): void {
@@ -359,7 +347,7 @@ class Renderer extends System {
     }
   }
 
-  // both start() and tick() functions can be async
+  // start() and stop() functions can be async
   public async start(): Promise<void> {
     this.app = new PIXI.Application();
     // create all sprites and add to the stage
@@ -381,13 +369,9 @@ class Renderer extends System {
 
 **gecs** offers a handful of system composition functions that allow you to structure your game's system flow without forcing you to wrap systems in complex branching logic.
 
-The `sequence()` and `parallel()` functions accept an array of systems or system functions and return another system "wrapping" the ones passed in.
+The `sequence()` function accepts an array of systems and returns another system "wrapping" the ones passed in.
 
-- Systems passed to the `sequence()` helper are run consecutively. If your tick method/system function returns a `Promise`, it will be resolved before starting the next system. The systems passed to `System.with()` are implicitly run in sequence.
-
-- Systems passed to the `parallel()` helper run simultaneously. If these systems execute synchronously, the helper has no effect. If not, the system will wait until all returned promises have been resolved before moving on.
-
-The precise mechanism by which an async system runs asynchronously (e.g., web worker, child process, etc.), is up to the developer.
+- Systems passed to the `sequence()` helper are run consecutively. The systems passed to `Context.with()` are implicitly run in sequence.
 
 The `conditional()`, `phase()` and `throttle()` helpers accept a single parameter, followed by an array of systems/system functions.
 
@@ -398,42 +382,28 @@ The `conditional()`, `phase()` and `throttle()` helpers accept a single paramete
 - `throttle()` takes a single number parameter, `x`, followed by systems. A throttled system executes once per `x` ms.
 
 ```ts
-import { parallel, sequence, conditional, phase, throttle } from 'gecs';
-import { SimA, SimB, SimC } from './sims';
+import { sequence, conditional, phase, throttle } from 'gecs';
+import { SimA, SimB } from './sims';
 import { setup, teardown } from './misc';
 
-// execute all systems simultaneously, moving on once all have returned/resolved
-const inParallel = parallel(SimA, SimB, SimC);
-
-// execute all systems in order, waiting for each system to resolve in turn
-const inSequence = sequence(setup, inParallel, teardown);
+// execute all systems in order
+const inSequence = sequence(setup, SimA, SimB, teardown);
 
 // only execute if the game state's mode property is "SIMULATION"
-const ifSimulating = conditional(
-  ctx => ctx.state.mode === GameMode.SIMULATION,
-  inSequence
-);
+const ifSimulating = conditional(ctx => ctx.state.mode === GameMode.SIMULATION, inSequence);
 
-const atTheEnd = phase(Phase.POST_RENDER, () =>
-  console.log('it is the very end of the tick')
-);
+const atTheEnd = phase(Phase.POST_RENDER, () => console.log('it is the very end of the tick'));
 
-const throttled = throttle(200, () =>
-  console.log('will execute once every 200ms')
-);
+const throttled = throttle(200, () => console.log('will execute once every 200ms'));
 ```
-
-### Caveats
-
-**gecs** is not thread-safe and offers no guarantees of anything beyond "these will run one at a time in this order" and "nothing else will happen until these are done." The specifics of handling locks, mutexes, shared memory arrays and how to wrangle WebWorkers are likewise beyond the purview of this README.
 
 ## Queries
 
-Queries return collections of entities based on the user's criteria. Query results are typed exactly like an ordinary entity, so you'll have (typed) access to each of the components you've requested in your query—but nothing more.
+Queries return collections of entities based on the user's criteria. Query results are typed exactly like ordinary entities, so you'll have (typed) access to each of the components you've requested in your query—but nothing more.
 
 ```ts
-const q = ctx.query.all
-  .components(A, B, C)
+const q = ctx.query
+  .all.components(A, B, C)
   .some.components(D, E, F)
   .any.tags('1', '2', '3');
 ```
@@ -445,15 +415,18 @@ Queries consist of one or more "steps," each corresponding to a different type o
 ```typescript
 const q1 = ctx.query.components(A, B);
 const q2 = ctx.query.tags('one', 'two', 'three');
+
 // `.references()` returns all entities with an EntityRef pointing to the passed entity instance
-const q3 = ctx.query.components(RefComponent).references(referencedEntity);
+const q3 = ctx.query
+    .components(RefComponent)
+    .references(referencedEntity);
 ```
 
 Steps are executed sequentially. The result of a query is the intersection of each step's results.
 
 ```typescript
-ctx.query.some
-  .components(A, B) // (A | B)
+ctx.query
+  .some.components(A, B) // (A | B)
   .all.tags('one', 'two'); //  & ('one' & 'two')
 ```
 
@@ -480,29 +453,30 @@ ctx.query
 
 ### Execution
 
-You can invoke a query's `first()` or `get()` methods to access its result set. The query instance also has a `[Symbol.iterator]` method, so you can iterate directly over the result set with `for-of` or collect it with `Array.from()`.
-
-Queries are lazily-executed: they won't attempt to fetch any results until an execution method is accessed.
+You can invoke a query's `first()` or `get()` methods to access its result set. Queries are lazily-executed: they won't attempt to fetch any results until an execution method is accessed query. Query instances have a `[Symbol.iterator]` method that invokes `get()` in turn; this allows you to execute and iterate over the result set in a single call, either using `for-of` or a generic iterable.
 
 ```typescript
+// query has not yet been executed
 const query = ctx.query.components(A, B);
 
-// instance methods
+// instance methods - query executed
+const all = query.get();     // (A & B)[]
 const first = query.first(); // (A & B) | null
-const all = query.get(); // (A & B)[]
 
 // will work with sets, etc.
-const set = new Set(query); // Set<A & B>
+const set = new Set(query);  // Set<A & B>
 
 // also as a generic iterable
-for (const result of query) {
+for (const { $ } of query) {
   // A & B
 }
 ```
 
 ### Persistence
 
-Once a query is executed for the first time, any subsequent query with the same "signature" will return the cached result set. The overhead associated with creating a new query each `tick()` is _relatively_ minor, but by assigning the query to a variable/class property, you can access and execute the constructed query without being forced to rebuild it.
+Once a query is executed for the first time, any subsequent query with the same "signature" will return the cached result set.
+
+This means that overhead associated with creating a new query each `tick()` is _relatively_ minor—but by assigning the query to a variable/class property, you can access and execute the constructed query without being forced to rebuild it.
 
 ```typescript
 class MySystem extends System {
@@ -518,19 +492,19 @@ class MySystem extends System {
 }
 ```
 
-You can also persist queries with stateless systems using the `QueryType` export.
+When using stateless systems, plugin instances can also be used to "host" persisted queries.
 
 ```typescript
-// Currently undefined; we'll define it shortly.
-let $: {
-  abc: QueryType<[typeof A, typeof B, typeof C]>;
-};
+import { Plugin } from'gecs';
+
+class MyPlugin extends Plugin {
+  public queries = {
+    abc: this.ctx.components(A, B, C)
+  }
+}
 
 function MySystem(ctx: Context) {
-  // create it if it doesn't exist
-  $ ??= { abc: ctx.components(A, B, C) };
-  // and use normally
-  for (const abc of $.abc) {
+  for (const { $ } of ctx.$.myPlugin.queries.abc) {
     // ...
   }
 }
@@ -609,14 +583,14 @@ Serialization has one caveat: you must manually register all components types an
 
 ```typescript
 import { Context } from 'gecs';
-import { Components, Entities } from './lib';
+import { Components, Entities, Tags } from './lib';
 
 // instantiate new context
 const ctx = new Context();
 
 // you must register components and entity constructors using inheritance
 // (composed entity constructors don't need to be registered)
-ctx.register({ ...Components, ...Entities });
+ctx.register(Object.values(Components), Object.values(Entities), Object.values(Tags));
 
 // fetch and load state
 await fetch('./save.json')
@@ -636,10 +610,10 @@ First, with a fresh install and having already run `build`, run <kbd>npm run ben
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: Bad, with some caveats.
+**A/R**: It's complicated.
 
 **Q/S**: ???  
-**A/R**: Performs poorly against other ECS engines in microbenchmarks. That being said, _particularly_ awesome performance has never been a primary design goal (so long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance improvements) and I'm sure there's plenty of low-hanging fruit remaining for performance gains.
+**A/R**: I would say it's comparable to other "rich" ECS implementations (e.g., Ecsy) and poor relative to some other lower-level ECS libraries (bitecs, wolfecs). It's not a performance-oriented implementation, but it's also not a naïve one. Particularly awesome performance has never been a primary design goal (so long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance improvements) and I'm sure there's plenty of low-hanging fruit remaining for performance gains.
 
 **Q/S**: Real-world example?  
 **A/R**: Using a naïve culling implementation and PIXI for rendering, a 256×256 map from [FLARE](https://github.com/flareteam/flare-game) runs at 5ms/frame with ~40MB memory usage.

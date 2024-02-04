@@ -1,7 +1,6 @@
 import type { Identifier } from '../types';
 
-import { bigintID, union } from '../utils';
-import { IDGenerator } from '../utils/ids';
+import { bigintID, IDGenerator, union } from '../utils';
 
 /**
  * Map human-readable identifiers (nanoids, tags, .type, etc) to bigints for

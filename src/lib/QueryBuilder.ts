@@ -1,21 +1,13 @@
 import type { ComponentClass, Context, Entity } from '../ecs';
-import type {
-  BaseType,
-  Identifier,
-  KeyedByType,
-  PartialByType,
-  QueryStep
-} from '../types';
+import type { BaseType, Identifier, KeyedByType, MergeData, PartialByType, QueryStep } from '../types';
 import type { Query } from '.';
-import type { U } from 'ts-toolbelt';
 
 import { Constraint } from '../types';
 
 /**
  * A query without a qualified constraint is assumed to be "all"
  */
-export interface QueryBuilderBase<T extends BaseType = {}>
-  extends QueryBuilderAll<T> {
+export interface QueryBuilderBase<T extends BaseType = {}> extends QueryBuilderAll<T> {
   all: QueryBuilderAll<T>;
   any: QueryBuilderAny<T>;
   some: QueryBuilderAny<T>;
@@ -27,16 +19,12 @@ export interface QueryBuilderBase<T extends BaseType = {}>
 }
 
 interface QueryBuilderAll<T extends BaseType = {}> {
-  components<A extends ComponentClass[]>(
-    ...components: A
-  ): QueryBuilder<U.Merge<T & KeyedByType<A>>>;
+  components<A extends ComponentClass[]>(...components: A): QueryBuilder<MergeData<T & KeyedByType<A>>>;
   tags(...tags: string[]): QueryBuilder<T>;
 }
 
 interface QueryBuilderAny<T extends BaseType = {}> {
-  components<A extends ComponentClass[]>(
-    ...components: A
-  ): QueryBuilder<U.Merge<T & PartialByType<A>>>;
+  components<A extends ComponentClass[]>(...components: A): QueryBuilder<MergeData<T & PartialByType<A>>>;
   tags(...tags: string[]): QueryBuilder<T>;
 }
 
@@ -45,14 +33,16 @@ export interface QueryState {
   ids: Identifier[];
 }
 
-export class QueryBuilder<T extends BaseType = {}>
-  implements QueryBuilderBase<T>
-{
-  protected key: string = '';
+export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T> {
+  protected key: string[] = [];
   protected state!: QueryState;
   protected resolved: Query<T> | null = null;
   protected criteria: QueryStep[] = [];
   protected ctx: Context;
+
+  protected get id(): string {
+    return this.key.join('␝');
+  }
 
   /**
    * Mark query parameters as mandatory.
@@ -101,11 +91,9 @@ export class QueryBuilder<T extends BaseType = {}>
   /**
    * Constrain results based on one or components.
    */
-  public components<A extends ComponentClass[]>(
-    ...components: A
-  ): QueryBuilder<U.Merge<T & KeyedByType<A>>> {
+  public components<A extends ComponentClass[]>(...components: A): QueryBuilder<MergeData<T & KeyedByType<A>>> {
     this.state.ids.push(...components.map(c => c.type));
-    return this.reset() as unknown as QueryBuilder<U.Merge<T & KeyedByType<A>>>;
+    return this.reset() as unknown as QueryBuilder<MergeData<T & KeyedByType<A>>>;
   }
 
   /**
@@ -123,10 +111,7 @@ export class QueryBuilder<T extends BaseType = {}>
   }
 
   public get query(): Query<T, Entity<T>> {
-    return (this.resolved ??= this.ctx.manager.getQuery<T, Entity<T>>(
-      this.criteria,
-      this.key
-    ));
+    return (this.resolved ??= this.ctx.manager.getQuery<T, Entity<T>>(this.criteria, this.id));
   }
 
   /**
@@ -151,18 +136,19 @@ export class QueryBuilder<T extends BaseType = {}>
   }
 
   protected reset(): this {
-    if (this.state) {
-      this.key += this.state.tag + '␞' + this.state.ids.join('␟') + '␝';
-      this.criteria.push({
-        constraint: this.state.tag ?? Constraint.ALL,
-        ids: this.state.ids.slice()
-      });
+    if (this.state && this.state.tag !== Constraint.SOME) {
+      const constraint = this.state.tag ?? Constraint.ALL;
+      const key = constraint + '␞' + this.state.ids.join('␟');
+      if (!this.key.includes(key)) {
+        this.key.push(key);
+        this.criteria.push({ constraint, ids: this.state.ids.slice() });
+      }
     }
     this.state = { tag: null, ids: [] };
     return this;
   }
 
-  public constructor(ctx: Context) {
+  public constructor(ctx: Context<any>) {
     this.ctx = ctx;
     this.reset();
   }
