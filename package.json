@@ -44,7 +44,7 @@
     "dev": "npm-run-all dev:*",
     "dev:types": "tsc --noEmit",
     "dev:test": "vitest --ui",
-    "dev:test-ci": "vitest",
+    "dev:test-ci": "vitest run --coverage",
     "dev:lint": "eslint \"src/**/*.{js,ts}\" --fix --config \".eslintrc.cjs\"",
     "dev:pretty": "prettier \"src/**/*.{js,ts}\" --write",
     "bench": "npm-run-all build bench:working bench:compare",
