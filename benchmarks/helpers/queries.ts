@@ -1,20 +1,20 @@
-import { Context, Manager } from 'gecs';
+import { Context, EntityClass } from 'gecs';
 
 import { E1, E2, E3 } from './entities';
 const entities = [E1, E2, E3];
 
-import c from './components';
+import c, { Test1, Test2, Test3 } from './components';
 import e from './entities';
 import t from './tags';
 
 async function setup(create: number, components: number) {
-  const E = entities[components - 1];
+  const E = entities[components - 1] as EntityClass;
   const ctx = new Context();
 
   ctx.register(e, c, t);
 
   for (let i = 0; i < create * 1000; i++) {
-    const data = { test1: { a: 4, b: 5 } };
+    const data: any = { test1: { a: 4, b: 5 } };
     if (components > 1) {
       data.test2 = { c: 6, d: 7 };
     }
@@ -29,7 +29,7 @@ async function setup(create: number, components: number) {
 }
 
 async function setupComplex(create: number, components: number) {
-  const E = entities[components - 1];
+  const E = entities[components - 1] as EntityClass<{ test1: Test1; test2: Test2; test3: Test3 }>;
 
   const ctx = new Context();
   ctx.register(e, c, t);

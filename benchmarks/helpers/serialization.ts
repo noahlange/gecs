@@ -1,4 +1,4 @@
-import { Context, Entity } from 'gecs';
+import { Context, Entity, EntityClass } from 'gecs';
 
 import { Complex1, Complex2, Complex3 } from './components';
 import c from './components';
@@ -11,13 +11,13 @@ const E3 = Entity.with(Complex1, Complex2, Complex3);
 
 const entities = [E1, E2, E3];
 
-function setup(create, components) {
-  const E = entities[components - 1];
+function setup(create: number, components: number) {
+  const E = entities[components - 1] as EntityClass;
   const ctx = new Context();
   ctx.register(e, c, t);
 
   for (let i = 0; i < create * 1000; i++) {
-    const data = { complex1: { a: { b: { c: 5 } } } };
+    const data: any = { complex1: { a: { b: { c: 5 } } } };
     if (components > 1) {
       data.complex2 = { d: { e: [{ f: 123 }] } };
     }

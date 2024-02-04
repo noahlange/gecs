@@ -1,4 +1,4 @@
-import { Context } from 'gecs';
+import { Context, EntityClass } from 'gecs';
 import bench from 'nanobench';
 
 import { Test1, Test2, Test3 } from '../helpers/components';
@@ -8,8 +8,8 @@ const components = [Test1, Test2, Test3];
 const entities = [E1, E2, E3];
 const tags = ['one', 'two', 'three'];
 
-async function setupComplex(create, i) {
-  const E = entities[i - 1];
+async function setupComplex(create: number, i: number) {
+  const E = entities[i - 1] as EntityClass<{ test1: Test1; test2: Test2; test3: Test3 }>;
 
   const ctx = new Context();
 
