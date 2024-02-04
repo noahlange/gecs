@@ -19,5 +19,5 @@
       "gecs": ["./src/index"]
     }
   },
-  "include": ["./src/**/*.ts"]
+  "include": ["./src/**/*.ts", "./benchmarks/**/*.ts"]
 }
