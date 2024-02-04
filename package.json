@@ -40,7 +40,7 @@
   ],
   "scripts": {
     "start": "tsc --watch",
-    "build": "npx tsc && npx tsc --project ./tsconfig.prod.json",
+    "build": "npx tsc",
     "dev": "npm-run-all dev:*",
     "dev:types": "tsc --noEmit",
     "dev:test": "vitest --ui --benchmark",

@@ -14,6 +14,7 @@
     "isolatedModules": true,
     "declaration": true,
     "declarationDir": "./types",
+    "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
       "gecs": ["./src/index"]
