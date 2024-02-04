@@ -6,7 +6,7 @@ export default defineConfig({
     coverage: {
       enabled: true,
       provider: 'v8',
-      reporter: ['html'],
+      reporter: ['html', 'lcov'],
       include: ['src'],
       exclude: ['src/test/**/*']
     }
