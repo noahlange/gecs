@@ -2,7 +2,7 @@ import type { ComponentClass, Context, Entity, EntityClass } from '../ecs';
 import type { $AnyEvil, BaseDataType, BaseType, Identifier, QueryStep } from '../types';
 
 import { anonymous, Components, ToDestroy, ToIndex } from '../types';
-import { match } from '../utils';
+import { match, union } from '../utils';
 import { EntityIndex } from './EntityIndex';
 import { Query } from './Query';
 import { Registry } from './Registry';
@@ -39,6 +39,7 @@ export class Manager {
    */
   protected registry = new Registry();
   protected ctx: Context;
+  protected baseEntityKeys: Map<EntityClass, bigint> = new Map();
 
   /**
    * Cached queries, indexed by string key (basically a concatenation of query components).
@@ -61,27 +62,30 @@ export class Manager {
   }
 
   public register(entities: EntityClass[], components: ComponentClass[], tags: string[]): void {
-    const regs = this.registrations;
+    const allComponents = new Set([...components, ...entities.flatMap(e => e.prototype[Components])]);
 
-    for (const entity of entities) {
-      let key = entity.name;
-      if (key === anonymous) {
-        key = entity.prototype[Components].map((e: ComponentClass) => e.type).join('|');
-      }
-      regs.entities[key] = entity;
+    for (const component of allComponents) {
+      this.registrations.components[component.type] = component;
+      this.registry.add(component.type);
     }
 
-    for (const component of components) {
-      regs.components[component.type] = component;
+    for (const entity of entities) {
+      const types = entity.prototype[Components].map((e: ComponentClass) => e.type);
+      let key = entity.name;
+      if (key === anonymous) {
+        key = types.join('|');
+      }
+      this.registrations.entities[key] = entity;
+      // Each EntityClass has its 'base' (i.e., tag-independent) key. Since tags change more frequently than components, we're going to avoid recomputing the entity's entire key every time it changes.
+      this.baseEntityKeys.set(entity, this.registry.getID(...types)!);
     }
 
     for (const tag of tags) {
-      if (!(tag in regs.tags)) {
-        regs.tags[tag] = this.ctx.ids.id.next();
+      if (!(tag in this.registrations.tags)) {
+        const id = (this.registrations.tags[tag] = this.ctx.ids.id.next());
+        this.registry.add(id);
       }
     }
-
-    this.registry.add(...components.map(c => c.type), ...tags.map(t => regs.tags[t]));
   }
 
   /**
@@ -90,42 +94,39 @@ export class Manager {
   public tick(): void {
     const added: Entity[] = [];
     const removed: Entity[] = Array.from(Manager[ToDestroy][this.id]);
-    const index = Manager[ToIndex][this.id];
-    const hasIndexed = index.length > 0;
+    const reindex = Manager[ToIndex][this.id];
 
-    if (!removed.length && !hasIndexed) {
+    if (!removed.length && !reindex.length) {
       return;
     }
 
     // get the union of every key modified over the course of the last tick
     let modified = 0n;
 
-    if (hasIndexed) {
-      for (const [entity, oldKey] of index) {
-        this.entities[entity.id] = entity;
+    for (const [entity, oldKey] of reindex) {
+      this.entities[entity.id] = entity;
 
-        entity.key = this.getEntityKey(entity);
+      entity.key = this.getEntityKey(entity);
 
-        // the entry existed, but has changed
-        if (entity.key !== oldKey) {
-          // we need to update queries touching both the old key and the new key
-          modified |= oldKey | entity.key;
+      // the entry existed, but has changed
+      if (entity.key !== oldKey) {
+        // we need to update queries touching both the old key and the new key
+        modified |= oldKey | entity.key;
 
-          // the entity has not yet been indexed
-          if (!oldKey) {
-            added.push(entity);
-            this.index.append(entity.key, entity.id);
-            continue;
-          }
+        // the entity has not yet been indexed
+        if (!oldKey) {
+          added.push(entity);
+          this.index.append(entity.key, entity.id);
+          continue;
+        }
 
-          // entities need to be removed from queries and unindexed whether or not they continue to exist
-          removed.push(entity);
-          this.index.remove(oldKey, entity.id);
-          // ...but only bother re-indexing it if it's going to exist next tick.
-          if (!Manager[ToDestroy][this.id].includes(entity)) {
-            this.index.append(entity.key, entity.id);
-            added.push(entity);
-          }
+        // entities need to be removed from queries and unindexed whether or not they continue to exist
+        removed.push(entity);
+        this.index.remove(oldKey, entity.id);
+        // ...but only bother re-indexing it if it's going to exist next tick.
+        if (!Manager[ToDestroy][this.id].includes(entity)) {
+          this.index.append(entity.key, entity.id);
+          added.push(entity);
         }
       }
     }
@@ -181,9 +182,17 @@ export class Manager {
    * Given an entity, return its bigint key (union of all components/tags)
    */
   protected getEntityKey(entity: Entity): bigint {
-    const tags = this.registrations.tags;
-    const arr = Array.from(entity.tags).map(t => tags[t]);
-    return this.registry.add(...entity[Components].map(e => e.type), ...arr);
+    const baseKey =
+      // if this entity has a base key, use that instead of recomputing it
+      this.baseEntityKeys.get(entity.constructor as EntityClass) ??
+      this.registry.add(...entity[Components].map(e => e.type));
+
+    if (entity.tags.size > 0) {
+      // if we have tags, then get those too.
+      const arr = Array.from(entity.tags, t => this.registrations.tags[t]);
+      return union(baseKey, this.registry.add(...arr));
+    }
+    return baseKey;
   }
 
   // protected createEntityRefTag(entity: Entity): void {

@@ -48,8 +48,8 @@
     "dev:lint": "eslint \"src/**/*.{js,ts}\" --fix --config \".eslintrc.cjs\"",
     "dev:pretty": "prettier \"src/**/*.{js,ts}\" --write",
     "bench": "npm-run-all build bench:working bench:compare",
-    "bench:working": "tsx benchmarks > \"coverage/working\"",
-    "bench:master": "tsx benchmarks > \"coverage/master\"",
-    "bench:compare": "nanobench-compare \"coverage/working\" \"coverage/master\""
+    "bench:working": "tsx benchmarks > \"benchmarks/working\"",
+    "bench:master": "tsx benchmarks > \"benchmarks/master\"",
+    "bench:compare": "nanobench-compare \"benchmarks/working\" \"benchmarks/master\""
   }
 }

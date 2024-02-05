@@ -5,6 +5,7 @@
 export class ChangeSet {
   protected onChange?: () => void;
   protected items: Record<string, unknown> = {};
+  protected _size: number = 0;
 
   public *[Symbol.iterator](): Iterator<string> {
     yield* this.all();
@@ -32,6 +33,7 @@ export class ChangeSet {
       }
     }
     if (changed) {
+      this._size = Object.keys(this.items).length;
       this.onChange?.();
     }
     return this;
@@ -39,6 +41,7 @@ export class ChangeSet {
 
   public clear(): void {
     this.items = {};
+    this._size = 0;
     this.onChange?.();
   }
 
@@ -53,13 +56,19 @@ export class ChangeSet {
     }
 
     if (changed) {
+      this._size = Object.keys(this.items).length;
       this.onChange?.();
     }
     return true;
   }
 
+  public get size() {
+    return this._size;
+  }
+
   public constructor(items: string[], onChange?: () => void) {
     this.items = items.reduce((a, b) => ({ ...a, [b]: true }), {});
+    this._size = Object.keys(this.items).length;
     this.onChange = onChange;
   }
 }

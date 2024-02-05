@@ -137,23 +137,34 @@ export class Entity<T extends BaseType = {}> {
 
   protected addComponent<C extends ComponentClass>(ComponentConstructor: C, data?: PartialValueByType<C>): void {
     const type = ComponentConstructor.type as string & keyof T;
+    let dirty = false;
     if (!(type in this.$)) {
       // get the component in question
       this.$[type] = Object.assign(new ComponentConstructor(), data ?? {}) as T[string & keyof T];
-
       this[Components].push(ComponentConstructor);
       // turns out indexing repeatedly is faster than doing a bool set/check
       Manager[ToIndex][this.mid].push([this, this.key ?? null]);
+      // we're opting out of an optimization that uses a precomputed component key for each entity class.
+      dirty = true;
+    }
+    if (dirty) {
+      // reset the parent constructor to "Entity" — the component key now needs to be recomputed
+      this.constructor = Entity;
     }
   }
 
   protected removeComponents(...components: ComponentClass[]): void {
+    let dirty = false;
     for (const C of components) {
       if (C.type in this.$) {
         this[Components].splice(this[Components].indexOf(C), 1);
         delete this.$[C.type];
         Manager[ToIndex][this.mid].push([this, this.key ?? null]);
+        dirty = true;
       }
+    }
+    if (dirty) {
+      this.constructor = Entity;
     }
   }
 

@@ -6,3 +6,6 @@ tsconfig.tsbuildinfo
 .DS_Store
 /esm
 !.gitkeep
+
+benchmarks/master
+benchmarks/working
