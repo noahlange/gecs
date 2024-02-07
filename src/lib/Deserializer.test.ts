@@ -40,7 +40,7 @@ describe('save and load', () => {
     await withTick(ctx1, () => {
       const WithBigInt = Entity.with(C.D);
       const e = ctx1.create(WithBigInt);
-      e.$.d.value = 12345n;
+      e.$.d.value = [12345n];
     });
 
     const saved = ctx1.save();
@@ -51,7 +51,7 @@ describe('save and load', () => {
     const e = ctx2.query.components(C.D).first();
 
     expect(e).not.toBeNull();
-    expect(e?.$.d.value).toEqual(12345n);
+    expect(e?.$.d.value).toEqual([12345n]);
   });
 
   test('reattaches entity refs', async () => {
