@@ -21,7 +21,7 @@ export class C extends Component {
 
 export class D extends Component {
   public static readonly type = 'd';
-  public value: bigint[] = [];
+  public value: (bigint | null)[] = [];
 }
 
 export class Ref extends EntityRef<Entity> {
