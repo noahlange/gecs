@@ -30,7 +30,7 @@ export interface EntityComponents {
 export interface EntityClass<T extends BaseType = {}, E extends Entity<T> = Entity<T>> {
   data?: BaseDataType<T>;
   new (context: Context, data?: BaseDataType<T>, tags?: string[]): E;
-  with<A extends ComponentClass[], T extends BaseType = {}>(...items: A): EntityClass<T & KeyedByType<A>>;
+  with<A extends ComponentClass[]>(...items: A): EntityClass<T & KeyedByType<A>>;
 }
 
 export class Entity<T extends BaseType = {}> {
