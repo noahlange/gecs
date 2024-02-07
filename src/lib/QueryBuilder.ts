@@ -91,9 +91,9 @@ export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T
   /**
    * Constrain results based on one or components.
    */
-  public components<A extends ComponentClass[]>(...components: A): QueryBuilder<MergeData<T & KeyedByType<A>>> {
+  public components<A extends ComponentClass[]>(...components: A): QueryBuilder<T & KeyedByType<A>> {
     this.state.ids.push(...components.map(c => c.type));
-    return this.reset() as unknown as QueryBuilder<MergeData<T & KeyedByType<A>>>;
+    return this.reset() as unknown as QueryBuilder<T & KeyedByType<A>>;
   }
 
   /**

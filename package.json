@@ -8,9 +8,7 @@
     "url": "https://noahlange.com"
   },
   "type": "module",
-  "module": "esm/index.js",
-  "main": "lib/index.js",
-  "source": "src/index.ts",
+  "main": "src/index.ts",
   "types": "types/index.d.ts",
   "devDependencies": {
     "@types/nanobench": "^3.0.0",

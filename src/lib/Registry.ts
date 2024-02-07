@@ -23,7 +23,8 @@ export class Registry {
     return res === 0n ? null : res;
   }
 
-  public release(id: bigint): void {
+  public release(key: Identifier): void {
+    const id = this.registry[key];
     this.generator.release(id);
   }
 }

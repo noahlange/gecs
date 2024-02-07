@@ -3,7 +3,7 @@
 ![CodeQL](https://github.com/noahlange/gecs/actions/workflows/codeql-analysis.yml/badge.svg)
 [![Code Coverage](https://coveralls.io/repos/github/noahlange/gecs/badge.svg?branch=master)](https://coveralls.io/github/noahlange/gecs?branch=master)
 
-**gecs** ('g' as in 'gecko,' not as in 'GIF') is an experimental, generic-abusing [entity-component-system](https://en.wikipedia.org/wiki/Entity_component_system) framework thing written in [TypeScript](https://www.typescriptlang.org).
+**gecs** ('g' as in 'gecko,' not 'GIF') is an experimental, generic-abusing [entity-component-system](https://en.wikipedia.org/wiki/Entity_component_system) framework thing written in [TypeScript](https://www.typescriptlang.org).
 
 Examples are available in the [gecs-example](https://github.com/noahlange/gecs-example) repository.
 
@@ -31,76 +31,40 @@ myContext.$.state instanceof StatePlugin; // true
 The systems, entities, components and tags provided by a plugin are automatically registered when the Context's `start` method is invoked.
 
 ```typescript
-import { Plugin, Phase, phase } from 'gecs';
-import type { PluginData } from 'gecs';
+import { Plugin, type PluginData } from 'gecs';
+import { Position, Velocity, Collision } from './components';
+import { Collider } from './entities';
+import { myPhysicsSystem, MyOtherSystem } from './systems'
 
-import { A, B, C } from './components';
-import { WithA, WithB, WithC } from './entities';
-
-// a pain—I'm trying to figure out a way to avoid having
-// to annotate both the Plugin and the PluginData
-interface ContextPlugins {
-  state: StatePlugin;
+// you can decompose plugins across multiple packages with declaration merging
+declare global {
+  namespace $ {
+    interface Plugins {
+      [PhysicsSystem.type]: PhysicsSystem;
+    }
+  }
 }
 
-export default class StatePlugin extends Plugin<ContextPlugins> {
-  public static readonly type = 'state';
+export default class PhysicsSystem extends Plugin<$.Plugins> {
+  public static readonly type = 'physics';
 
   // entities, components, tags and systems to register on start
-  public $: PluginData<ContextPlugins> = {
-    components: { A, B, C },
-    entities: { WithA, WithB, WithC },
+  public $: PluginData<$.Plugins> = {
+    components: { Position, Velocity, Collision },
+    entities: { Collider },
     // arbitrary string tags
     tags: ['one', 'two', 'three'],
     // systems; either stateless function systems or stateful, class-based
-    systems: [
-      phase(Phase.ON_LOAD, ctx => {
-        // to be executed at the beginning of the tick
-      }),
-      phase(Phase.ON_UPDATE, ctx => {
-        // to be executed during the update phase
-      })
-    ]
+    systems: [myPhysicsSystem, MyOtherSystem]
   };
+
+  // you can use the plugin to "host" commonly-used queries
+  public readonly queries = {
+    movers: this.ctx.query.components(Position, Velocity)
+  }
 }
 ```
-
-### Phases
-
-By specifying a static (numeric) `phase` property on a system, or using the `phase()` system composition helper, you can group systems together into different portions of the tick. Ties between systems in different plugins are executed in order of plugin registration. Systems without an explicit phase are executed at the end of the `UPDATE` phase (`599`).
-
-```typescript
-import { Phase as DefaultPhases, phase } from 'gecs';
-
-export const Phase = { ...DefaultPhases, MY_CUSTOM_PHASE: 299 };
-
-export default phase(
-  Phase.MY_CUSTOM_PHASE,
-  ctx => {
-    // to be executed during my custom phase
-  },
-  ctx => {
-    // to be executed after the previous system
-  }
-);
-```
-
-There are three main phases—`LOAD`, `UPDATE` and `RENDER`—each broken into `PRE`, `ON` and `POST` sub-phases.
-
-| Phase         | Priority | Description                                |
-| :------------ | :------: | :----------------------------------------- |
-| `PRE_LOAD`    |   100    | perform setup, clean-up from previous tick |
-| `ON_LOAD`     |   200    | load data, input                           |
-| `POST_LOAD`   |   300    | post-process input                         |
-| `PRE_UPDATE`  |   400    | prepare game logic                         |
-| `ON_UPDATE`   |   500    | execute game logic                         |
-| `POST_UPDATE` |   600    | apply necessary corrections                |
-| `PRE_RENDER`  |   700    | prepare for rendering                      |
-| `ON_RENDER`   |   800    | render                                     |
-| `POST_RENDER` |   900    | clean up, tear down                        |
-
-When the context's (async) `start()` method is invoked, each of the context's systems is booted in the order it was passed to `with()`. Each time `tick()` is called, the context invokes the `tick()` method of each of its systems (again, in order).
-
+ 
 ## Entities & Components
 
 An Entity is a loose wrapper around an arbitrary collection of Components.
@@ -153,7 +117,7 @@ entity.$.woobly.value === 1;    // true
 // You can pass a data param to populate a component's instance properties.
 const entity2 = ctx.create(MyEntity, { foobly: { value: '123' } });
 
-entity2.$.foobly instanceof Foo; // true
+entity2.$.foobly instanceof Foo;  // true
 entity2.$.foobly.value === '123'; // true
 ```
 
@@ -172,9 +136,9 @@ export class Ownership extends EntityRef<Actor, Item> {
 const owner = ctx.create(Actor);
 const item = ctx.create(Item);
 
-item.$.owner === null;         // true; refs default to null
-item.$.owner = owner;          // refs are assigned like properties
-item.$.owner instanceof Actor; // true
+item.$.owner === null;          // true; refs default to null
+item.$.owner = owner;           // refs are assigned like properties
+item.$.owner instanceof Actor;  // true
 
 // you can pass an entity as the value of the corresponding key in `ctx.create()`
 const item2 = ctx.create(Item, { owner });
@@ -185,23 +149,16 @@ Per the example above, you can `extend` the result of the `with()` call to creat
 ```typescript
 // composition
 const MyEntity1 = Entity.with(Position, Sprite);
+type InstanceMyEntity1 = InstanceType<typeof MyEntity>;
 
 // inheritance
 class MyEntity2 extends Entity.with(Position, Sprite) {}
+type InstanceMyEntity2 = MyEntity2;
 ```
 
 This is a trade-off; while the first ("composition") is terser and discourages the addition of custom functionality to your entities, typing its instances is slightly more obnoxious.
 
-The second ("inheritance") gives you more flexibility, as well as a lengthy rope to hang yourself with.
-
-```typescript
-// composition
-type InstanceMyEntity1 = InstanceType<typeof MyEntity>;
-// inheritance
-type InstanceMyEntity2 = MyEntity2;
-```
-
-You may need to hint an entity's type without a concrete instance on hand (e.g. in the case of function parameters).
+You may need to hint an entity's type without a concrete instance on hand (e.g. in the case of function parameters)—you can use `EntityType` to do this.
 
 ```typescript
 import { SpritePosition } from '../entities';
@@ -242,7 +199,8 @@ An entity's components and tags can be added/removed using the `.components` and
 entity.components.add(ComponentA, aData);
 entity.components.has(A, B, C);
 entity.components.remove(D, E, F);
-entity.components.all(); // same as Array.from(entity.components)
+entity.components.all();
+[...entity.components]; // equivalent to .all()
 
 for (const component of entity.components) {
   // do stuff
@@ -306,7 +264,7 @@ import type { Context } from 'gecs';
 import { Position, Velocity } from './components';
 
 export function movement(ctx: Context): void {
-  for (const { $ } of ctx.query.components(Position, Velocity)) {
+  for (const { $ } of ctx.$.physics.queries.movers) {
     $.position.x += $.velocity.dx;
     $.position.y += $.velocity.dy;
   }
@@ -418,8 +376,8 @@ const q2 = ctx.query.tags('one', 'two', 'three');
 
 // `.references()` returns all entities with an EntityRef pointing to the passed entity instance
 const q3 = ctx.query
-    .components(RefComponent)
-    .references(referencedEntity);
+  .components(RefComponent)
+  .references(referencedEntity);
 ```
 
 Steps are executed sequentially. The result of a query is the intersection of each step's results.
@@ -460,11 +418,11 @@ You can invoke a query's `first()` or `get()` methods to access its result set. 
 const query = ctx.query.components(A, B);
 
 // instance methods - query executed
-const all = query.get();     // (A & B)[]
+const all = query.get(); // (A & B)[]
 const first = query.first(); // (A & B) | null
 
 // will work with sets, etc.
-const set = new Set(query);  // Set<A & B>
+const set = new Set(query); // Set<A & B>
 
 // also as a generic iterable
 for (const { $ } of query) {
@@ -478,38 +436,6 @@ Once a query is executed for the first time, any subsequent query with the same 
 
 This means that overhead associated with creating a new query each `tick()` is _relatively_ minor—but by assigning the query to a variable/class property, you can access and execute the constructed query without being forced to rebuild it.
 
-```typescript
-class MySystem extends System {
-  public $ = {
-    abc: this.ctx.query.components(A, B, C)
-  };
-
-  public tick() {
-    for (const abc of this.$.abc) {
-      // ...
-    }
-  }
-}
-```
-
-When using stateless systems, plugin instances can also be used to "host" persisted queries.
-
-```typescript
-import { Plugin } from'gecs';
-
-class MyPlugin extends Plugin {
-  public queries = {
-    abc: this.ctx.components(A, B, C)
-  }
-}
-
-function MySystem(ctx: Context) {
-  for (const { $ } of ctx.$.myPlugin.queries.abc) {
-    // ...
-  }
-}
-```
-
 ## Saving & Loading
 
 Being able to export the game state to a serializable format and reloading it later is important. And since that is the case, it's also intended to be pretty straightforward. The output is a bulky POJO—in a purely naïve dump, ~2000 entities runs me about 650 KB. There are a number of strategies you can use to reduce the size of this output: entity filtering, custom component serialization and output compression.
@@ -517,11 +443,7 @@ Being able to export the game state to a serializable format and reloading it la
 ### Entity filtering
 
 Filter entities by passing `ctx.save()` an `entityFilter` option—a predicate passed the entity instance and expecting a boolean-ish return value. This allows you to immediately weed out irrelevant entities before moving forward, which will significantly reduce the size of your result set (and save time).
-
-### Custom serialization
-
-You can write custom `toJSON()` methods to return only a subset of each component's data.
-
+ 
 ### Save
 
 ```typescript
@@ -541,42 +463,6 @@ console.log(state === ctx.state); // true
 console.log(entities.some(e => e.tags.includes(Tag.TO_SERIALIZE))); // false
 ```
 
-#### Custom serialization
-
-If you're using `JSON.stringify` to serialize your state, you can customize a component's output by adding a `toJSON()` method. You can pair this with a setter to populate or manipulate a component's "exotic" properties on instantiation.
-
-```ts
-interface HealthState {
-  value: number;
-  max: number;
-}
-
-class Health extends Component {
-  public health = new MyHealth(100);
-
-  // return "$" on save...
-  public toJSON(): HealthState {
-    return {
-      $: {
-        value: this.health.value,
-        max: this.health.max
-      }
-    };
-  }
-
-  // ...set via "$" on load
-  public set $(value: HealthState) {
-    this.health.doSomethingSpecial($.value, $.max);
-  }
-}
-```
-
-#### Compression
-
-Compressing the original 650KB payload output with [Brotli](https://www.npmjs.com/package/brotli) brings it down to less than 20 KB (about 3% of the original size).
-
-If you're working in the browser and can't load WebAssembly for one reason or another, [pako](https://github.com/nodeca/pako) is a great, marginally less effective (about 4% of the original size) alternative.
-
 ### Load
 
 Serialization has one caveat: you must manually register all components types and entity constructors using `extends` before invoking `ctx.load()`. Composed entity classes don't need to be registered.
@@ -590,7 +476,11 @@ const ctx = new Context();
 
 // you must register components and entity constructors using inheritance
 // (composed entity constructors don't need to be registered)
-ctx.register(Object.values(Components), Object.values(Entities), Object.values(Tags));
+ctx.register(
+  Object.values(Components),
+  Object.values(Entities),
+  Object.values(Tags)
+);
 
 // fetch and load state
 await fetch('./save.json')

@@ -1,4 +1,6 @@
-import { Context, EntityClass } from 'gecs';
+import type { EntityClass } from 'gecs';
+
+import { Context } from 'gecs';
 import bench from 'nanobench';
 
 import { Test1, Test2, Test3 } from '../helpers/components';

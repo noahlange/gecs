@@ -154,9 +154,8 @@ export type NeverByType<A extends WithStaticType[]> = Merge<
  * - given an EntityRef, return the type of the referenced entity.
  * - given an ordinary component, return the partial type of its data.
  */
-export type PartialValueByType<A extends WithStaticType> = InstanceType<A> extends EntityRef<infer R>
-  ? R | null
-  : DeepPartial<InstanceType<A>>;
+export type PartialValueByType<A extends WithStaticType> =
+  InstanceType<A> extends EntityRef<infer R> ? R | null : DeepPartial<InstanceType<A>>;
 
 export type Ref<T> = T extends EntityRef<infer R> ? R : never;
 

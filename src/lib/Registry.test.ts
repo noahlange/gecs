@@ -13,8 +13,15 @@ describe('Registry', () => {
     test('getID', () => {
       const reg = new Registry();
       reg.add('0', '1');
-      expect(reg.getID('1')?.toString()).toBe('4');
+      expect(reg.getID('1')).toBe(4n);
       expect(reg.getID('foobar')).toBeNull();
     });
+  });
+
+  test('release() makes the key associated with an identifier available for reuse', () => {
+    const reg = new Registry();
+    reg.add('0', '1', '2'); // 2n, 4n, 8n
+    reg.release('0');
+    expect(reg.add('3')).toBe(2n);
   });
 });

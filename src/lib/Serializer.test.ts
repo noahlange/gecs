@@ -9,16 +9,18 @@ import * as C from '../test/helpers/components';
 import * as E from '../test/helpers/entities';
 
 describe('save and load', () => {
-  test("basics: doesn't explode", () => {
+  test("basics: doesn't explode", async () => {
     const ctx = getContext();
-    for (let i = 0; i < 5; i++) {
-      ctx.create(E.WithA);
-      ctx.create(E.cWithAB);
-      ctx.create(E.WithRef);
-    }
+    await withTick(ctx, () => {
+      for (let i = 0; i < 5; i++) {
+        ctx.create(E.WithA);
+        ctx.create(E.cWithAB);
+        ctx.create(E.WithRef);
+        ctx.create(E.WithD, { d: { value: [null] } });
+      }
+    });
 
     let res: Serialized;
-
     expect(() => (res = ctx.save())).not.toThrow();
     expect(() => ctx.load(res)).not.toThrow();
   });
@@ -58,6 +60,33 @@ describe('save and load', () => {
 
     const save2 = ctx2.save();
     expect(save1).toEqual(save2);
+  });
+
+  test('toJSON() can be used to customize serialization behavior', async () => {
+    class Custom extends Component {
+      public static readonly type = 'custom';
+      public value: string = '???';
+      public set $(value: string) {
+        this.value = value;
+      }
+      public toJSON() {
+        return { $: this.value.toUpperCase() };
+      }
+    }
+
+    const [ctx1, ctx2] = [getContext(), getContext()];
+
+    ctx1.register([], [Custom]), ctx2.register([], [Custom]);
+
+    await withTick(ctx1, () => ctx1.create(Entity.with(Custom), { custom: { value: 'def' } }));
+
+    const saved = ctx1.save();
+
+    await withTick(ctx2, () => ctx2.load(saved));
+
+    const a = ctx2.query.components(Custom).first();
+
+    expect(a!.$.custom.value).toBe('DEF');
   });
 });
 
