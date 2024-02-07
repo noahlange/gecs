@@ -97,35 +97,22 @@ export class Bar extends Component {
   public static readonly type = 'woobly';
   public value: number = 1;
 }
-```
 
-These component instances are accessed via the `$` property.
-
-```ts
-import { Entity } from 'gecs';
-import { Foo, Bar } from './components';
 
 const MyEntity = Entity.with(Foo, Bar);
-const entity = ctx.create(MyEntity);
+const entity = ctx.create(MyEntity, { foobly: { value: '123' } });
 
-entity.$.foobly instanceof Foo; // true
-entity.$.foobly.value === '1';  // true
+entity.$.foobly instanceof Foo;  // true
+entity.$.foobly.value === '123'; // true
 
-entity.$.woobly instanceof Bar; // true
-entity.$.woobly.value === 1;    // true
+entity.$.woobly instanceof Bar;  // true
+entity.$.woobly.value === 1;     // true
 
-// You can pass a data param to populate a component's instance properties.
-const entity2 = ctx.create(MyEntity, { foobly: { value: '123' } });
-
-entity2.$.foobly instanceof Foo;  // true
-entity2.$.foobly.value === '123'; // true
 ```
 
 `EntityRefs` are a special type of component that allow you to link one entity to another.
 
 ```ts
-import type { EntityType } from 'gecs';
-
 import { Entity, EntityRef } from 'gecs';
 import { Actor, Item } from './entities';
 
@@ -233,47 +220,11 @@ for (const tag of entity.tags) {
 
 At its core, a system is a function or object that performs one or more closely-related tasks.
 
-**gecs** supports both stateful object-oriented systems and stateless functional systems. If you need to take advantage of object persistence or invoke system lifecycle methods, then a stateful system is your best option.
-
-```ts
-import { System } from 'gecs';
-import { InputManager } from 'my-magical-library';
-
-import { Position, Clickable } from './components';
-
-export class ClickPositionSystem extends System {
-  protected readonly input = new InputManager();
-
-  public tick() {
-    if (this.input.isMouseDown()) {
-      const { x, y } = this.input.getMousePosition();
-      for (const { $ } of this.ctx.query.components(Position, Clickable)) {
-        if ($.position.x === x && $.position.y === y) {
-          alert('Clicked!');
-        }
-      }
-    }
-  }
-}
-```
-
-If not, stateless systems can help simplify your codebase.
-
-```ts
-import type { Context } from 'gecs';
-import { Position, Velocity } from './components';
-
-export function movement(ctx: Context): void {
-  for (const { $ } of ctx.$.physics.queries.movers) {
-    $.position.x += $.velocity.dx;
-    $.position.y += $.velocity.dy;
-  }
-}
-```
+**gecs** supports both stateful object-oriented systems and stateless functional systems.
 
 The primary functionality of a System is executed within its `start()`, `stop()` and/or `tick()` methods. While both methods are technically optional, every system will have at least one. Some run once or twice—map generation, for example—while others might run on every tick and have no initialization code to speak of.
 
-An example implementation of a simple PIXI.js renderer:
+An example implementation of a simple, stateful PIXI.js renderer:
 
 ```typescript
 import * as PIXI from 'pixi.js';
@@ -319,6 +270,19 @@ class Renderer extends System {
     this.app.ticker.add(this.ctx.tick.bind(this.ctx));
     // mount stage to DOM
     document.body.appendChild(this.app.view);
+  }
+}
+```
+If you need to take advantage of object persistence or invoke system lifecycle methods, then a stateful system is your best option. If not, stateless systems can help simplify your codebase.
+
+```ts
+import type { Context } from 'gecs';
+import { Position, Velocity } from './components';
+
+export function movement(ctx: Context): void {
+  for (const { $ } of ctx.$.physics.queries.movers) {
+    $.position.x += $.velocity.dx;
+    $.position.y += $.velocity.dy;
   }
 }
 ```
