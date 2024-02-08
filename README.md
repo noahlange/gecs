@@ -3,7 +3,7 @@
 ![CodeQL](https://github.com/noahlange/gecs/actions/workflows/codeql-analysis.yml/badge.svg)
 [![Code Coverage](https://coveralls.io/repos/github/noahlange/gecs/badge.svg?branch=master)](https://coveralls.io/github/noahlange/gecs?branch=master)
 
-**gecs** ('g' as in 'gecko,' not 'GIF') is an experimental, generic-abusing [entity-component-system](https://en.wikipedia.org/wiki/Entity_component_system) framework thing written in [TypeScript](https://www.typescriptlang.org).
+**gecs** ('g' as in 'gecko,' not 'GIF') is an experimental¹, opinionated, generic-abusing [entity-component-system](https://en.wikipedia.org/wiki/Entity_component_system) framework-thing written in [TypeScript](https://www.typescriptlang.org).
 
 Examples are available in the [gecs-example](https://github.com/noahlange/gecs-example) repository.
 
@@ -308,15 +308,21 @@ import { sequence, conditional, phase, throttle } from 'gecs';
 import { SimA, SimB } from './sims';
 import { setup, teardown } from './misc';
 
-// execute all systems in order
-const inSequence = sequence(setup, SimA, SimB, teardown);
+// only execute if the game mode is "SIMULATION"
+const ifSimulating = conditional(
+  ctx => ctx.$.myGame.mode === GameMode.SIMULATION,
+  sequence(setup, SimA, SimB, teardown) // execute all systems in order
+);
 
-// only execute if the game state's mode property is "SIMULATION"
-const ifSimulating = conditional(ctx => ctx.state.mode === GameMode.SIMULATION, inSequence);
+const atTheEnd = phase(
+  Phase.POST_RENDER,
+  () => console.log('It is the very end of the tick.')
+);
 
-const atTheEnd = phase(Phase.POST_RENDER, () => console.log('it is the very end of the tick'));
-
-const throttled = throttle(200, () => console.log('will execute once every 200ms'));
+const throttled = throttle(
+  200,
+  () => console.log('I will be logged once every 200ms.')
+);
 ```
 
 ## Queries
@@ -355,13 +361,13 @@ ctx.query
 Query steps can be modified with `.all`, `.any` and `.none` to perform basic boolean operations. `.none` has no effect on the query's type signature, but does have an effect on its results. `.some` expands the query result's type signature with additional optional (i.e., possibly undefined) components, but has no effect on the query's results.
 
 ```typescript
-// the "all" is implicit if a modifier is omitted
-ctx.query.components(A, B); // A & B
-ctx.query.all.components(A, B); // A & B
+// "all" is implicit if the modifier is omitted
+ctx.query.components(A, B);       // A & B
+ctx.query.all.components(A, B);   // A & B
 
-ctx.query.any.components(A, B); // (A | B) | (A & B)
-ctx.query.some.components(A, B); // A? | B?
-ctx.query.none.components(A, B); // !(A | B)
+ctx.query.any.components(A, B);   // (A | B) | (A & B)
+ctx.query.some.components(A, B);  // A? | B?
+ctx.query.none.components(A, B);  // !A & !B
 ```
 
 Naturally, these can be chained:
@@ -396,9 +402,10 @@ for (const { $ } of query) {
 
 ### Persistence
 
-Once a query is executed for the first time, any subsequent query with the same "signature" will return the cached result set.
+After a query has been constructed for the first time, it's cached. 
+Any query built with the same "signature"
 
-This means that overhead associated with creating a new query each `tick()` is _relatively_ minor—but by assigning the query to a variable/class property, you can access and execute the constructed query without being forced to rebuild it.
+ will return the same query—so.the additional overhead you're introducing by creating a new query each tick isn't enormous. But by assigning the query to a property on the system or plugin instance, you can access and execute a query without being forced to rebuild it.
 
 ## Saving & Loading
 
@@ -423,7 +430,7 @@ const { state, entities, queries } = ctx.save({
   entityFilter: entity => entity.tags.has(Tag.TO_SERIALIZE)
 });
 
-console.log(state === ctx.state); // true
+console.log(state === ctx.state);                                   // true
 console.log(entities.some(e => e.tags.includes(Tag.TO_SERIALIZE))); // false
 ```
 
@@ -464,13 +471,27 @@ First, with a fresh install and having already run `build`, run <kbd>npm run ben
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: Fine? It's... complicated.
+**A/R**: Good-ish?
 
-**Q/S**: ???  
-**A/R**: I would say it's comparable to other "rich" ECS implementations (e.g., Ecsy) and poor relative to some other lower-level ECS libraries (bitecs, wolfecs). It's not a performance-oriented implementation, but it's also not a totally naive one. Particularly awesome performance has never been a primary design goal. So long as it remains capable of 60 FPS+, ergonomics are a higher priority than performance. And I'm sure there's plenty of low-hanging fruit remaining for performance gains.
+**Q/S**: This does not inspire comfort!   
+**A/R**: It's comparable to other "rich" ECS implementations (e.g., Ecsy, Miniplex). A comparison using the Ecsy intersecting circles demo with 250 circles:
 
-**Q/S**: Real-world example?  
+| Library  | Memory (MB) | Tick (ms) |
+| :------- | ----------- | --------- |
+| Gecs     |  8MB (8-12) | 2ms (0-2) |
+| Ecsy     | 12MB (7-13) | 4ms (4-5) |
+| Miniplex |  9MB (6-12) | 4ms (4-5) |
+
+It's poor relative to the lower-level ECS libraries (bitecs, wolfecs). It's not a performance-oriented implementation, but it's also not a totally naive one. So long as it remains capable of 60 FPS+, ergonomics are a higher priority than performance. (Besides, I'm sure there's plenty of low-hanging fruit remaining for performance gains.)
+
+**Q/S**: Real-world performance example?  
 **A/R**: Using a crude culling implementation and PIXI for rendering, a 256×256 map from [FLARE](https://github.com/flareteam/flare-game) runs at 5ms/frame with ~40MB memory usage.
 
 **Q/S**: After reading the code, I am shocked, _shocked_ to find that this is less type-safe than I would have ever thought possible.  
 **A/R**: This is correct. Unfortunately, this library and its design are more about ergonomics and ✨ my feelings ✨ than bulletproof type-safety.
+
+**Q/S**: Does it scale?
+**A/R**: It does, actually. You can use a monorepo to manage a project using separate packages for each plugin, then use TS declaration merging to confirm plugin dependencies are being included, &c. It's pretty slick.
+
+---
+¹ _I've_ been using it for several years now, but I also haven't published anything. 🤷🏻‍♂️   
