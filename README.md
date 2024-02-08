@@ -464,7 +464,7 @@ First, with a fresh install and having already run `build`, run <kbd>npm run ben
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: It's complicated.
+**A/R**: Fine? It's... complicated.
 
 **Q/S**: ???  
 **A/R**: I would say it's comparable to other "rich" ECS implementations (e.g., Ecsy) and poor relative to some other lower-level ECS libraries (bitecs, wolfecs). It's not a performance-oriented implementation, but it's also not a naïve one. Particularly awesome performance has never been a primary design goal (so long as it remains capable of 60 FPS+, features are (currently) a higher priority than performance improvements) and I'm sure there's plenty of low-hanging fruit remaining for performance gains.
@@ -473,4 +473,4 @@ First, with a fresh install and having already run `build`, run <kbd>npm run ben
 **A/R**: Using a naïve culling implementation and PIXI for rendering, a 256×256 map from [FLARE](https://github.com/flareteam/flare-game) runs at 5ms/frame with ~40MB memory usage.
 
 **Q/S**: After reading the code, I am shocked, _shocked_ to find that this is less type-safe than I would have ever thought possible.  
-**A/R**: This is correct. Unfortunately, this library and its design are more about ergonomics and my feelings than bulletproof type-safety.
+**A/R**: This is correct. Unfortunately, this library and its design are more about ergonomics and ✨ my feelings ✨ than bulletproof type-safety.

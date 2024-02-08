@@ -9,7 +9,6 @@
   },
   "type": "module",
   "main": "src/index.ts",
-  "types": "types/index.d.ts",
   "devDependencies": {
     "@types/nanobench": "^3.0.0",
     "@types/node": "^20.11.5",
@@ -32,9 +31,7 @@
     "vitest": "^1.2.2"
   },
   "files": [
-    "esm/**/*",
-    "lib/**/*",
-    "types/**/*"
+    "src/**/*"
   ],
   "scripts": {
     "start": "tsc --watch",
