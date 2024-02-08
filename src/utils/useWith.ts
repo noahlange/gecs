@@ -21,30 +21,30 @@ export function useWithComponent<T extends BaseType, A extends ComponentClass[] 
   // we're tracking entity class => component classes, allowing us to extend existing component sets.
   const curr = ctors.get(Constructor) ?? [];
   // we need to give each entity its own constructor
-  const __anon = class extends Constructor {};
+  const __entity = class extends Constructor {};
 
   // and we need to define this here because no other configuration permits
   // `items` to be accessible on the prototype while being not being subject to
   // changes in other items of the same type (via `.slice()` in the entity constructor)
   const value = [...curr, ...items];
-  ctors.set(__anon, value);
+  ctors.set(__entity, value);
 
-  Object.defineProperty(__anon.prototype, Components, {
+  Object.defineProperty(__entity.prototype, Components, {
     value: value.slice(),
     writable: true
   });
 
   // type system abuse
-  return __anon as unknown as EntityClass<T & KeyedByType<A>>;
+  return __entity as unknown as EntityClass<T & KeyedByType<A>>;
 }
 
 export function useWithPlugins<P extends PluginClass<R>[], R extends KeyedByType<P>>(
   ...items: P
 ): ContextClass<Merge<R>> {
-  const __anon = class extends Context<Merge<R>> {};
-  Object.defineProperty(__anon.prototype, 'items', {
+  const __ctx = class extends Context<Merge<R>> {};
+  Object.defineProperty(__ctx.prototype, 'items', {
     value: items.slice(),
     writable: true
   });
-  return __anon as unknown as ContextClass<Merge<R>>;
+  return __ctx as unknown as ContextClass<Merge<R>>;
 }
