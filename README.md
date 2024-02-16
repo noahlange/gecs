@@ -36,7 +36,7 @@ import { Position, Velocity, Collision } from './components';
 import { Collider } from './entities';
 import { myPhysicsSystem, MyOtherSystem } from './systems'
 
-// you can decompose plugins across multiple packages with declaration merging
+// you can decompose functionality across multiple packages with declaration merging
 declare global {
   namespace $ {
     interface Plugins {
@@ -50,8 +50,8 @@ export default class PhysicsSystem extends Plugin<$.Plugins> {
 
   // entities, components, tags and systems to register on start
   public $: PluginData<$.Plugins> = {
-    components: { Position, Velocity, Collision },
-    entities: { Collider },
+    components: [Position, Velocity, Collision],
+    entities: [Collider],
     // arbitrary string tags
     tags: ['one', 'two', 'three'],
     // systems; either stateless function systems or stateful, class-based
@@ -77,7 +77,7 @@ export class Position extends Component {
   // instance properties...
   public x: number = 0;
   public y: number = 0;
-  public r: number = 0;
+  public z: number = 0;
 }
 ```
 
@@ -166,8 +166,8 @@ function usingSpritePosition(entity: SpritePositionEntity): void {
   }
 
   if (entity.has(Foo)) {
-    // the `has()` type guard ensures the presence of the component Foo
-    // entity.components.has() does _not_ act as a type guard
+    // `has()` asserts the presence a component and acts as a type guard/narrows the entity type
+    // `entity.components.has()` is functionality identical but does _not_ narrow the type
   }
 
   if (entity.is('BAR')) {
@@ -244,14 +244,13 @@ class Renderer extends System {
   public tick(delta: number, time?: number): void {
     for (const entity of this.$.sprites) {
       const item = this.sprites[$.sprite.id];
-      if (item) {
-        // update sprite and position
-        if (item.path !== $.sprite.path) {
-          item.sprite = PIXI.Sprite.from($.sprite.path);
-        }
-        if (entity.has(Position)) {
-          item.sprite.position.set($.position.x, position.y);
-        }
+      if (!item) continue;
+      // update sprite and position
+      if (item.path !== $.sprite.path) {
+        item.sprite = PIXI.Sprite.from($.sprite.path);
+      }
+      if (entity.has(Position)) {
+        item.sprite.position.set($.position.x, position.y);
       }
     }
   }
@@ -466,12 +465,12 @@ await ctx.start();
 
 ## Running the benchmarks
 
-First, with a fresh install and having already run `build`, run <kbd>npm run bench:master</kbd> to generate baseline results. Once you've made some changes, run <kbd>npm run bench</kbd> to generate a "working" benchmark file and compare to the baseline.
+First, with a fresh install and having already run `build`, run <kbd>npm run bench:master</kbd> to generate baseline results. Once you've made some changes, run <kbd>bench:working</kbd> to generate a "working" benchmark file and <kbd>bench:compare</kbd> to check the results against the baseline.
 
 ## Questions/Statements & Answers/Responses
 
 **Q/S**: How's the performance?  
-**A/R**: Good-ish?
+**A/R**: Fine-ish?
 
 **Q/S**: This does not inspire comfort!   
 **A/R**: It's comparable to other "rich" ECS implementations (e.g., Ecsy, Miniplex). A comparison using the Ecsy intersecting circles demo with 250 circles:
