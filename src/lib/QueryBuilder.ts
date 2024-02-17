@@ -36,13 +36,9 @@ export interface QueryState {
 export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T> {
   protected key: string[] = [];
   protected state!: QueryState;
-  protected resolved: Query<T> | null = null;
   protected criteria: QueryStep[] = [];
   protected ctx: Context;
-
-  protected get id(): string {
-    return this.key.join('␝');
-  }
+  protected id: string | null = null;
 
   /**
    * Mark query parameters as mandatory.
@@ -85,7 +81,7 @@ export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T
   public references(...entities: Entity[]): this {
     this.state.tag = Constraint.IN;
     this.state.ids = entities.map(entity => entity.id);
-    return this.reset();
+    return this.step();
   }
 
   /**
@@ -93,7 +89,7 @@ export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T
    */
   public components<A extends ComponentClass[]>(...components: A): QueryBuilder<T & KeyedByType<A>> {
     this.state.ids.push(...components.map(c => c.type));
-    return this.reset() as unknown as QueryBuilder<T & KeyedByType<A>>;
+    return this.step() as unknown as QueryBuilder<T & KeyedByType<A>>;
   }
 
   /**
@@ -107,11 +103,12 @@ export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T
     }
 
     this.state.ids = items.map(i => tags[i]);
-    return this.reset();
+    return this.step();
   }
 
   public get query(): Query<T, Entity<T>> {
-    return (this.resolved ??= this.ctx.manager.getQuery<T, Entity<T>>(this.criteria, this.id));
+    const id = (this.id ??= this.key.join('␝'));
+    return this.ctx.manager.getQuery<T, Entity<T>>(this.criteria, id);
   }
 
   /**
@@ -135,7 +132,11 @@ export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T
     return this.query[Symbol.iterator]();
   }
 
-  protected reset(): this {
+  private step(): this {
+    if (this.id) {
+      throw new Error('Modifying a resolved query will return inaccurate result sets.');
+    }
+
     if (this.state && this.state.tag !== Constraint.SOME) {
       const constraint = this.state.tag ?? Constraint.ALL;
       const key = constraint + '␞' + this.state.ids.join('␟');
@@ -144,12 +145,14 @@ export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T
         this.criteria.push({ constraint, ids: this.state.ids.slice() });
       }
     }
+
     this.state = { tag: null, ids: [] };
+    this.id = null;
     return this;
   }
 
   public constructor(ctx: Context<any>) {
     this.ctx = ctx;
-    this.reset();
+    this.step();
   }
 }

@@ -14,13 +14,12 @@ export function getContext(): Context<{}> {
   return ctx;
 }
 
-export async function setup(): Promise<{
+export async function setup(count: number = 5): Promise<{
   ctx: Context<{}>;
   ids: Identifier[];
 }> {
   const ctx = getContext();
   const entities: Entity[] = [];
-  const count = 5;
 
   await withTick(ctx, () => {
     for (let i = 0; i < count; i++) {

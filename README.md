@@ -194,7 +194,7 @@ for (const component of entity.components) {
 }
 ```
 
-A major footgun here is that the types of entities with removed components will not change during the current system's `tick()`. Unless you're paying close attention, you may find yourself accessing a non-existent component.
+A potential footgun here is that the types of entities with removed components will not change during the current system's `tick()`. Unless you're paying close attention, you may find yourself accessing a non-existent component.
 
 ```typescript
 for (const entity of ctx.query.components(A, B)) {
@@ -401,10 +401,7 @@ for (const { $ } of query) {
 
 ### Persistence
 
-After a query has been constructed for the first time, it's cached. 
-Any query built with the same "signature"
-
- will return the same query—so.the additional overhead you're introducing by creating a new query each tick isn't enormous. But by assigning the query to a property on the system or plugin instance, you can access and execute a query without being forced to rebuild it.
+After a query has been constructed for the first time, it's cached. Any query built with the same "signature" will return the same query instance—so the additional overhead you're introducing by creating a new query each tick isn't enormous. But by assigning the query to a property on the system or plugin instance, you can access and execute a query without being forced to rebuild it.
 
 ## Saving & Loading
 

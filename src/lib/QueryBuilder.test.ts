@@ -180,3 +180,10 @@ describe('first()', () => {
     expect(ctx.query.components(A).first()).toBe(a);
   });
 });
+
+test('mutating a query throws a runtime error', async () => {
+  const { ctx } = await setup(5);
+  const hasA = ctx.query.components(A);
+  expect(hasA.get()).toHaveLength(15);
+  expect(() => hasA.all.components(B)).toThrow();
+});
