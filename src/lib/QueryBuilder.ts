@@ -134,6 +134,7 @@ export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T
 
   private step(): this {
     if (this.id) {
+      // if a query instance has already been created (i.e., the query is already in use), throw an error.
       throw new Error('Modifying a resolved query will return inaccurate result sets.');
     }
 
@@ -147,7 +148,6 @@ export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T
     }
 
     this.state = { tag: null, ids: [] };
-    this.id = null;
     return this;
   }
 
