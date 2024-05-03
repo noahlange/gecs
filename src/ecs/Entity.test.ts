@@ -5,6 +5,7 @@ import { getContext, withTick } from '../test/helpers';
 import { A, B, C } from '../test/helpers/components';
 import { WithA, WithAB, WithABC } from '../test/helpers/entities';
 import { Components, ToIndex } from '../types';
+import { Entity } from './Entity';
 
 describe('creating entities', () => {
   const ctx = getContext();
@@ -17,6 +18,16 @@ describe('creating entities', () => {
   test('Can be created with a static ID.', () => {
     const item = ctx.create(WithABC, { id: 123 });
     expect(item.id).toBe(123);
+  });
+
+  test('Create will throw without a global context', () => {
+    expect(() => WithABC.create()).toThrow();
+  });
+
+  test('The static create() method creates a new entity instance.', () => {
+    Entity.ctx = ctx;
+    const item = WithABC.create();
+    expect(item).toBeInstanceOf(WithABC);
   });
 });
 

@@ -7,7 +7,7 @@ import type { BaseType, KeyedByType, Merge } from '../types';
 import { Context } from '../ecs';
 import { Components } from '../types';
 
-const ctors: Map<EntityClass, ComponentClass[]> = new Map();
+const ctors: Map<EntityClass<{}>, ComponentClass[]> = new Map();
 
 /**
  * Helper function to create new container class constructors with typed `$`s.

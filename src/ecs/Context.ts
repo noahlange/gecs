@@ -68,7 +68,7 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
    * @remarks
    * To avoid allocating unnecessarily large bigints, we won't be registering entities for querying, but we do need to register them for serializing/deserializing.
    */
-  public register(entities: EntityClass[] = [], components: ComponentClass[] = [], tags: string[] = []): void {
+  public register(entities: EntityClass<any>[] = [], components: ComponentClass[] = [], tags: string[] = []): void {
     this.manager.register(entities, components, tags);
   }
 

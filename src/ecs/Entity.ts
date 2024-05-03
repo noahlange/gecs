@@ -30,15 +30,20 @@ export interface EntityComponents {
 export interface EntityClass<T extends BaseType = {}, E extends Entity<T> = Entity<T>> {
   data?: BaseDataType<T>;
   new (context: Context, data?: BaseDataType<T>, tags?: string[]): E;
+  create<E extends EntityClass<T>>(this: E, data?: BaseDataType<T>, tags?: string[]): InstanceType<E>;
   with<A extends ComponentClass[]>(...items: A): EntityClass<T & KeyedByType<A>>;
 }
 
 export class Entity<T extends BaseType = {}> {
   public static ctx: Context | null = null;
 
-  public static create<T extends BaseDataType>(data: BaseDataType<T> & { id?: Identifier } = {}, tags: string[] = []) {
+  public static create<T extends BaseType, E extends EntityClass<T>>(
+    this: E,
+    data: BaseDataType<T> = {},
+    tags: string[] = []
+  ): InstanceType<E> {
     try {
-      return this.ctx!.create(this, data, tags);
+      return Entity.ctx!.create(this, data, tags) as InstanceType<E>;
     } catch {
       throw new Error('You must assign a global context to Entity.ctx before calling Entity.create().');
     }
@@ -49,7 +54,7 @@ export class Entity<T extends BaseType = {}> {
     A extends ComponentClass[],
     M extends MergeData<T & KeyedByType<A>> = MergeData<T & KeyedByType<A>>
   >(...components: A): EntityClass<M> {
-    return useWithComponent<M, A>(this, ...components);
+    return useWithComponent<M, A>(this as EntityClass<M>, ...components);
   }
 
   /**
