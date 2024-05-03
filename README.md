@@ -18,11 +18,10 @@ npm i gecs
 The top-level organizational unit is the Plugin. The game's Context consists of one or more Plugins, each of which provides specific functionality. Each Plugin exports a (static, readonly) `type` property which, like with entities/components, is used as the access key on the context's `game` property.
 
 ```typescript
-import { Context } from 'gecs';
+import { Context, Entity } from 'gecs';
 import StatePlugin from './plugins/state';
 
 const MyContext = Context.with(StatePlugin);
-
 const myContext = new MyContext();
 
 myContext.$.state instanceof StatePlugin; // true
@@ -100,7 +99,7 @@ export class Bar extends Component {
 
 
 const MyEntity = Entity.with(Foo, Bar);
-const entity = ctx.create(MyEntity, { foobly: { value: '123' } });
+const entity = MyEntity.create({ foobly: { value: '123' } });
 
 entity.$.foobly instanceof Foo;  // true
 entity.$.foobly.value === '123'; // true
@@ -120,15 +119,15 @@ export class Ownership extends EntityRef<Actor, Item> {
   public static readonly type = 'owner';
 }
 
-const owner = ctx.create(Actor);
-const item = ctx.create(Item);
+const owner = Actor.create();
+const item = Item.create();
 
 item.$.owner === null;          // true; refs default to null
 item.$.owner = owner;           // refs are assigned like properties
 item.$.owner instanceof Actor;  // true
 
-// you can pass an entity as the value of the corresponding key in `ctx.create()`
-const item2 = ctx.create(Item, { owner });
+// you can pass an entity as the value of the corresponding key in `Entity.create()`
+const item2 = Item.create({ owner });
 ```
 
 Per the example above, you can `extend` the result of the `with()` call to create a custom entity class, or create new instances using the return value of `with()` value as-is.

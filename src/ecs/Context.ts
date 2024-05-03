@@ -1,7 +1,17 @@
-import type { Component, ComponentClass, Entity, EntityClass, Plugin, PluginClass, System } from '../';
+import type { Component, ComponentClass, EntityClass, Plugin, PluginClass, System } from '../';
 import type { SerializeOptions } from '../lib';
-import type { BaseDataType, BaseType, Identifier, KeyedByType, Plugins, Serialized, SystemType } from '../types';
+import type {
+  $AnyEvil,
+  BaseDataType,
+  BaseType,
+  Identifier,
+  KeyedByType,
+  Plugins,
+  Serialized,
+  SystemType
+} from '../types';
 
+import { Entity } from '../';
 import { Deserializer, Manager, QueryBuilder, Serializer } from '../lib';
 import { Phase } from '../types';
 import { bigintID, IDGenerator, intID, useWithPlugins } from '../utils';
@@ -66,6 +76,10 @@ export class Context<T extends Plugins<T> = Plugins<{}>> {
    * Kickstart the Context and its systems.
    */
   public async start(): Promise<void> {
+    if (Entity.ctx == null) {
+      // set the default entity ctx (if the user hasn't set it already)
+      Entity.ctx = this as Context<$AnyEvil>;
+    }
     for (const plugin of Object.values(this.$)) {
       await (plugin as Plugin).start?.();
     }

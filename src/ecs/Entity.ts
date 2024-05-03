@@ -34,6 +34,16 @@ export interface EntityClass<T extends BaseType = {}, E extends Entity<T> = Enti
 }
 
 export class Entity<T extends BaseType = {}> {
+  public static ctx: Context | null = null;
+
+  public static create<T extends BaseDataType>(data: BaseDataType<T> & { id?: Identifier } = {}, tags: string[] = []) {
+    try {
+      return this.ctx!.create(this, data, tags);
+    } catch {
+      throw new Error('You must assign a global context to Entity.ctx before calling Entity.create().');
+    }
+  }
+
   public static with<
     T extends BaseType,
     A extends ComponentClass[],

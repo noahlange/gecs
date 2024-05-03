@@ -1,5 +1,9 @@
 # 1.0.0-alpha
 
+## 1.0.0-alpha.9
+
+- adds static `Entity.create()` method for simpler Entity creation.
+
 ## 1.0.0-alpha.8
 
 - removes all dependencies by grace of Sindre Sorhus's [type-fest](https://github.com/sindresorhus/type-fest).
