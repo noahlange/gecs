@@ -4,7 +4,7 @@ import type { SystemFunction } from './ecs/System';
 import type { PluginClass, QueryBuilderBase } from './lib';
 
 // Copy-pasted with permission from https://github.com/sindresorhus/type-fest/blob/main/source/simplify.d.ts
-export type Simplify<T> = { [KeyType in keyof T]: T[KeyType] } & {};
+export type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
 // Copy-pasted with permission from https://github.com/sindresorhus/type-fest/blob/main/source/union-to-intersection.d.ts
 export type UnionToIntersection<Union> = (Union extends unknown ? (distributedUnion: Union) => void : never) extends (
@@ -93,6 +93,10 @@ export type Plugins<T extends Plugins<T>> = {
   [K in keyof T]: T[K];
 };
 
+export type StaticTypeNames<T> = T extends (infer R)[] ? (R extends WithStaticType ? StaticTypeName<R> : never) : never;
+
+export type StaticTypeName<T = $AnyOK> = T extends WithStaticType ? T['type'] : never;
+
 /**
  * Some class with a static, readonly `type` property.
  */
@@ -117,9 +121,7 @@ type InstanceOrRefKeyedByType<T> = T extends WithStaticType
  * class B extends Component { static readonly type: 'b' }
  * type KeyedByType<[typeof A, typeof B]> // { a: A, b: B }
  */
-export type KeyedByType<A extends WithStaticType[]> = Merge<
-  A extends (infer B)[] ? InstanceOrRefKeyedByType<B> : never
->;
+export type KeyedByType<A extends WithStaticType[]> = A extends (infer B)[] ? InstanceOrRefKeyedByType<B> : never;
 
 /**
  * Given an array of WithStaticTypes, return a merged array of key-value pairs, with optional values.
@@ -131,9 +133,9 @@ export type KeyedByType<A extends WithStaticType[]> = Merge<
  * class B extends Component { static readonly type: 'b' }
  * type PartialByType<[typeof A, typeof B]> // { a?: A, b?: B }
  */
-export type PartialByType<A extends WithStaticType[]> = Merge<
-  A extends (infer B)[] ? Partial<InstanceOrRefKeyedByType<B>> : never
->;
+export type PartialByType<A extends WithStaticType[]> = A extends (infer B)[]
+  ? Partial<InstanceOrRefKeyedByType<B>>
+  : never;
 
 /**
  * Given an array of WithStaticTypes, return a merged array of key-value pairs, all with `never` value types
@@ -145,9 +147,7 @@ export type PartialByType<A extends WithStaticType[]> = Merge<
  * class B extends Component { static readonly type: 'b' }
  * type NeverByType<[typeof A, typeof B]> // { a: never, b: never }
  */
-export type NeverByType<A extends WithStaticType[]> = Merge<
-  A extends (infer B)[] ? (B extends WithStaticType ? { [key in B['type']]: never } : never) : never
->;
+export type NeverByType<T, A extends WithStaticType[]> = Omit<T, StaticTypeNames<A>>;
 
 /**
  * Used to define the contents of an entity payload: pass a data partial for a Component and an entity for an EntityRef.

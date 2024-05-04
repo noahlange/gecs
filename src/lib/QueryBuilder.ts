@@ -1,36 +1,39 @@
 import type { ComponentClass, Context, Entity } from '../ecs';
-import type { BaseType, Identifier, KeyedByType, MergeData, PartialByType, QueryStep } from '../types';
-import type { Query } from '.';
+import type { BaseType, Identifier, KeyedByType, PartialByType, QueryStep, Simplify, StaticTypeNames } from '../types';
+import type { Query } from './Query';
 
 import { Constraint } from '../types';
-
-/**
- * A query without a qualified constraint is assumed to be "all"
- */
-export interface QueryBuilderBase<T extends BaseType = {}> extends QueryBuilderAll<T> {
-  all: QueryBuilderAll<T>;
-  any: QueryBuilderAny<T>;
-  some: QueryBuilderAny<T>;
-  none: QueryBuilderBase<T>;
-  get(): Entity<T>[];
-  first(): Entity<T> | null;
-  references(...entities: Entity<{}>[]): this;
-  [Symbol.iterator](): Iterator<Entity<T>>;
-}
-
-interface QueryBuilderAll<T extends BaseType = {}> {
-  components<A extends ComponentClass[]>(...components: A): QueryBuilder<MergeData<T & KeyedByType<A>>>;
-  tags(...tags: string[]): QueryBuilder<T>;
-}
-
-interface QueryBuilderAny<T extends BaseType = {}> {
-  components<A extends ComponentClass[]>(...components: A): QueryBuilder<MergeData<T & PartialByType<A>>>;
-  tags(...tags: string[]): QueryBuilder<T>;
-}
 
 export interface QueryState {
   tag: Constraint | null;
   ids: Identifier[];
+}
+
+interface QueryBuilderBase<T extends BaseType = {}> {
+  get all(): QueryBuilderAll<T>;
+  get any(): QueryBuilderAny<T>;
+  get some(): QueryBuilderAny<T>;
+  get none(): QueryBuilderNone<T>;
+
+  tags(...tags: string[]): QueryBuilderBase<T>;
+  references(...entities: Entity[]): this;
+
+  get(): Entity<Simplify<T>>[];
+  first(): Entity<Simplify<T>> | null;
+
+  [Symbol.iterator](): Iterator<Entity<Simplify<T>>>;
+}
+
+interface QueryBuilderAll<T extends BaseType = {}> extends QueryBuilderBase<T> {
+  components<A extends ComponentClass[]>(...components: A): QueryBuilderBase<T & KeyedByType<A>>;
+}
+
+interface QueryBuilderAny<T extends BaseType = {}> extends QueryBuilderBase<T> {
+  components<A extends ComponentClass[]>(...components: A): QueryBuilderBase<T & PartialByType<A>>;
+}
+
+interface QueryBuilderNone<T extends BaseType = {}> extends QueryBuilderBase<T> {
+  components<A extends ComponentClass[]>(...components: A): QueryBuilderBase<Omit<T, StaticTypeNames<A>>>;
 }
 
 export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T> {
@@ -48,6 +51,7 @@ export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T
     this.state.tag = Constraint.ALL;
     return this as unknown as QueryBuilderAll<T>;
   }
+
   /**
    * Mark query parameters as optional, with 1+ required matches.
    * A | B
@@ -70,15 +74,15 @@ export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T
    * Mark query parameters as disqualifying.
    * !(A & B)
    */
-  public get none(): this {
+  public get none(): QueryBuilderNone<T> {
     this.state.tag = Constraint.NONE;
-    return this;
+    return this as unknown as QueryBuilderNone<T>;
   }
 
   /**
    * Constrain results to those referencing one of several entities.
    */
-  public references(...entities: Entity[]): this {
+  public references(...entities: Entity[]) {
     this.state.tag = Constraint.IN;
     this.state.ids = entities.map(entity => entity.id);
     return this.step();
@@ -87,9 +91,9 @@ export class QueryBuilder<T extends BaseType = {}> implements QueryBuilderBase<T
   /**
    * Constrain results based on one or components.
    */
-  public components<A extends ComponentClass[]>(...components: A): QueryBuilder<T & KeyedByType<A>> {
+  public components<A extends ComponentClass[]>(...components: A) {
     this.state.ids.push(...components.map(c => c.type));
-    return this.step() as unknown as QueryBuilder<T & KeyedByType<A>>;
+    return this.step();
   }
 
   /**

@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import type { Entity } from '../ecs';
 
 import { describe, expect, test } from 'vitest';
@@ -69,7 +70,7 @@ describe('basic query modifiers', () => {
 
   test('.components.none()', async () => {
     const { ctx } = await setup();
-    const noA = ctx.query.none.components(A);
+    const noA = ctx.query.all.components(B).none.components(A);
     expect(noA.get()).toHaveLength(count); // i.e., WithB
   });
 });
