@@ -121,8 +121,9 @@ type InstanceOrRefKeyedByType<T> = T extends WithStaticType
  * class B extends Component { static readonly type: 'b' }
  * type KeyedByType<[typeof A, typeof B]> // { a: A, b: B }
  */
-export type KeyedByType<A extends WithStaticType[]> = A extends (infer B)[] ? InstanceOrRefKeyedByType<B> : never;
-
+export type KeyedByType<A extends WithStaticType[]> = Merge<
+  A extends (infer B)[] ? InstanceOrRefKeyedByType<B> : never
+>;
 /**
  * Given an array of WithStaticTypes, return a merged array of key-value pairs, with optional values.
  *
@@ -133,9 +134,9 @@ export type KeyedByType<A extends WithStaticType[]> = A extends (infer B)[] ? In
  * class B extends Component { static readonly type: 'b' }
  * type PartialByType<[typeof A, typeof B]> // { a?: A, b?: B }
  */
-export type PartialByType<A extends WithStaticType[]> = A extends (infer B)[]
-  ? Partial<InstanceOrRefKeyedByType<B>>
-  : never;
+export type PartialByType<A extends WithStaticType[]> = Merge<
+  A extends (infer B)[] ? Partial<InstanceOrRefKeyedByType<B>> : never
+>;
 
 /**
  * Given an array of WithStaticTypes, return a merged array of key-value pairs, all with `never` value types
